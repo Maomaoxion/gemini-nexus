@@ -3,13 +3,16 @@
 import { renderContent } from './content.js';
 import { copyToClipboard } from './clipboard.js';
 import { createGeneratedImage } from './generated_image.js';
+import { t } from '../core/i18n.js';
+
+const MAX_VISIBLE_SOURCES = 2;
 
 // Appends a message to the chat history and returns an update controller
 // attachment can be:
 // - string: single user image (URL/Base64)
 // - array of strings: multiple user images
 // - array of objects {url, alt}: AI generated images
-export function appendMessage(container, text, role, attachment = null, thoughts = null) {
+export function appendMessage(container, text, role, attachment = null, thoughts = null, sources = null) {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
     
@@ -61,6 +64,76 @@ export function appendMessage(container, text, role, attachment = null, thoughts
     let contentDiv = null;
     let thoughtsDiv = null;
     let thoughtsContent = null;
+    let sourcesDiv = null;
+
+    const buildSourcesElement = (sourceList) => {
+        if (role !== 'ai' || !Array.isArray(sourceList) || sourceList.length === 0) {
+            return null;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sources-container';
+
+        const label = document.createElement('div');
+        label.className = 'sources-label';
+        label.textContent = t('sourcesLabel');
+        wrapper.appendChild(label);
+
+        const list = document.createElement('div');
+        list.className = 'sources-list';
+
+        let renderedCount = 0;
+
+        sourceList.forEach((source, index) => {
+            if (!source || !source.url) return;
+
+            const link = document.createElement('a');
+            link.className = 'source-link';
+            if (index >= MAX_VISIBLE_SOURCES) {
+                link.classList.add('source-link-hidden');
+            }
+            link.href = source.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = source.title || source.url;
+            list.appendChild(link);
+            renderedCount++;
+        });
+
+        if (!list.childNodes.length) {
+            return null;
+        }
+
+        wrapper.appendChild(list);
+
+        if (renderedCount > MAX_VISIBLE_SOURCES) {
+            const hiddenCount = renderedCount - MAX_VISIBLE_SOURCES;
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'sources-toggle';
+
+            const setToggleLabel = (expanded) => {
+                toggle.textContent = expanded ? '▴' : '▾';
+                const labelText = expanded
+                    ? t('showLessSources')
+                    : t('showMoreSources').replace('{count}', String(hiddenCount));
+                toggle.title = labelText;
+                toggle.setAttribute('aria-label', labelText);
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            };
+
+            setToggleLabel(false);
+
+            toggle.addEventListener('click', () => {
+                const expanded = wrapper.classList.toggle('sources-expanded');
+                setToggleLabel(expanded);
+            });
+
+            list.appendChild(toggle);
+        }
+
+        return wrapper;
+    };
 
     // Allow creating empty AI bubbles for streaming
     if (currentText || currentThoughts || role === 'ai') {
@@ -91,6 +164,13 @@ export function appendMessage(container, text, role, attachment = null, thoughts
         contentDiv = document.createElement('div');
         renderContent(contentDiv, currentText, role);
         div.appendChild(contentDiv);
+
+        if (role === 'ai' && Array.isArray(sources) && sources.length > 0) {
+            sourcesDiv = buildSourcesElement(sources);
+            if (sourcesDiv) {
+                div.appendChild(sourcesDiv);
+            }
+        }
 
         // 2. AI Generated Images (Array of objects {url, alt})
         // Note: AI images are distinct from user attachments
@@ -183,6 +263,20 @@ export function appendMessage(container, text, role, attachment = null, thoughts
                 // Insert before copy button
                 div.insertBefore(grid, div.querySelector('.copy-btn'));
                 // Do not force scroll here either
+            }
+        },
+        addSources: (sourceList) => {
+            if (sourcesDiv || !Array.isArray(sourceList) || sourceList.length === 0) return;
+
+            const builtSources = buildSourcesElement(sourceList);
+            if (!builtSources) return;
+
+            sourcesDiv = builtSources;
+            const copyBtn = div.querySelector('.copy-btn');
+            if (copyBtn) {
+                div.insertBefore(sourcesDiv, copyBtn);
+            } else {
+                div.appendChild(sourcesDiv);
             }
         }
     };

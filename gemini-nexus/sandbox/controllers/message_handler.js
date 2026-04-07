@@ -129,6 +129,10 @@ export class MessageHandler {
                 if (request.images && request.images.length > 0) {
                     this.streamingBubble.addImages(request.images);
                 }
+
+                if (request.sources && request.sources.length > 0) {
+                    this.streamingBubble.addSources(request.sources);
+                }
                 
                 if (request.status !== 'success') {
                     // Optionally style error
@@ -138,7 +142,7 @@ export class MessageHandler {
                 this.streamingBubble = null;
             } else {
                 // Fallback if no stream occurred (or single short response)
-                appendMessage(this.ui.historyDiv, request.text, 'ai', request.images, request.thoughts);
+                appendMessage(this.ui.historyDiv, request.text, 'ai', request.images, request.thoughts, request.sources);
             }
         }
     }

@@ -95,6 +95,7 @@ export class MessageBridge {
                 'geminiUseOfficialApi', 
                 'geminiApiKey', 
                 'geminiThinkingLevel',
+                'geminiOfficialWebSearch',
                 'geminiOpenaiBaseUrl',
                 'geminiOpenaiApiKey',
                 'geminiOpenaiModel',
@@ -111,6 +112,7 @@ export class MessageBridge {
                         useOfficialApi: res.geminiUseOfficialApi === true, 
                         apiKey: res.geminiApiKey || "",
                         thinkingLevel: res.geminiThinkingLevel || "low",
+                        officialWebSearch: res.geminiOfficialWebSearch === true,
                         openaiBaseUrl: res.geminiOpenaiBaseUrl || "",
                         openaiApiKey: res.geminiOpenaiApiKey || "",
                         openaiModel: res.geminiOpenaiModel || "",
@@ -142,6 +144,7 @@ export class MessageBridge {
             this.state.save('geminiUseOfficialApi', payload.provider === 'official'); // Maintain legacy bool for now
             this.state.save('geminiApiKey', payload.apiKey);
             this.state.save('geminiThinkingLevel', payload.thinkingLevel);
+            this.state.save('geminiOfficialWebSearch', payload.officialWebSearch === true);
             // OpenAI
             this.state.save('geminiOpenaiBaseUrl', payload.openaiBaseUrl);
             this.state.save('geminiOpenaiApiKey', payload.openaiApiKey);

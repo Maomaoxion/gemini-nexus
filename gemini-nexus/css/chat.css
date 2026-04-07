@@ -158,6 +158,76 @@ body.layout-wide .msg.ai {
     opacity: 0.9;
 }
 
+.sources-container {
+    margin-top: 14px;
+    margin-bottom: 8px;
+}
+
+.sources-label {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+}
+
+.sources-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.source-link {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-sidebar);
+    color: var(--text-primary);
+    font-size: 13px;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-link:hover {
+    background: var(--btn-hover);
+    border-color: var(--primary);
+}
+
+.source-link-hidden {
+    display: none;
+}
+
+.sources-expanded .source-link-hidden {
+    display: inline-flex;
+}
+
+.sources-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-sidebar);
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.sources-toggle:hover {
+    background: var(--btn-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
 /* Shared Button Styles */
 .copy-btn {
     border: none;

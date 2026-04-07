@@ -7,6 +7,7 @@ export async function getConnectionSettings() {
         'geminiUseOfficialApi', 
         'geminiApiKey', 
         'geminiThinkingLevel', 
+        'geminiOfficialWebSearch',
         'geminiApiKeyPointer',
         'geminiOpenaiBaseUrl',
         'geminiOpenaiApiKey',
@@ -51,6 +52,7 @@ export async function getConnectionSettings() {
         // Official
         apiKey: activeApiKey,
         thinkingLevel: stored.geminiThinkingLevel || "low",
+        officialWebSearch: stored.geminiOfficialWebSearch === true,
         // OpenAI
         openaiBaseUrl: stored.geminiOpenaiBaseUrl,
         openaiApiKey: stored.geminiOpenaiApiKey,

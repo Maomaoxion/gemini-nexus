@@ -36,7 +36,7 @@ export class SessionFlowController {
             if (msg.role === 'user') attachment = msg.image;
             if (msg.role === 'ai') attachment = msg.generatedImages;
             // Pass msg.thoughts to appendMessage
-            appendMessage(this.ui.historyDiv, msg.text, msg.role, attachment, msg.thoughts);
+            appendMessage(this.ui.historyDiv, msg.text, msg.role, attachment, msg.thoughts, msg.sources);
         });
         this.ui.scrollToBottom();
 

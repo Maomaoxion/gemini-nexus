@@ -28,6 +28,10 @@ export const ConnectionSettingsTemplate = `
                     <option value="high">High (Deep Reasoning)</option>
                 </select>
             </div>
+            <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="official-web-search-enabled" />
+                <span data-i18n="officialWebSearch">Enable Google Search grounding</span>
+            </label>
         </div>
 
         <!-- OpenAI Fields -->

@@ -46,6 +46,7 @@ export class ConnectionSection {
             officialFields: get('official-fields'),
             apiKeyInput: get('api-key-input'),
             thinkingLevelSelect: get('thinking-level-select'),
+            officialWebSearchEnabled: get('official-web-search-enabled'),
             
             // OpenAI Fields
             openaiFields: get('openai-fields'),
@@ -253,7 +254,7 @@ export class ConnectionSection {
 
     setData(data) {
         const { 
-            providerSelect, apiKeyInput, thinkingLevelSelect, 
+            providerSelect, apiKeyInput, thinkingLevelSelect, officialWebSearchEnabled,
             openaiBaseUrl, openaiApiKey, openaiModel,
             mcpEnabled
         } = this.elements;
@@ -267,6 +268,7 @@ export class ConnectionSection {
         // Official
         if (apiKeyInput) apiKeyInput.value = data.apiKey || "";
         if (thinkingLevelSelect) thinkingLevelSelect.value = data.thinkingLevel || "low";
+        if (officialWebSearchEnabled) officialWebSearchEnabled.checked = data.officialWebSearch === true;
         
         // OpenAI
         if (openaiBaseUrl) openaiBaseUrl.value = data.openaiBaseUrl || "";
@@ -313,7 +315,7 @@ export class ConnectionSection {
 
     getData() {
         const {
-            providerSelect, apiKeyInput, thinkingLevelSelect,
+            providerSelect, apiKeyInput, thinkingLevelSelect, officialWebSearchEnabled,
             openaiBaseUrl, openaiApiKey, openaiModel,
             mcpEnabled
         } = this.elements;
@@ -328,6 +330,7 @@ export class ConnectionSection {
             // Official
             apiKey: apiKeyInput ? apiKeyInput.value.trim() : "",
             thinkingLevel: thinkingLevelSelect ? thinkingLevelSelect.value : "low",
+            officialWebSearch: officialWebSearchEnabled ? officialWebSearchEnabled.checked === true : false,
             // OpenAI
             openaiBaseUrl: openaiBaseUrl ? openaiBaseUrl.value.trim() : "",
             openaiApiKey: openaiApiKey ? openaiApiKey.value.trim() : "",

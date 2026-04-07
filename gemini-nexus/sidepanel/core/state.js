@@ -25,6 +25,7 @@ export class StateManager {
             'geminiApiKey',
             'geminiUseOfficialApi',
             'geminiThinkingLevel',
+            'geminiOfficialWebSearch',
             'geminiProvider',
             'geminiOpenaiBaseUrl',
             'geminiOpenaiApiKey',
@@ -76,6 +77,7 @@ export class StateManager {
                 useOfficialApi: this.data.geminiUseOfficialApi === true, // Legacy
                 apiKey: this.data.geminiApiKey || "",
                 thinkingLevel: this.data.geminiThinkingLevel || "low",
+                officialWebSearch: this.data.geminiOfficialWebSearch === true,
                 openaiBaseUrl: this.data.geminiOpenaiBaseUrl || "",
                 openaiApiKey: this.data.geminiOpenaiApiKey || "",
                 openaiModel: this.data.geminiOpenaiModel || "",

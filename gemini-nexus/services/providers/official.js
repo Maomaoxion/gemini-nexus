@@ -1,9 +1,36 @@
 // services/providers/official.js
 
+function extractGroundingSources(groundingMetadata) {
+    if (!groundingMetadata || !Array.isArray(groundingMetadata.groundingChunks)) {
+        return [];
+    }
+
+    const sources = [];
+
+    groundingMetadata.groundingChunks.forEach((chunk) => {
+        const web = chunk && typeof chunk === 'object' ? chunk.web : null;
+        if (!web || !web.uri) return;
+
+        let title = web.title || web.uri;
+        try {
+            if (!web.title) {
+                title = new URL(web.uri).hostname;
+            }
+        } catch (_) {}
+
+        sources.push({
+            title,
+            url: web.uri
+        });
+    });
+
+    return sources;
+}
+
 /**
  * Sends a message using the Official Google Gemini API.
  */
-export async function sendOfficialMessage(prompt, systemInstruction, history, apiKey, modelName, thinkingLevel, files, signal, onUpdate) {
+export async function sendOfficialMessage(prompt, systemInstruction, history, apiKey, modelName, thinkingLevel, files, enableWebSearch, signal, onUpdate) {
     if (!apiKey) throw new Error("API Key is missing.");
     
     // Dynamic Model Selection: Map UI values to API IDs
@@ -110,6 +137,10 @@ export async function sendOfficialMessage(prompt, systemInstruction, history, ap
         }
     };
 
+    if (enableWebSearch) {
+        payload.tools = [{ google_search: {} }];
+    }
+
     // Apply Thinking Config if requested or user has configured it level
     // Specifically enable thinking for "Thinking" model variant
     if (modelName === 'gemini-3-flash-thinking' || thinkingLevel) {
@@ -145,6 +176,8 @@ export async function sendOfficialMessage(prompt, systemInstruction, history, ap
     let fullText = "";
     let fullThoughts = "";
     let finalThoughtSignature = null;
+    const sources = [];
+    const seenSourceUrls = new Set();
 
     while (true) {
         const { done, value } = await reader.read();
@@ -162,8 +195,18 @@ export async function sendOfficialMessage(prompt, systemInstruction, history, ap
                 const jsonStr = trimmed.substring(6);
                 try {
                     const data = JSON.parse(jsonStr);
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                        const parts = data.candidates[0].content.parts;
+                    const candidate = data.candidates && data.candidates[0] ? data.candidates[0] : null;
+
+                    if (candidate && candidate.groundingMetadata) {
+                        extractGroundingSources(candidate.groundingMetadata).forEach((source) => {
+                            if (!source.url || seenSourceUrls.has(source.url)) return;
+                            seenSourceUrls.add(source.url);
+                            sources.push(source);
+                        });
+                    }
+
+                    if (candidate && candidate.content) {
+                        const parts = candidate.content.parts;
                         if (parts && parts.length > 0) {
                             parts.forEach(p => {
                                 // Extract thoughts first (could be boolean flag + text, or string field)
@@ -196,6 +239,7 @@ export async function sendOfficialMessage(prompt, systemInstruction, history, ap
     return {
         text: fullText,
         thoughts: fullThoughts || null, 
+        sources,
         images: [], 
         context: null, // Stateless
         thoughtSignature: finalThoughtSignature

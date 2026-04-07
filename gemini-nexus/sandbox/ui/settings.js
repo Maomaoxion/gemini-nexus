@@ -23,6 +23,7 @@ export class SettingsController {
             useOfficialApi: false, // Legacy support
             apiKey: "",
             thinkingLevel: "low",
+            officialWebSearch: false,
             openaiBaseUrl: "",
             openaiApiKey: "",
             openaiModel: "",
@@ -123,6 +124,7 @@ export class SettingsController {
             provider: data.connection.provider,
             apiKey: data.connection.apiKey,
             thinkingLevel: data.connection.thinkingLevel,
+            officialWebSearch: data.connection.officialWebSearch === true,
             openaiBaseUrl: data.connection.openaiBaseUrl,
             openaiApiKey: data.connection.openaiApiKey,
             openaiModel: data.connection.openaiModel,

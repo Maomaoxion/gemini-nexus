@@ -34,6 +34,7 @@ export class RequestDispatcher {
             request.model, 
             settings.thinkingLevel, 
             files, 
+            settings.officialWebSearch === true,
             signal,
             onUpdate
         );
@@ -42,6 +43,7 @@ export class RequestDispatcher {
             action: "GEMINI_REPLY",
             text: response.text,
             thoughts: response.thoughts,
+            sources: response.sources || [],
             images: response.images,
             status: "success",
             context: null, // Official API is stateless
@@ -80,6 +82,7 @@ export class RequestDispatcher {
             action: "GEMINI_REPLY",
             text: response.text,
             thoughts: response.thoughts,
+            sources: [],
             images: response.images,
             status: "success",
             context: null
@@ -121,6 +124,7 @@ export class RequestDispatcher {
                     action: "GEMINI_REPLY",
                     text: response.text,
                     thoughts: response.thoughts,
+                    sources: [],
                     images: response.images,
                     status: "success",
                     context: response.newContext 
