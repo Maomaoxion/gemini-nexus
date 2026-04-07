@@ -12,6 +12,9 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gemini-nexus
 
     steps:
       - name: Checkout
@@ -22,6 +25,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: gemini-nexus/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -43,12 +47,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gemini-nexus-v${{ steps.version.outputs.value }}
-          path: artifacts/gemini-nexus-v${{ steps.version.outputs.value }}.zip
+          path: gemini-nexus/artifacts/gemini-nexus-v${{ steps.version.outputs.value }}.zip
           if-no-files-found: error
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/gemini-nexus-v${{ steps.version.outputs.value }}.zip
+          files: gemini-nexus/artifacts/gemini-nexus-v${{ steps.version.outputs.value }}.zip
           generate_release_notes: true
