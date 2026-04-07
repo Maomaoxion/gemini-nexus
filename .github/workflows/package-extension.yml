@@ -35,7 +35,9 @@ jobs:
 
       - name: Resolve version
         id: version
-        run: echo "value=$(node -p \"JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create zip artifact
         run: |
