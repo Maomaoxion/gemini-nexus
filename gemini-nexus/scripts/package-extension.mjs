@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +38,23 @@ async function copyIntoPackage(sourceRelativePath, targetRelativePath = sourceRe
   await cp(source, target, { recursive: true });
 }
 
+async function removeJunkFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+
+  await Promise.all(entries.map(async (entry) => {
+    const fullPath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      await removeJunkFiles(fullPath);
+      return;
+    }
+
+    if (entry.name === '.DS_Store') {
+      await rm(fullPath, { force: true });
+    }
+  }));
+}
+
 async function main() {
   for (const relativePath of requiredPaths) {
     await ensureExists(relativePath);
@@ -58,6 +75,8 @@ async function main() {
     copyIntoPackage('dist/sandbox/index.html', 'sandbox/index.html'),
     copyIntoPackage('sandbox/theme_init.js', 'sandbox/theme_init.js'),
   ]);
+
+  await removeJunkFiles(packageDir);
 
   const packageJson = JSON.parse(await readFile(path.join(rootDir, 'package.json'), 'utf8'));
   await writeFile(
