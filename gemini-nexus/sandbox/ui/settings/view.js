@@ -158,6 +158,10 @@ export class SettingsView {
         this.about.displayUpdateStatus(latest, current, isUpdateAvailable);
     }
 
+    setAppVersion(version) {
+        this.about.setCurrentVersion(version);
+    }
+
     fire(event, data) {
         if (this.callbacks[event]) this.callbacks[event](data);
     }

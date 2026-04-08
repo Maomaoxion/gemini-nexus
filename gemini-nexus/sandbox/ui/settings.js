@@ -231,6 +231,11 @@ export class SettingsController {
         this.view.setConnectionSettings(this.connectionData);
     }
 
+    updateAppVersion(version) {
+        if (!this.view) return;
+        this.view.setAppVersion(version);
+    }
+
     updateMcpTestResult(result) {
         if (!this.view || !this.view.connection || typeof this.view.connection.setMcpTestStatus !== 'function') return;
 
@@ -275,8 +280,8 @@ export class SettingsController {
 
         try {
             const [starRes, releaseRes] = await Promise.all([
-                fetch('https://api.github.com/repos/yeahhe365/gemini-nexus'),
-                fetch('https://api.github.com/repos/yeahhe365/gemini-nexus/releases/latest')
+                fetch('https://api.github.com/repos/Maomaoxion/gemini-nexus'),
+                fetch('https://api.github.com/repos/Maomaoxion/gemini-nexus/releases/latest')
             ]);
 
             if (starRes.ok) {
