@@ -65,7 +65,8 @@
         }
 
         match(event, shortcutString) {
-            if (!shortcutString) return false;
+            if (!shortcutString || typeof shortcutString !== 'string') return false;
+            if (!event || typeof event.key !== 'string') return false;
             
             const parts = shortcutString.split('+').map(p => p.trim().toLowerCase());
             const key = event.key.toLowerCase();
