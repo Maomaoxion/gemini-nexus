@@ -21,7 +21,9 @@ export class SettingsController {
         this.connectionData = {
             provider: 'web',
             useOfficialApi: false, // Legacy support
+            officialBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
             apiKey: "",
+            officialModel: "gemini-3-flash-preview, gemini-3-pro-preview",
             thinkingLevel: "low",
             officialWebSearch: false,
             openaiBaseUrl: "",
@@ -122,7 +124,9 @@ export class SettingsController {
         // Connection
         this.connectionData = {
             provider: data.connection.provider,
+            officialBaseUrl: data.connection.officialBaseUrl,
             apiKey: data.connection.apiKey,
+            officialModel: data.connection.officialModel,
             thinkingLevel: data.connection.thinkingLevel,
             officialWebSearch: data.connection.officialWebSearch === true,
             openaiBaseUrl: data.connection.openaiBaseUrl,

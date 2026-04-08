@@ -5,7 +5,9 @@ export async function getConnectionSettings() {
     const stored = await chrome.storage.local.get([
         'geminiProvider',
         'geminiUseOfficialApi', 
+        'geminiOfficialBaseUrl',
         'geminiApiKey', 
+        'geminiOfficialModel',
         'geminiThinkingLevel', 
         'geminiOfficialWebSearch',
         'geminiApiKeyPointer',
@@ -50,7 +52,9 @@ export async function getConnectionSettings() {
     return {
         provider: provider,
         // Official
+        officialBaseUrl: stored.geminiOfficialBaseUrl || "https://generativelanguage.googleapis.com/v1beta",
         apiKey: activeApiKey,
+        officialModel: stored.geminiOfficialModel || "gemini-3-flash-preview, gemini-3-pro-preview",
         thinkingLevel: stored.geminiThinkingLevel || "low",
         officialWebSearch: stored.geminiOfficialWebSearch === true,
         // OpenAI

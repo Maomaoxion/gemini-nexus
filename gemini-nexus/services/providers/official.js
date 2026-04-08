@@ -30,14 +30,21 @@ function extractGroundingSources(groundingMetadata) {
 /**
  * Sends a message using the Official Google Gemini API.
  */
-export async function sendOfficialMessage(prompt, systemInstruction, history, apiKey, modelName, thinkingLevel, files, enableWebSearch, signal, onUpdate) {
+export async function sendOfficialMessage(prompt, systemInstruction, history, config, thinkingLevel, files, enableWebSearch, signal, onUpdate) {
+    let { baseUrl, apiKey, model: modelName, configuredModels } = config || {};
     if (!apiKey) throw new Error("API Key is missing.");
+    if (!baseUrl) baseUrl = "https://generativelanguage.googleapis.com/v1beta";
     
     // Dynamic Model Selection: Map UI values to API IDs
     let targetModel = modelName;
     
-    // Default mapping if not specific
-    if (!targetModel) targetModel = "gemini-3-flash-preview"; 
+    if (!targetModel) {
+        const configured = (configuredModels || "")
+            .split(',')
+            .map(m => m.trim())
+            .filter(Boolean);
+        targetModel = configured[0] || "gemini-3-flash-preview";
+    }
 
     // Explicit Mapping logic
     if (targetModel === 'gemini-3-flash') {
@@ -50,7 +57,8 @@ export async function sendOfficialMessage(prompt, systemInstruction, history, ap
     
     console.debug(`[Gemini Official API] Requesting ${targetModel} (Original: ${modelName})...`);
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
+    const url = `${normalizedBaseUrl}/models/${targetModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     // 1. Build Contents Array (History + Current Prompt)
     const contents = [];

@@ -93,7 +93,9 @@ export class MessageBridge {
             chrome.storage.local.get([
                 'geminiProvider',
                 'geminiUseOfficialApi', 
+                'geminiOfficialBaseUrl',
                 'geminiApiKey', 
+                'geminiOfficialModel',
                 'geminiThinkingLevel',
                 'geminiOfficialWebSearch',
                 'geminiOpenaiBaseUrl',
@@ -110,7 +112,9 @@ export class MessageBridge {
                     payload: { 
                         provider: res.geminiProvider || (res.geminiUseOfficialApi ? 'official' : 'web'),
                         useOfficialApi: res.geminiUseOfficialApi === true, 
+                        officialBaseUrl: res.geminiOfficialBaseUrl || "https://generativelanguage.googleapis.com/v1beta",
                         apiKey: res.geminiApiKey || "",
+                        officialModel: res.geminiOfficialModel || "gemini-3-flash-preview, gemini-3-pro-preview",
                         thinkingLevel: res.geminiThinkingLevel || "low",
                         officialWebSearch: res.geminiOfficialWebSearch === true,
                         openaiBaseUrl: res.geminiOpenaiBaseUrl || "",
@@ -142,7 +146,9 @@ export class MessageBridge {
             this.state.save('geminiProvider', payload.provider);
             // Official
             this.state.save('geminiUseOfficialApi', payload.provider === 'official'); // Maintain legacy bool for now
+            this.state.save('geminiOfficialBaseUrl', payload.officialBaseUrl || "https://generativelanguage.googleapis.com/v1beta");
             this.state.save('geminiApiKey', payload.apiKey);
+            this.state.save('geminiOfficialModel', payload.officialModel || "gemini-3-flash-preview, gemini-3-pro-preview");
             this.state.save('geminiThinkingLevel', payload.thinkingLevel);
             this.state.save('geminiOfficialWebSearch', payload.officialWebSearch === true);
             // OpenAI

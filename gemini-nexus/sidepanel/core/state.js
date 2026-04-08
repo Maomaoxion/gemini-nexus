@@ -24,6 +24,8 @@ export class StateManager {
             'geminiAccountIndices',
             'geminiApiKey',
             'geminiUseOfficialApi',
+            'geminiOfficialBaseUrl',
+            'geminiOfficialModel',
             'geminiThinkingLevel',
             'geminiOfficialWebSearch',
             'geminiProvider',
@@ -75,7 +77,9 @@ export class StateManager {
             payload: { 
                 provider: this.data.geminiProvider || (this.data.geminiUseOfficialApi ? 'official' : 'web'),
                 useOfficialApi: this.data.geminiUseOfficialApi === true, // Legacy
+                officialBaseUrl: this.data.geminiOfficialBaseUrl || "https://generativelanguage.googleapis.com/v1beta",
                 apiKey: this.data.geminiApiKey || "",
+                officialModel: this.data.geminiOfficialModel || "gemini-3-flash-preview, gemini-3-pro-preview",
                 thinkingLevel: this.data.geminiThinkingLevel || "low",
                 officialWebSearch: this.data.geminiOfficialWebSearch === true,
                 openaiBaseUrl: this.data.geminiOpenaiBaseUrl || "",

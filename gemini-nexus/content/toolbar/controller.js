@@ -66,7 +66,7 @@
             // Listen for global setting changes to keep toolbar in sync
             chrome.storage.onChanged.addListener((changes, area) => {
                 if (area === 'local') {
-                    const keys = ['geminiModel', 'geminiProvider', 'geminiUseOfficialApi', 'geminiOpenaiModel'];
+                    const keys = ['geminiModel', 'geminiProvider', 'geminiUseOfficialApi', 'geminiOfficialModel', 'geminiOpenaiModel'];
                     if (keys.some(k => changes[k])) {
                         this.syncSettings();
                     }
@@ -83,12 +83,14 @@
                 'geminiModel', 
                 'geminiProvider', 
                 'geminiUseOfficialApi', 
+                'geminiOfficialModel',
                 'geminiOpenaiModel'
             ]);
             
             const settings = {
                 provider: result.geminiProvider,
                 useOfficialApi: result.geminiUseOfficialApi,
+                officialModel: result.geminiOfficialModel,
                 openaiModel: result.geminiOpenaiModel
             };
             

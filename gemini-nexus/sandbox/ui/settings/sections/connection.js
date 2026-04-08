@@ -44,7 +44,9 @@ export class ConnectionSection {
             
             // Official Fields
             officialFields: get('official-fields'),
+            officialBaseUrl: get('official-base-url'),
             apiKeyInput: get('api-key-input'),
+            officialModel: get('official-model'),
             thinkingLevelSelect: get('thinking-level-select'),
             officialWebSearchEnabled: get('official-web-search-enabled'),
             
@@ -254,7 +256,7 @@ export class ConnectionSection {
 
     setData(data) {
         const { 
-            providerSelect, apiKeyInput, thinkingLevelSelect, officialWebSearchEnabled,
+            providerSelect, officialBaseUrl, apiKeyInput, officialModel, thinkingLevelSelect, officialWebSearchEnabled,
             openaiBaseUrl, openaiApiKey, openaiModel,
             mcpEnabled
         } = this.elements;
@@ -266,7 +268,9 @@ export class ConnectionSection {
         }
         
         // Official
+        if (officialBaseUrl) officialBaseUrl.value = data.officialBaseUrl || "https://generativelanguage.googleapis.com/v1beta";
         if (apiKeyInput) apiKeyInput.value = data.apiKey || "";
+        if (officialModel) officialModel.value = data.officialModel || "gemini-3-flash-preview, gemini-3-pro-preview";
         if (thinkingLevelSelect) thinkingLevelSelect.value = data.thinkingLevel || "low";
         if (officialWebSearchEnabled) officialWebSearchEnabled.checked = data.officialWebSearch === true;
         
@@ -315,7 +319,7 @@ export class ConnectionSection {
 
     getData() {
         const {
-            providerSelect, apiKeyInput, thinkingLevelSelect, officialWebSearchEnabled,
+            providerSelect, officialBaseUrl, apiKeyInput, officialModel, thinkingLevelSelect, officialWebSearchEnabled,
             openaiBaseUrl, openaiApiKey, openaiModel,
             mcpEnabled
         } = this.elements;
@@ -328,7 +332,9 @@ export class ConnectionSection {
         return {
             provider: providerSelect ? providerSelect.value : 'web',
             // Official
+            officialBaseUrl: officialBaseUrl ? officialBaseUrl.value.trim() : "https://generativelanguage.googleapis.com/v1beta",
             apiKey: apiKeyInput ? apiKeyInput.value.trim() : "",
+            officialModel: officialModel ? officialModel.value.trim() : "gemini-3-flash-preview, gemini-3-pro-preview",
             thinkingLevel: thinkingLevelSelect ? thinkingLevelSelect.value : "low",
             officialWebSearch: officialWebSearchEnabled ? officialWebSearchEnabled.checked === true : false,
             // OpenAI

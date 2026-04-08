@@ -16,8 +16,16 @@ export const ConnectionSettingsTemplate = `
         <!-- Official API Fields -->
         <div id="official-fields" style="display: none; flex-direction: column; gap: 12px;">
             <div>
+                <label data-i18n="baseUrl" style="font-weight: 500; display: block; margin-bottom: 2px;">Base URL</label>
+                <input type="text" id="official-base-url" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="officialBaseUrlPlaceholder" placeholder="https://generativelanguage.googleapis.com/v1beta">
+            </div>
+            <div>
                 <label data-i18n="apiKey" style="font-weight: 500; display: block; margin-bottom: 2px;">API Key</label>
                 <input type="password" id="api-key-input" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="apiKeyPlaceholder" placeholder="Paste your Gemini API Key">
+            </div>
+            <div>
+                <label data-i18n="modelIds" style="font-weight: 500; display: block; margin-bottom: 2px;">Model IDs</label>
+                <input type="text" id="official-model" class="shortcut-input" style="width: 100%; text-align: left; box-sizing: border-box;" data-i18n-placeholder="officialModelPlaceholder" placeholder="gemini-3-flash-preview, gemini-3-pro-preview">
             </div>
             <div>
                 <label style="font-weight: 500; display: block; margin-bottom: 2px;">Thinking Level (Gemini 3)</label>
