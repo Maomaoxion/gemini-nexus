@@ -26,6 +26,20 @@ export class ChatController {
         // Code Block Copy Delegation
         if (this.historyDiv) {
             this.historyDiv.addEventListener('click', async (e) => {
+                const link = e.target.closest('a[href]');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    if (href && /^https?:\/\//i.test(href)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.parent.postMessage({
+                            action: 'OPEN_EXTERNAL_URL',
+                            payload: { url: href }
+                        }, '*');
+                        return;
+                    }
+                }
+
                 const btn = e.target.closest('.copy-code-btn');
                 if (!btn) return;
                 

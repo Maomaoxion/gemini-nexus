@@ -31,6 +31,13 @@ export class MessageBridge {
             chrome.tabs.create({ url });
             return;
         }
+        if (action === 'OPEN_EXTERNAL_URL') {
+            const url = payload?.url;
+            if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+                chrome.tabs.create({ url });
+            }
+            return;
+        }
 
         // 3. Background Forwarding
         if (action === 'FORWARD_TO_BACKGROUND') {
