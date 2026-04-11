@@ -3,10 +3,11 @@
 import { getActiveTabContent } from './session/utils.js';
 
 export class UIMessageHandler {
-    constructor(imageHandler, controlManager, mcpManager) {
+    constructor(imageHandler, controlManager, mcpManager, sidePanelScopeManager) {
         this.imageHandler = imageHandler;
         this.controlManager = controlManager;
         this.mcpManager = mcpManager;
+        this.sidePanelScopeManager = sidePanelScopeManager;
     }
 
     handle(request, sender, sendResponse) {
@@ -313,8 +314,22 @@ export class UIMessageHandler {
 
     async _handleOpenSidePanel(request, sender) {
         if (sender.tab) {
-            const openPromise = chrome.sidePanel.open({ tabId: sender.tab.id, windowId: sender.tab.windowId })
-                .catch(err => console.error("Could not open side panel:", err));
+            let openPromise;
+            try {
+                if (this.sidePanelScopeManager) {
+                    openPromise = this.sidePanelScopeManager.openForTab(sender.tab.id, sender.tab.windowId);
+                } else {
+                    chrome.sidePanel.setOptions({
+                        tabId: sender.tab.id,
+                        enabled: true,
+                        path: 'sidepanel/index.html'
+                    }).catch(() => {});
+                    openPromise = chrome.sidePanel.open({ tabId: sender.tab.id, windowId: sender.tab.windowId });
+                }
+            } catch (e) {
+                console.error("Could not start side panel open flow:", e);
+                openPromise = Promise.reject(e);
+            }
 
             const updateOps = {};
             if (request.sessionId) updateOps.pendingSessionId = request.sessionId;
@@ -329,7 +344,11 @@ export class UIMessageHandler {
                 }, 5000);
             }
 
-            try { await openPromise; } catch (e) {}
+            try {
+                await openPromise;
+            } catch (e) {
+                console.error("Could not open side panel:", e);
+            }
 
             // If immediate execution needed after open (panel might already be open)
             setTimeout(() => {

@@ -15,12 +15,13 @@ export class GeneralSection {
             textSelectionToggle: get('text-selection-toggle'),
             imageToolsToggle: get('image-tools-toggle'),
             accountIndicesInput: get('account-indices-input'),
-            sidebarRadios: document.querySelectorAll('input[name="sidebar-behavior"]')
+            sidebarRadios: document.querySelectorAll('input[name="sidebar-behavior"]'),
+            sidePanelScopeRadios: document.querySelectorAll('input[name="sidepanel-scope"]')
         };
     }
 
     bindEvents() {
-        const { textSelectionToggle, imageToolsToggle, sidebarRadios } = this.elements;
+        const { textSelectionToggle, imageToolsToggle, sidebarRadios, sidePanelScopeRadios } = this.elements;
 
         if (textSelectionToggle) {
             textSelectionToggle.addEventListener('change', (e) => this.fire('onTextSelectionChange', e.target.checked));
@@ -32,6 +33,13 @@ export class GeneralSection {
             sidebarRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     if(e.target.checked) this.fire('onSidebarBehaviorChange', e.target.value);
+                });
+            });
+        }
+        if (sidePanelScopeRadios) {
+            sidePanelScopeRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked) this.fire('onSidePanelScopeChange', e.target.value);
                 });
             });
         }
@@ -55,12 +63,24 @@ export class GeneralSection {
         }
     }
 
+    setSidePanelScope(scope) {
+        if (this.elements.sidePanelScopeRadios) {
+            const availableValues = new Set(Array.from(this.elements.sidePanelScopeRadios).map(radio => radio.value));
+            const val = availableValues.has(scope) ? scope : 'remembered_tabs';
+            this.elements.sidePanelScopeRadios.forEach(radio => {
+                radio.checked = (radio.value === val);
+            });
+        }
+    }
+
     getData() {
-        const { textSelectionToggle, imageToolsToggle, accountIndicesInput } = this.elements;
+        const { textSelectionToggle, imageToolsToggle, accountIndicesInput, sidePanelScopeRadios } = this.elements;
+        const selectedScope = Array.from(sidePanelScopeRadios || []).find(radio => radio.checked)?.value || 'remembered_tabs';
         return {
             textSelection: textSelectionToggle ? textSelectionToggle.checked : true,
             imageTools: imageToolsToggle ? imageToolsToggle.checked : true,
-            accountIndices: accountIndicesInput ? accountIndicesInput.value : "0"
+            accountIndices: accountIndicesInput ? accountIndicesInput.value : "0",
+            sidePanelScope: selectedScope
         };
     }
 

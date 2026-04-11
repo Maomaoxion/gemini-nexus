@@ -146,6 +146,10 @@ export class AppController {
             this.ui.settings.updateSidebarBehavior(payload);
             return;
         }
+        if (action === 'RESTORE_SIDE_PANEL_SCOPE') {
+            this.ui.settings.updateSidePanelScope(payload);
+            return;
+        }
 
         // Restore Sessions
         if (action === 'RESTORE_SESSIONS') {

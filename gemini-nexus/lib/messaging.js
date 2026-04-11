@@ -73,6 +73,13 @@ export function saveSidebarBehaviorToStorage(behavior) {
     }, '*');
 }
 
+export function saveSidePanelScopeToStorage(scope) {
+    window.parent.postMessage({
+        action: 'SAVE_SIDE_PANEL_SCOPE',
+        payload: scope
+    }, '*');
+}
+
 export function requestAccountIndicesFromStorage() {
     window.parent.postMessage({ action: 'GET_ACCOUNT_INDICES' }, '*');
 }

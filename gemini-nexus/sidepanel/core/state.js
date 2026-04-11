@@ -19,6 +19,7 @@ export class StateManager {
             'geminiModel',
             'pendingImage',
             'geminiSidebarBehavior',
+            'geminiSidePanelScope',
             'geminiTextSelectionEnabled',
             'geminiImageToolsEnabled',
             'geminiAccountIndices',
@@ -95,6 +96,7 @@ export class StateManager {
         });
 
         this.frame.postMessage({ action: 'RESTORE_SIDEBAR_BEHAVIOR', payload: this.data.geminiSidebarBehavior || 'auto' });
+        this.frame.postMessage({ action: 'RESTORE_SIDE_PANEL_SCOPE', payload: this.data.geminiSidePanelScope || 'remembered_tabs' });
         this.frame.postMessage({ action: 'RESTORE_SESSIONS', payload: this.data.geminiSessions || [] });
         this.frame.postMessage({ action: 'RESTORE_SHORTCUTS', payload: this.data.geminiShortcuts || null });
         

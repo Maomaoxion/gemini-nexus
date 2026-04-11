@@ -17,7 +17,8 @@ export class SettingsView {
         this.general = new GeneralSection({
             onTextSelectionChange: (val) => this.fire('onTextSelectionChange', val),
             onImageToolsChange: (val) => this.fire('onImageToolsChange', val),
-            onSidebarBehaviorChange: (val) => this.fire('onSidebarBehaviorChange', val)
+            onSidebarBehaviorChange: (val) => this.fire('onSidebarBehaviorChange', val),
+            onSidePanelScopeChange: (val) => this.fire('onSidePanelScopeChange', val)
         });
         
         this.appearance = new AppearanceSection({
@@ -79,7 +80,8 @@ export class SettingsView {
             connection: connectionData,
             textSelection: generalData.textSelection,
             imageTools: generalData.imageTools,
-            accountIndices: generalData.accountIndices
+            accountIndices: generalData.accountIndices,
+            sidePanelScope: generalData.sidePanelScope
         };
         
         this.fire('onSave', data);
@@ -134,6 +136,10 @@ export class SettingsView {
 
     setAccountIndices(val) {
         this.general.setAccountIndices(val);
+    }
+
+    setSidePanelScope(scope) {
+        this.general.setSidePanelScope(scope);
     }
 
     // Delegation to Connection

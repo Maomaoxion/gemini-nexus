@@ -50,4 +50,20 @@ export const GeneralSettingsTemplate = `
             </label>
         </div>
     </div>
+
+    <div style="margin-top: 16px;">
+        <h5 data-i18n="sidePanelScope" style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: var(--text-primary);">Side Panel Scope</h5>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="sidepanel-scope" value="global">
+                <span data-i18n="sidePanelScopeGlobal" style="font-size: 14px; color: var(--text-primary);">Keep available on all tabs</span>
+            </label>
+
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="radio" name="sidepanel-scope" value="remembered_tabs">
+                <span data-i18n="sidePanelScopeRememberedTabs" style="font-size: 14px; color: var(--text-primary);">Remember tabs where it was opened (Recommended)</span>
+            </label>
+        </div>
+    </div>
 </div>`;

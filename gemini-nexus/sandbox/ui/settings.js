@@ -1,6 +1,6 @@
 
 // sandbox/ui/settings.js
-import { saveShortcutsToStorage, saveThemeToStorage, requestThemeFromStorage, saveLanguageToStorage, requestLanguageFromStorage, saveTextSelectionToStorage, requestTextSelectionFromStorage, saveSidebarBehaviorToStorage, saveImageToolsToStorage, requestImageToolsFromStorage, saveAccountIndicesToStorage, requestAccountIndicesFromStorage, saveConnectionSettingsToStorage, requestConnectionSettingsFromStorage, sendToBackground } from '../../lib/messaging.js';
+import { saveShortcutsToStorage, saveThemeToStorage, requestThemeFromStorage, saveLanguageToStorage, requestLanguageFromStorage, saveTextSelectionToStorage, requestTextSelectionFromStorage, saveSidebarBehaviorToStorage, saveSidePanelScopeToStorage, saveImageToolsToStorage, requestImageToolsFromStorage, saveAccountIndicesToStorage, requestAccountIndicesFromStorage, saveConnectionSettingsToStorage, requestConnectionSettingsFromStorage, sendToBackground } from '../../lib/messaging.js';
 import { setLanguagePreference, getLanguagePreference } from '../core/i18n.js';
 import { SettingsView } from './settings/view.js';
 import { DEFAULT_SHORTCUTS } from '../../lib/constants.js';
@@ -16,6 +16,7 @@ export class SettingsController {
         this.textSelectionEnabled = true;
         this.imageToolsEnabled = true;
         this.accountIndices = "0";
+        this.sidePanelScope = 'remembered_tabs';
         
         // Connection State
         this.connectionData = {
@@ -57,6 +58,7 @@ export class SettingsController {
             onTextSelectionChange: (val) => { this.textSelectionEnabled = (val === 'on' || val === true); saveTextSelectionToStorage(this.textSelectionEnabled); },
             onImageToolsChange: (val) => { this.imageToolsEnabled = (val === 'on' || val === true); saveImageToolsToStorage(this.imageToolsEnabled); },
             onSidebarBehaviorChange: (val) => saveSidebarBehaviorToStorage(val),
+            onSidePanelScopeChange: (val) => { this.sidePanelScope = val || 'remembered_tabs'; saveSidePanelScopeToStorage(this.sidePanelScope); },
             onDownloadLogs: () => this.downloadLogs()
         });
         
@@ -91,6 +93,7 @@ export class SettingsController {
         this.view.setLanguageValue(getLanguagePreference());
         this.view.setToggles(this.textSelectionEnabled, this.imageToolsEnabled);
         this.view.setAccountIndices(this.accountIndices);
+        this.view.setSidePanelScope(this.sidePanelScope);
         this.view.setConnectionSettings(this.connectionData);
         
         // Refresh from storage
@@ -120,6 +123,9 @@ export class SettingsController {
         this.accountIndices = val;
         const cleaned = val.replace(/[^0-9,]/g, '');
         saveAccountIndicesToStorage(cleaned);
+
+        this.sidePanelScope = data.sidePanelScope || 'remembered_tabs';
+        saveSidePanelScopeToStorage(this.sidePanelScope);
         
         // Connection
         this.connectionData = {
@@ -234,6 +240,11 @@ export class SettingsController {
     updateAppVersion(version) {
         if (!this.view) return;
         this.view.setAppVersion(version);
+    }
+
+    updateSidePanelScope(scope) {
+        this.sidePanelScope = scope || 'remembered_tabs';
+        this.view.setSidePanelScope(this.sidePanelScope);
     }
 
     updateMcpTestResult(result) {
