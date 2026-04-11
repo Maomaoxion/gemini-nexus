@@ -84,7 +84,15 @@ export class MessageHandler {
         }
     }
 
+    isCurrentSessionMessage(request) {
+        const currentSessionId = this.sessionManager.currentSessionId || null;
+        const messageSessionId = request.sessionId || null;
+        return currentSessionId !== null && messageSessionId === currentSessionId;
+    }
+
     handleStreamUpdate(request) {
+        if (!this.isCurrentSessionMessage(request)) return;
+
         // Prevent race condition: Ignore stream updates arriving shortly after user cancelled
         if (this.app.prompt.isCancellationRecent()) return;
 
@@ -104,6 +112,8 @@ export class MessageHandler {
     }
 
     handleGeminiReply(request) {
+        if (!this.isCurrentSessionMessage(request)) return;
+
         this.app.isGenerating = false;
         this.ui.setLoading(false);
         

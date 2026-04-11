@@ -17,7 +17,10 @@ export class UIMessageHandler {
             (async () => {
                 try {
                     const result = await this.imageHandler.fetchImage(request.url);
-                    chrome.runtime.sendMessage(result).catch(() => {});
+                    chrome.runtime.sendMessage({
+                        ...result,
+                        tabId: this._getTargetSidePanelTabId(request, sender)
+                    }).catch(() => {});
                 } catch (e) {
                     console.error("Fetch image error", e);
                 } finally {
@@ -35,6 +38,7 @@ export class UIMessageHandler {
                     
                     const payload = {
                         action: "GENERATED_IMAGE_RESULT",
+                        tabId: this._getTargetSidePanelTabId(request, sender),
                         reqId: request.reqId,
                         base64: result.base64,
                         error: result.error
@@ -51,6 +55,7 @@ export class UIMessageHandler {
                     console.error("Fetch generated image error", e);
                     const payload = {
                         action: "GENERATED_IMAGE_RESULT",
+                        tabId: this._getTargetSidePanelTabId(request, sender),
                         reqId: request.reqId,
                         error: e.message
                     };
@@ -78,7 +83,10 @@ export class UIMessageHandler {
                     }
 
                     const result = await this.imageHandler.captureScreenshot(windowId);
-                    chrome.runtime.sendMessage(result).catch(() => {});
+                    chrome.runtime.sendMessage({
+                        ...result,
+                        tabId: this._getTargetSidePanelTabId(request, sender)
+                    }).catch(() => {});
                 } catch(e) {
                      console.error("Screenshot error", e);
                 } finally {
@@ -115,7 +123,8 @@ export class UIMessageHandler {
                         action: "START_SELECTION",
                         image: capture.base64,
                         mode: request.mode, // Forward the mode (ocr, snip, translate)
-                        source: request.source // Forward the source (sidepanel or local)
+                        source: request.source, // Forward the source (sidepanel or local)
+                        targetSidePanelTabId: this._getTargetSidePanelTabId(request, sender)
                     }).catch(() => {});
                 }
             })();
@@ -143,7 +152,10 @@ export class UIMessageHandler {
 
         if (request.action === "PROCESS_CROP_IN_SIDEPANEL") {
             // Broadcast the crop result to runtime so Side Panel can pick it up
-            chrome.runtime.sendMessage(request.payload).catch(() => {});
+            chrome.runtime.sendMessage({
+                ...request.payload,
+                tabId: request.payload?.tabId || this._getTargetSidePanelTabId(request, sender)
+            }).catch(() => {});
             sendResponse({ status: "forwarded" });
             return true;
         }
@@ -156,10 +168,15 @@ export class UIMessageHandler {
                         const response = await chrome.tabs.sendMessage(tab.id, { action: "GET_SELECTION" });
                         chrome.runtime.sendMessage({
                             action: "SELECTION_RESULT",
+                            tabId: this._getTargetSidePanelTabId(request, sender),
                             text: response ? response.selection : ""
                         }).catch(() => {});
                     } catch (e) {
-                        chrome.runtime.sendMessage({ action: "SELECTION_RESULT", text: "" }).catch(() => {});
+                        chrome.runtime.sendMessage({
+                            action: "SELECTION_RESULT",
+                            tabId: this._getTargetSidePanelTabId(request, sender),
+                            text: ""
+                        }).catch(() => {});
                     }
                 }
                 sendResponse({ status: "completed" });
@@ -275,6 +292,7 @@ export class UIMessageHandler {
 
                 chrome.runtime.sendMessage({
                     action: "OPEN_TABS_RESULT",
+                    tabId: this._getTargetSidePanelTabId(request, sender),
                     tabs: safeTabs,
                     lockedTabId: lockedTabId
                 }).catch(() => {});
@@ -355,12 +373,14 @@ export class UIMessageHandler {
                 if (request.sessionId) {
                     chrome.runtime.sendMessage({
                         action: "SWITCH_SESSION",
+                        tabId: sender.tab.id,
                         sessionId: request.sessionId
                     }).catch(() => {});
                 }
                 if (request.mode === 'browser_control') {
                     chrome.runtime.sendMessage({
-                        action: "ACTIVATE_BROWSER_CONTROL"
+                        action: "ACTIVATE_BROWSER_CONTROL",
+                        tabId: sender.tab.id
                     }).catch(() => {});
                 }
             }, 500);
@@ -399,7 +419,20 @@ export class UIMessageHandler {
             
         } else {
             // --- TOGGLE ON ---
+            if (this.controlManager) {
+                this.controlManager.setOwnerSidePanelTabId(this._getTargetSidePanelTabId(request, sender));
+            }
             await this._handleOpenSidePanel({ ...request, mode: 'browser_control' }, sender);
         }
+    }
+
+    _getTargetSidePanelTabId(request, sender) {
+        if (Number.isInteger(request?.sidePanelTabId) && request.sidePanelTabId > 0) {
+            return request.sidePanelTabId;
+        }
+        if (Number.isInteger(sender?.tab?.id) && sender.tab.id > 0) {
+            return sender.tab.id;
+        }
+        return null;
     }
 }

@@ -41,10 +41,11 @@ export class MessageBridge {
 
         // 3. Background Forwarding
         if (action === 'FORWARD_TO_BACKGROUND') {
-            chrome.runtime.sendMessage(payload)
+            const scopedPayload = this._attachCurrentTabContext(payload);
+            chrome.runtime.sendMessage(scopedPayload)
                 .then(response => {
                     // If request demands a reply (e.g., GET_LOGS, CHECK_PAGE_CONTEXT), send it back
-                    if (response && (payload.action === 'GET_LOGS' || payload.action === 'CHECK_PAGE_CONTEXT' || payload.action === 'MCP_TEST_CONNECTION' || payload.action === 'MCP_LIST_TOOLS')) {
+                    if (response && (scopedPayload.action === 'GET_LOGS' || scopedPayload.action === 'CHECK_PAGE_CONTEXT' || scopedPayload.action === 'MCP_TEST_CONNECTION' || scopedPayload.action === 'MCP_LIST_TOOLS')) {
                         this.frame.postMessage({
                             action: 'BACKGROUND_MESSAGE',
                             payload: response
@@ -149,6 +150,21 @@ export class MessageBridge {
         if (action === 'SAVE_IMAGE_TOOLS') this.state.save('geminiImageToolsEnabled', payload);
         if (action === 'SAVE_SIDEBAR_BEHAVIOR') this.state.save('geminiSidebarBehavior', payload);
         if (action === 'SAVE_SIDE_PANEL_SCOPE') this.state.save('geminiSidePanelScope', payload);
+        if (action === 'SAVE_SIDE_PANEL_SESSION_BINDING') {
+            const tabId = payload?.tabId;
+            const sessionId = payload?.sessionId || null;
+            if (Number.isInteger(tabId) && tabId > 0) {
+                chrome.storage.session.get(['geminiSidePanelSessionBindings'], (result) => {
+                    const bindings = result.geminiSidePanelSessionBindings || {};
+                    if (sessionId) {
+                        bindings[tabId] = sessionId;
+                    } else {
+                        delete bindings[tabId];
+                    }
+                    chrome.storage.session.set({ geminiSidePanelSessionBindings: bindings });
+                });
+            }
+        }
         if (action === 'SAVE_ACCOUNT_INDICES') this.state.save('geminiAccountIndices', payload);
         if (action === 'SAVE_CONNECTION_SETTINGS') {
             this.state.save('geminiProvider', payload.provider);
@@ -173,6 +189,8 @@ export class MessageBridge {
     }
 
     handleRuntimeMessage(message) {
+        if (!this._isMessageForCurrentTab(message)) return;
+
         if (message.action === 'SESSIONS_UPDATED') {
             this.state.updateSessions(message.sessions);
             this.frame.postMessage({
@@ -187,5 +205,30 @@ export class MessageBridge {
             action: 'BACKGROUND_MESSAGE',
             payload: message
         });
+    }
+
+    _attachCurrentTabContext(payload) {
+        if (!payload || typeof payload !== 'object' || payload.sidePanelTabId != null) {
+            return payload;
+        }
+
+        const currentTabId = this.state.getCurrentTabId();
+        if (!Number.isInteger(currentTabId) || currentTabId <= 0) {
+            return payload;
+        }
+
+        return {
+            ...payload,
+            sidePanelTabId: currentTabId
+        };
+    }
+
+    _isMessageForCurrentTab(message) {
+        if (!message || !Object.prototype.hasOwnProperty.call(message, 'tabId')) {
+            return true;
+        }
+
+        const currentTabId = this.state.getCurrentTabId();
+        return message.tabId == null || message.tabId === currentTabId;
     }
 }

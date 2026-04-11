@@ -45,6 +45,7 @@ export class RequestDispatcher {
 
         return {
             action: "GEMINI_REPLY",
+            sessionId: request.sessionId || null,
             text: response.text,
             thoughts: response.thoughts,
             sources: response.sources || [],
@@ -84,6 +85,7 @@ export class RequestDispatcher {
 
         return {
             action: "GEMINI_REPLY",
+            sessionId: request.sessionId || null,
             text: response.text,
             thoughts: response.thoughts,
             sources: [],
@@ -126,6 +128,7 @@ export class RequestDispatcher {
 
                 return {
                     action: "GEMINI_REPLY",
+                    sessionId: request.sessionId || null,
                     text: response.text,
                     thoughts: response.thoughts,
                     sources: [],

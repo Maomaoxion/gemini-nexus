@@ -8,6 +8,7 @@
             this.selectionOverlay = null;
             // Track capture source
             this.captureSource = null;
+            this.captureTargetSidePanelTabId = null;
         }
 
         init(toolbarController, selectionOverlay) {
@@ -38,6 +39,7 @@
             // Start Selection Mode (Screenshot received)
             if (request.action === "START_SELECTION") {
                 this.captureSource = request.source; 
+                this.captureTargetSidePanelTabId = request.targetSidePanelTabId || null;
 
                 // Hide floating UI to prevent self-capture artifacts
                 if (this.toolbarController) {
@@ -58,14 +60,19 @@
                     // Forward back to sidepanel via background
                     chrome.runtime.sendMessage({ 
                         action: "PROCESS_CROP_IN_SIDEPANEL", 
-                        payload: request 
+                        payload: {
+                            ...request,
+                            tabId: this.captureTargetSidePanelTabId
+                        }
                     });
                     this.captureSource = null;
+                    this.captureTargetSidePanelTabId = null;
                 } else {
                     // Handle locally
                     if (this.toolbarController) {
                         this.toolbarController.handleCropResult(request);
                     }
+                    this.captureTargetSidePanelTabId = null;
                 }
                 sendResponse({status: "ok"});
                 return true;

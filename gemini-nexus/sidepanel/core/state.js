@@ -5,6 +5,8 @@ export class StateManager {
     constructor(frameManager) {
         this.frame = frameManager;
         this.data = null; // Pre-fetched data cache
+        this.sessionData = null;
+        this.currentTabId = undefined;
         this.uiIsReady = false;
         this.hasInitialized = false;
     }
@@ -43,6 +45,41 @@ export class StateManager {
             this.trySendInitData();
         });
 
+        chrome.storage.session.get(['geminiSidePanelSessionBindings'], (result) => {
+            this.sessionData = result;
+            this.trySendInitData();
+        });
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            this.currentTabId = tabs && tabs[0] ? tabs[0].id : null;
+            this.trySendInitData();
+        });
+
+        chrome.storage.onChanged.addListener((changes, areaName) => {
+            if (areaName !== 'session' || !changes.geminiSidePanelSessionBindings) return;
+
+            this.sessionData = {
+                geminiSidePanelSessionBindings: changes.geminiSidePanelSessionBindings.newValue || {}
+            };
+            this.postCurrentTabContext();
+        });
+
+        chrome.tabs.onActivated.addListener(({ tabId }) => {
+            this.currentTabId = tabId || null;
+            this.postCurrentTabContext();
+        });
+
+        chrome.tabs.onRemoved.addListener((tabId) => {
+            this.removeSessionBinding(tabId);
+
+            if (this.currentTabId === tabId) {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    this.currentTabId = tabs && tabs[0] ? tabs[0].id : null;
+                    this.postCurrentTabContext();
+                });
+            }
+        });
+
         // Safety Timeout: Force reveal if handshake fails
         setTimeout(() => {
             if (!this.uiIsReady) {
@@ -60,7 +97,7 @@ export class StateManager {
     trySendInitData() {
         // Only proceed if we have data AND the UI has signaled readiness
         // (Or if we can detect the window exists, though UI_READY is safer for logic)
-        if ((!this.uiIsReady && !this.hasInitialized) || !this.data) return;
+        if ((!this.uiIsReady && !this.hasInitialized) || !this.data || this.sessionData === null || this.currentTabId === undefined) return;
 
         this.hasInitialized = true;
         this.frame.reveal();
@@ -97,6 +134,7 @@ export class StateManager {
 
         this.frame.postMessage({ action: 'RESTORE_SIDEBAR_BEHAVIOR', payload: this.data.geminiSidebarBehavior || 'auto' });
         this.frame.postMessage({ action: 'RESTORE_SIDE_PANEL_SCOPE', payload: this.data.geminiSidePanelScope || 'remembered_tabs' });
+        this.postCurrentTabContext();
         this.frame.postMessage({ action: 'RESTORE_SESSIONS', payload: this.data.geminiSessions || [] });
         this.frame.postMessage({ action: 'RESTORE_SHORTCUTS', payload: this.data.geminiShortcuts || null });
         
@@ -177,5 +215,41 @@ export class StateManager {
         // For Async items, try memory cache first, else async fetch (handled by caller typically)
         if (this.data && this.data[key] !== undefined) return this.data[key];
         return null;
+    }
+
+    getCurrentTabId() {
+        return this.currentTabId;
+    }
+
+    getSessionBindings() {
+        return this.sessionData?.geminiSidePanelSessionBindings || {};
+    }
+
+    postCurrentTabContext() {
+        if (!this.hasInitialized) return;
+        if (!this.frame.getWindow()) return;
+
+        const sessionBindings = this.getSessionBindings();
+        const boundSessionId = this.currentTabId ? sessionBindings[this.currentTabId] || null : null;
+
+        this.frame.postMessage({
+            action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT',
+            payload: {
+                tabId: this.currentTabId,
+                sessionId: boundSessionId
+            }
+        });
+    }
+
+    removeSessionBinding(tabId) {
+        if (!Number.isInteger(tabId) || tabId <= 0) return;
+
+        const sessionBindings = this.getSessionBindings();
+        if (!Object.prototype.hasOwnProperty.call(sessionBindings, tabId)) return;
+
+        const nextBindings = { ...sessionBindings };
+        delete nextBindings[tabId];
+        this.sessionData = { geminiSidePanelSessionBindings: nextBindings };
+        chrome.storage.session.set({ geminiSidePanelSessionBindings: nextBindings });
     }
 }

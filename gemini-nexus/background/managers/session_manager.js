@@ -69,6 +69,7 @@ export class GeminiSessionManager {
             
             return {
                 action: "GEMINI_REPLY",
+                sessionId: request.sessionId || null,
                 text: "Error: " + errorMessage,
                 status: "error"
             };

@@ -28,6 +28,7 @@ export class PromptHandler {
                 // Catch errors if receiver (UI) is closed/unavailable
                 chrome.runtime.sendMessage({
                     action: "GEMINI_STREAM_UPDATE",
+                    sessionId: request.sessionId || null,
                     text: partialText,
                     thoughts: partialThoughts
                 }).catch(() => {}); 
@@ -36,6 +37,7 @@ export class PromptHandler {
             try {
                 // AUTO-LOCK: If browser control enabled and no tab locked, lock to active tab
                 if (request.enableBrowserControl && this.controlManager) {
+                    this.controlManager.setOwnerSidePanelTabId(request.sidePanelTabId || null);
                     const currentLock = this.controlManager.getTargetTabId();
                     if (!currentLock) {
                         const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -46,6 +48,7 @@ export class PromptHandler {
                             // Notify UI to update the Tab Switcher icon so user knows which tab is locked
                             chrome.runtime.sendMessage({
                                 action: "TAB_LOCKED",
+                                tabId: request.sidePanelTabId || null,
                                 tab: {
                                     id: tab.id,
                                     title: tab.title,
@@ -184,6 +187,7 @@ export class PromptHandler {
                 console.error("Prompt loop error:", e);
                 chrome.runtime.sendMessage({
                     action: "GEMINI_REPLY",
+                    sessionId: request.sessionId || null,
                     text: "Error: " + e.message,
                     status: "error"
                 }).catch(() => {});

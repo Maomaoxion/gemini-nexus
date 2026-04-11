@@ -40,6 +40,9 @@ export class SessionFlowController {
         });
         this.ui.scrollToBottom();
 
+        this.app.boundSessionId = sessionId;
+        this.app.saveCurrentTabSessionBinding(sessionId);
+
         if (session.context) {
             sendToBackground({
                 action: "SET_CONTEXT",

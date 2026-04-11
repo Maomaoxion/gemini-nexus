@@ -16,6 +16,7 @@ export class BrowserControlManager {
         this.actions = new BrowserActions(this.connection, this.snapshotManager);
         this.dispatcher = new ToolDispatcher(this.actions, this.snapshotManager);
         this.lockedTabId = null;
+        this.ownerSidePanelTabId = null;
 
         // Listen for updates to the locked tab (URL/Favicon changes)
         chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -53,9 +54,14 @@ export class BrowserControlManager {
         }
     }
 
+    setOwnerSidePanelTabId(tabId) {
+        this.ownerSidePanelTabId = Number.isInteger(tabId) && tabId > 0 ? tabId : null;
+    }
+
     _broadcastLockState(tab) {
         chrome.runtime.sendMessage({
             action: "TAB_LOCKED",
+            tabId: this.ownerSidePanelTabId,
             tab: tab ? {
                 id: tab.id,
                 title: tab.title,
@@ -93,6 +99,7 @@ export class BrowserControlManager {
     async disableControl() {
         // Clear lock
         this.setTargetTab(null);
+        this.ownerSidePanelTabId = null;
         // Detach debugger which hides the bar
         if (this.connection.attached) {
             await this.connection.detach();

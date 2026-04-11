@@ -16,6 +16,9 @@ export class AppController {
         this.isGenerating = false; 
         this.pageContextActive = false;
         this.browserControlActive = false;
+        this.sidePanelScope = 'remembered_tabs';
+        this.currentTabId = null;
+        this.boundSessionId = null;
         
         // Sidebar Restore Behavior: 'auto', 'restore', 'new'
         this.sidebarRestoreBehavior = 'auto';
@@ -135,6 +138,17 @@ export class AppController {
         this.prompt.send();
     }
 
+    saveCurrentTabSessionBinding(sessionId) {
+        if (!Number.isInteger(this.currentTabId) || this.currentTabId <= 0) return;
+        window.parent.postMessage({
+            action: 'SAVE_SIDE_PANEL_SESSION_BINDING',
+            payload: {
+                tabId: this.currentTabId,
+                sessionId
+            }
+        }, '*');
+    }
+
     // --- Event Handling ---
 
     async handleIncomingMessage(event) {
@@ -147,7 +161,13 @@ export class AppController {
             return;
         }
         if (action === 'RESTORE_SIDE_PANEL_SCOPE') {
+            this.sidePanelScope = payload || 'remembered_tabs';
             this.ui.settings.updateSidePanelScope(payload);
+            return;
+        }
+        if (action === 'RESTORE_SIDE_PANEL_TAB_CONTEXT') {
+            this.currentTabId = payload?.tabId || null;
+            this.boundSessionId = payload?.sessionId || null;
             return;
         }
 
@@ -181,7 +201,17 @@ export class AppController {
                      }
                  }
 
-                 if (shouldRestore && sorted.length > 0) {
+                 if (this.sidePanelScope === 'remembered_tabs') {
+                     const boundSession = this.boundSessionId
+                         ? (payload || []).find(session => session.id === this.boundSessionId)
+                         : null;
+
+                     if (boundSession) {
+                         this.switchToSession(boundSession.id);
+                     } else {
+                         this.handleNewChat();
+                     }
+                 } else if (shouldRestore && sorted.length > 0) {
                      this.switchToSession(sorted[0].id);
                  } else {
                      this.handleNewChat();
