@@ -25,6 +25,20 @@ export class AboutSection {
                 if (this.callbacks.onDownloadLogs) this.callbacks.onDownloadLogs();
             });
         }
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('.settings-modal a[href]');
+            if (!link) return;
+
+            const href = link.getAttribute('href');
+            if (!href || !/^https?:\/\//i.test(href)) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            window.parent.postMessage({
+                action: 'OPEN_EXTERNAL_URL',
+                payload: { url: href }
+            }, '*');
+        });
     }
 
     displayStars(count) {
