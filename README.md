@@ -175,3 +175,7 @@ Gemini Nexus 可以选择连接到外部 MCP 服务器（通过 **SSE**、**可�
 ## 📄 许可证
 
 本项目基于 **MIT License** 开源。
+
+## 致谢
+
+本项目已在 [LINUX DO 社区](https://linux.do) 发布，感谢社区的支持与反馈。
