@@ -1,4 +1,5 @@
 import { CONNECTION_STORAGE_KEYS } from '../../shared/settings/connection.js';
+import { getRuntimeLastErrorMessage } from '../../shared/logging/runtime_error.js';
 import { CUSTOM_SELECTION_TOOLS_STORAGE_KEY } from '../../shared/settings/selection_tools.js';
 import {
     createInitialRestoreMessages,
@@ -59,10 +60,6 @@ export function getContextTabFromTabs(tabs, fallback = null) {
 
 function cacheSidebarExpandedPreference(isExpanded) {
     localStorage.setItem('geminiSidebarExpanded', isExpanded === false ? 'false' : 'true');
-}
-
-function getRuntimeLastErrorMessage() {
-    return chrome.runtime?.lastError?.message || null;
 }
 
 function logStorageWriteError(error) {
@@ -442,8 +439,8 @@ export class StateManager {
             payload: {
                 tabId: this.currentTabId,
                 sessionId: boundSessionId,
-                url: contextTab ? tab.url || '' : '',
-                title: contextTab ? tab.title || '' : '',
+                url: contextTab?.url || '',
+                title: contextTab?.title || '',
             },
         });
     }

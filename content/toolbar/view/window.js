@@ -170,14 +170,14 @@
             if (this.elements.askWindow) this.elements.askWindow.classList.remove('visible');
         }
 
-        showLoading(msg) {
+        showLoading(loadingMessage) {
             if (!this.elements.askWindow) return;
 
-            if (msg) {
+            if (loadingMessage) {
                 this.elements.resultText.innerHTML = '';
                 const loading = document.createElement('div');
                 loading.className = 'gemini-loading-message';
-                loading.textContent = msg;
+                loading.textContent = loadingMessage;
                 this.elements.resultText.appendChild(loading);
             } else {
                 this.elements.resultText.innerHTML = '';

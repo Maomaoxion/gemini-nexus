@@ -2,6 +2,7 @@ import { sendOfficialMessage } from '../../../services/providers/official.js';
 import { sendWebMessage } from '../../../services/providers/web.js';
 import { sendOpenAIMessage } from '../../../services/providers/openai_compatible.js';
 import { sendAnthropicMessage } from '../../../services/providers/anthropic.js';
+import { stripNativeContextIds } from '../../../services/providers/shared/web_auth.js';
 import {
     DEFAULT_CONTEXT_MODE,
     DEFAULT_CONTEXT_RECENT_TURNS,
@@ -34,6 +35,7 @@ import {
 import { IMAGE_EDIT_MODES as WEB_IMAGE_EDIT_MODES } from '../../../shared/config/image_edit_modes.js';
 const WEB_IMAGE_EDIT_INTENT_PATTERN =
     /\b(edit|modify|change|alter|retouch|upscale|expand|remove|replace|recolor)\b|修图|编辑|修改|改成|改为|改一下|换成|替换|变成|去掉|移除|删除|抠图|抠除|去背景|去水印|扩图|放大|重绘|生成.*图/i;
+const WEB_AUTH_RETRY_MAX_ATTEMPTS = 3;
 
 function getRequestHistory(request) {
     if (Array.isArray(request.historyOverride)) {
@@ -316,11 +318,6 @@ function buildWebPromptWithHistory(currentText, history) {
     ].join('\n');
 }
 
-function stripNativeWebContextIds(context = {}) {
-    const { contextIds, ...authContext } = context;
-    return authContext;
-}
-
 export class RequestDispatcher {
     constructor(authManager) {
         this.auth = authManager;
@@ -518,10 +515,7 @@ export class RequestDispatcher {
     }
 
     async _handleWebRequest(request, settings, files, onUpdate, signal) {
-        // Ensure auth is possibly ready, though SessionManager usually handles initialization.
-
         let attemptCount = 0;
-        const maxAttempts = Math.max(3, this.auth.accountIndices.length > 1 ? 3 : 2);
 
         if (getRequestHistory(request)) {
             throw new Error('History editing is not supported for Gemini Web Client.');
@@ -548,12 +542,12 @@ export class RequestDispatcher {
         }
         const hasWebOptions = Object.keys(webOptions).length > 0;
 
-        while (attemptCount < maxAttempts) {
+        while (attemptCount < WEB_AUTH_RETRY_MAX_ATTEMPTS) {
             attemptCount++;
 
             try {
                 const context = await this.auth.getOrFetchContext();
-                const requestContext = stripNativeWebContextIds(context);
+                const requestContext = stripNativeContextIds(context);
 
                 const webMessageArgs = [
                     fullText,
@@ -580,7 +574,7 @@ export class RequestDispatcher {
                 }
 
                 // Success! Update auth state
-                await this.auth.updateContext(response.newContext, request.model);
+                await this.auth.updateContext(response.newContext);
 
                 return createSuccessReply(
                     request,
@@ -605,10 +599,13 @@ export class RequestDispatcher {
                     message.includes('Check network') ||
                     message.includes('429');
 
-                if ((isLoginError || isNetworkGlitch) && attemptCount < maxAttempts) {
+                if (
+                    (isLoginError || isNetworkGlitch) &&
+                    attemptCount < WEB_AUTH_RETRY_MAX_ATTEMPTS
+                ) {
                     const type = isLoginError ? 'Auth' : 'Network';
                     console.warn(
-                        `[Gemini Nexus] ${type} error (${error.message}), retrying... (Attempt ${attemptCount}/${maxAttempts})`
+                        `[Gemini Nexus] ${type} error (${error.message}), retrying... (Attempt ${attemptCount}/${WEB_AUTH_RETRY_MAX_ATTEMPTS})`
                     );
 
                     if (this.auth.accountIndices.length > 1) {

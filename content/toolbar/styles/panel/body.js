@@ -1,8 +1,6 @@
 (function () {
     window.GeminiStyles = window.GeminiStyles || {};
     window.GeminiStyles.PanelBody = `
-        /* --- Window Body --- */
-
         .window-body {
             flex: 1;
             display: flex;

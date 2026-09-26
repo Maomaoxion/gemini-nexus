@@ -19,7 +19,6 @@
     object-fit: contain;
 }
 
-.msg img.chat-image.chat-image-compact,
 img.chat-image.chat-image-compact {
     max-width: 150px;
     max-height: 200px;

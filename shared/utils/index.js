@@ -1,30 +1,15 @@
-export { escapeHtml } from './escape.js';
+// id_global.js is the classic-script copy that content scripts load straight from
+// the manifest. Importing it for its side effect lets the ES-module exports below
+// share one implementation instead of a second copy of the same two helpers.
+import './id_global.js';
+
+export const generateUUID = globalThis.GeminiNexusIds.generateUUID;
+export const createPrefixedId = globalThis.GeminiNexusIds.createPrefixedId;
 
 export function extractFromHTML(variableName, html) {
     const regex = new RegExp(`"${variableName}":"([^"]+)"`);
     const match = regex.exec(html);
     return match?.[1];
-}
-
-export function generateUUID() {
-    if (globalThis.crypto?.randomUUID) {
-        return globalThis.crypto.randomUUID().toUpperCase();
-    }
-
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-        .replace(/[xy]/g, (placeholder) => {
-            const randomNibble = (Math.random() * 16) | 0;
-            const uuidNibble = placeholder === 'x' ? randomNibble : (randomNibble & 0x3) | 0x8;
-            return uuidNibble.toString(16);
-        })
-        .toUpperCase();
-}
-
-export function createPrefixedId(prefix) {
-    const safePrefix = String(prefix || 'id')
-        .replace(/[^A-Za-z0-9_-]+/g, '_')
-        .replace(/^_+|_+$/g, '');
-    return `${safePrefix || 'id'}_${generateUUID()}`;
 }
 
 export async function dataUrlToBlob(dataUrl, maxBytes = 20 * 1024 * 1024) {

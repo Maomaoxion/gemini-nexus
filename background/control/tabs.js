@@ -29,6 +29,26 @@ export function getTabControlAvailability(tab) {
     };
 }
 
+/**
+ * Resolve which tab a UI request should act on: the side panel's bound tab,
+ * then the sending content-script tab, then the window's active tab.
+ */
+export async function getRequestTab(context, request, sender) {
+    const targetTabId = context.getTargetSidePanelTabId(request, sender);
+    if (Number.isInteger(targetTabId) && targetTabId > 0) {
+        try {
+            return await chrome.tabs.get(targetTabId);
+        } catch {
+            // 静默降级:目标 tab 已关闭时回退到 sender.tab 或活动 tab
+        }
+    }
+
+    if (sender.tab?.id) return sender.tab;
+
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return tab || null;
+}
+
 export function toControlTabSummary(tab) {
     if (!tab) return null;
 

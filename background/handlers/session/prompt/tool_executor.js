@@ -48,13 +48,7 @@ export class ToolExecutor {
         const callIndex = Number.isFinite(callMeta.callIndex) ? callMeta.callIndex : null;
         const callCount = Number.isFinite(callMeta.callCount) ? callMeta.callCount : null;
         const invocationId = this.createToolInvocationId(toolCommand);
-        const statusKey = this.createToolStatusKey(
-            request,
-            toolName,
-            callIndex,
-            callCount,
-            invocationId
-        );
+        const statusKey = this.createToolStatusKey(request, toolName, invocationId);
         const startedAt = Date.now();
         this.sendToolStatus(request, {
             statusKey,
@@ -176,9 +170,10 @@ export class ToolExecutor {
                             );
                         }
                         this.assertMcpToolEnabled(firstServer, toolName);
-                        // assertMcpToolEnabled throws when disabled; if it
-                        // returned, the tool is enabled but still unmatched
-                        // (e.g. race). Fail with a clear message instead of NPE.
+                        // assertMcpToolEnabled always throws when this line is reached: a tool
+                        // it considers enabled would already have matched the predicate above.
+                        // The throw below only keeps `matchingTool._toolId` from NPE-ing if that
+                        // invariant is ever broken.
                         throw new Error(
                             `Tool '${toolName}' is not available on any enabled MCP server.`
                         );
@@ -276,21 +271,8 @@ export class ToolExecutor {
         return `local:${this.invocationCounter}-${Math.random().toString(36).slice(2, 6)}`;
     }
 
-    createToolStatusKey(
-        request,
-        toolName,
-        callIndex = null,
-        callCount = null,
-        invocationId = null
-    ) {
-        const parts = [request?.sessionId || 'no-session', toolName || 'tool'];
-        if (invocationId) {
-            parts.push(invocationId);
-            return parts.join('|');
-        }
-        if (Number.isFinite(callIndex) && Number.isFinite(callCount) && callCount > 1) {
-            parts.push(String(callIndex));
-        }
+    createToolStatusKey(request, toolName, invocationId) {
+        const parts = [request?.sessionId || 'no-session', toolName || 'tool', invocationId];
         return parts.join('|');
     }
 
@@ -343,5 +325,5 @@ function isPlainObject(value) {
 
 function isFailedToolOutput(output) {
     const text = typeof output === 'string' ? output.trim() : '';
-    return /^(Error\b|Error executing\b|Timed out\b|Script Exception:)/i.test(text);
+    return /^(Error\b|Timed out\b|Script Exception:)/i.test(text);
 }

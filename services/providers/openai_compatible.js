@@ -13,6 +13,7 @@ import {
     extractSourcesFromResponseItem,
     extractTextFromCompletedResponse,
     readErrorMessage,
+    assertResponseOk,
 } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
 import { throwIfTruncated } from './shared/finish_reason.js';
@@ -141,15 +142,14 @@ export async function sendOpenAIMessage(
         signal,
     });
 
-    if (!response.ok) {
-        const errorText = await readErrorMessage(response);
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await assertResponseOk(response);
 
     const sources = [];
     const seenSourceUrls = new Set();
     let fullText = '';
-    let fullThoughts = ''; // Not standard in OpenAI, but some models (DeepSeek R1) might output <think> tags in content
+    // Reasoning arrives on provider-specific fields (reasoning_content / reasoning /
+    // reasoning_details), not the OpenAI `content` field.
+    let fullThoughts = '';
     let finishReason = null;
 
     await readSseJson(
@@ -263,10 +263,7 @@ async function sendOpenAIResponsesMessage(
         signal,
     });
 
-    if (!response.ok) {
-        const errorText = await readErrorMessage(response);
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await assertResponseOk(response);
 
     const sources = [];
     const seenSourceUrls = new Set();

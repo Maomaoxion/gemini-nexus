@@ -444,9 +444,9 @@ export async function prepareManagedContext(request, settings, history, signal, 
 
     if (mode === 'recent') {
         const cutoff = getRecentCutoff(sourceHistory, recentTurns);
-        // Snap the cutoff left if it would split a tool-call/result pair, so
-        // a provider never receives an orphaned tool output (or an orphaned
-        // tool call) across the trim boundary.
+        // Move the cutoff forward past any leading tool output if the raw slice
+        // would split a tool-call/result pair, so a provider never receives an
+        // orphaned tool output (or an orphaned tool call) across the boundary.
         const safeCutoff = snapCutoffToPreserveToolPairing(sourceHistory, cutoff);
         const recentHistory = safeCutoff > 0 ? sourceHistory.slice(safeCutoff) : sourceHistory;
         return {

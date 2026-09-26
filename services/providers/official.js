@@ -8,6 +8,7 @@ import {
     normalizeUserAttachments,
 } from '../../shared/attachments/index.js';
 import { debugLog } from '../../shared/logging/debug.js';
+import { assertResponseOk } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
 import { throwIfTruncated } from './shared/finish_reason.js';
 import { normalizeBaseUrl } from './shared/urls.js';
@@ -97,8 +98,7 @@ function addAttachmentParts(parts, attachments) {
     });
 }
 
-function buildMessageContent(historyMessage, targetModel) {
-    void targetModel;
+function buildMessageContent(historyMessage) {
     const fallbackRole = historyMessage?.role === 'ai' ? 'model' : 'user';
 
     if (historyMessage?.kind === 'tool-output' && historyMessage.officialFunctionResponseBatchId) {
@@ -257,18 +257,17 @@ export async function sendOfficialMessage(
 
     if (history && Array.isArray(history)) {
         history.forEach((historyMessage) => {
-            const content = buildMessageContent(historyMessage, targetModel);
+            const content = buildMessageContent(historyMessage);
             if (content.parts.length > 0) {
                 contents.push(content);
             }
         });
     }
 
-    const configuredCurrentParts = cloneOfficialParts(config?.officialUserParts);
-    const currentParts = configuredCurrentParts.length > 0 ? configuredCurrentParts : [];
-    if (configuredCurrentParts.length === 0 && prompt) currentParts.push({ text: prompt });
+    const currentParts = cloneOfficialParts(config?.officialUserParts);
+    if (currentParts.length === 0 && prompt) currentParts.push({ text: prompt });
 
-    if (configuredCurrentParts.length === 0 && files && files.length > 0) {
+    if (currentParts.length === 0 && files && files.length > 0) {
         addAttachmentParts(currentParts, files);
     }
 
@@ -292,10 +291,7 @@ export async function sendOfficialMessage(
     if (thinkingLevel) {
         payload.generationConfig.thinkingConfig = {
             includeThoughts: true, // Ensure thoughts are returned in response
-            thinkingLevel: normalizeThinkingLevelForModel(
-                targetModel,
-                thinkingLevel || DEFAULT_THINKING_LEVEL
-            ),
+            thinkingLevel: normalizeThinkingLevelForModel(targetModel, thinkingLevel),
         };
     }
 
@@ -312,10 +308,7 @@ export async function sendOfficialMessage(
         signal,
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await assertResponseOk(response);
 
     let fullText = '';
     let fullThoughts = '';

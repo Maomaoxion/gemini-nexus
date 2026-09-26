@@ -299,10 +299,6 @@ export class MessageHandler {
         finalizeActiveStreamHelper(this, state);
     }
 
-    getStreamToolCallText(sessionId) {
-        return this.streamState.getToolCallText(sessionId);
-    }
-
     getStreamRawText(sessionId) {
         return this.streamState.getRawText(sessionId);
     }

@@ -166,7 +166,6 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
         root,
         update,
         dispose: stopStatusTimer,
-        getThoughts: () => currentThoughts,
         getDurationSeconds: () => durationSeconds,
         setDurationSeconds: (seconds) => {
             if (Number.isFinite(seconds)) durationSeconds = seconds;

@@ -61,6 +61,14 @@ export function extractReasoningSummaryFromCompletedResponse(responseObject) {
         .join('');
 }
 
+/** Turn a non-2xx provider response into the error every transport reports. */
+export async function assertResponseOk(response) {
+    if (response.ok) return;
+
+    const errorText = await readErrorMessage(response);
+    throw new Error(`API Error (${response.status}): ${errorText}`);
+}
+
 export async function readErrorMessage(response) {
     let errorText = await response.text();
     try {

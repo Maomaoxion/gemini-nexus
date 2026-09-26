@@ -113,19 +113,16 @@ export function cleanupStructuredSourceText(text, sourceList) {
     }
 
     let lines = text.split('\n');
-    let end = lines.length - 1;
-    while (end >= 0 && lines[end].trim() === '') end--;
 
-    let start = end;
     const sourceUrls = getSourceUrlSet(sourceList);
     if (sourceUrls.size === 0) return text;
     const sourceUrlPattern = createSourceUrlPattern(sourceUrls);
     if (!sourceUrlPattern) return text;
 
     lines = cleanupInlineSourceReferences(lines, sourceUrlPattern);
-    end = lines.length - 1;
+    let end = lines.length - 1;
     while (end >= 0 && lines[end].trim() === '') end--;
-    start = end;
+    let start = end;
 
     while (
         start >= 0 &&

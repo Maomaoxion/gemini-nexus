@@ -32,6 +32,7 @@ export function buildGeneralSettingsForSave(formData) {
         textSelectionBlacklist: formData.textSelectionBlacklist || '',
         customSelectionTools: normalizeCustomSelectionTools(formData.customSelectionTools),
         imageToolsEnabled: formData.imageTools,
+        imageToolsBlacklist: formData.imageToolsBlacklist || '',
         generatedImageWatermarkRemovalEnabled: formData.generatedImageWatermarkRemoval !== false,
         accountIndices: normalizeAccountIndices(formData.accountIndices),
         sidebarBehavior: formData.sidebarBehavior || 'auto',

@@ -45,6 +45,8 @@ function createPromptHarness({ text = 'Hello', files = [], liveArtifactsEnabled 
         generatingSessionId: null,
         boundSessionId: null,
         liveArtifactsEnabled,
+        // Mirrors AppController.getConnectionProvider(), which PromptController now defers to.
+        getConnectionProvider: () => ui.settings?.connectionData?.provider || 'web',
         getSelectedModel: vi.fn(() => 'gemini-test'),
         saveCurrentTabSessionBinding: vi.fn(),
         sessionFlow: {

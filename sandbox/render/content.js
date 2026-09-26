@@ -91,18 +91,9 @@ function stripOuterMarkdownFence(text) {
     return withoutOpening.replace(/\r?\n?[ \t]*```[\s\S]*$/i, '').trim();
 }
 
-function formatToolOutputBody(body) {
-    const trimmed = stripOuterMarkdownFence(body);
-    if (!trimmed) return '';
-
-    try {
-        return JSON.stringify(JSON.parse(trimmed), null, 2);
-    } catch {
-        return trimmed;
-    }
-}
-
-function formatToolCallText(text) {
+// Tool calls and tool outputs are both JSON payloads shown in a fence; pretty
+// print them and fall back to the raw text when a model emits malformed JSON.
+function formatToolJsonBody(text) {
     const trimmed = stripOuterMarkdownFence(text);
     if (!trimmed) return '';
 
@@ -327,8 +318,8 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     const callCount = Number(options.callCount);
     const status = normalizeToolStatus(options.toolStatus);
     const outputText = options.kind === 'tool-status' ? text || '' : parsed.body;
-    const formattedBody = formatToolOutputBody(outputText);
-    const formattedToolCall = formatToolCallText(options.toolCallText);
+    const formattedBody = formatToolJsonBody(outputText);
+    const formattedToolCall = formatToolJsonBody(options.toolCallText);
     const preview = getOutputPreview(formattedBody);
     const displayName = sanitizeToolName(rawToolName);
     const regionId = createPrefixedId(TOOL_DISCLOSURE_PREFIX);

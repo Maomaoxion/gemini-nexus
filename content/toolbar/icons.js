@@ -12,24 +12,6 @@
         LOGO: markup`
             <img src="${logoUrl}" class="toolbar-logo" alt="Gemini">
         `,
-        PLUS: markup`
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M12 5v14"/>
-                <path d="M5 12h14"/>
-            </svg>
-        `,
-        EXTERNAL_OPEN: markup`
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-            </svg>
-        `,
         DRAG: markup`
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <circle cx="8" cy="4" r="2.5"/>
@@ -38,13 +20,6 @@
                 <circle cx="16" cy="4" r="2.5"/>
                 <circle cx="16" cy="12" r="2.5"/>
                 <circle cx="16" cy="20" r="2.5"/>
-            </svg>
-        `,
-        ASK: markup`
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
         `,
         TRANSLATE: markup`
@@ -201,14 +176,6 @@
                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round">
                 <path d="m9 18 6-6-6-6"/>
-            </svg>
-        `,
-        BROWSER_CONTROL: markup`
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
-                <path d="m13 13 6 6"/>
             </svg>
         `,
         REMOVE_BG: markup`

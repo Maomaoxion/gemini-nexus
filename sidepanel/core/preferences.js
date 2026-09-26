@@ -3,10 +3,7 @@ import {
     DEFAULT_CONTEXT_RECENT_TURNS,
 } from '../../shared/config/constants.js';
 import { CUSTOM_SELECTION_TOOLS_STORAGE_KEY } from '../../shared/settings/selection_tools.js';
-
-function getRuntimeLastErrorMessage() {
-    return chrome.runtime?.lastError?.message || null;
-}
+import { getRuntimeLastErrorMessage } from '../../shared/logging/runtime_error.js';
 
 function restorePreference(keys, label, handler) {
     chrome.storage.local.get(keys, (result) => {

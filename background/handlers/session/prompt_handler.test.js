@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { hasInlinePageSnapshot, PromptHandler } from './prompt_handler.js';
+import { PromptHandler } from './prompt_handler.js';
+import { hasInlinePageSnapshot } from '../../control/snapshot/marker.js';
 import { buildToolContinuationPrompt } from './prompt/tool_loop.js';
 import { appendAiMessage, replaceSessionSnapshot } from '../../managers/history_manager.js';
 

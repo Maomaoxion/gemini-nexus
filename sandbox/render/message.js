@@ -155,7 +155,8 @@ export function appendMessage(
         syncCompactSpacing();
     };
 
-    // Allow creating empty AI bubbles for streaming
+    // Every message renders a content host, including an empty streaming bubble
+    // that has not received its first token yet.
     if (currentText || currentThoughts || role === 'ai' || role === 'user') {
         if (role === 'ai') {
             thoughtsController = createThoughtsBlock(currentThoughts, options, syncCompactSpacing);
@@ -235,9 +236,9 @@ export function appendMessage(
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'retry-btn';
-            btn.title = t('retryButtonTitle') || 'Retry';
-            btn.setAttribute('aria-label', t('retryButtonTitle') || 'Retry');
-            btn.innerHTML = TemplateIcons.REFRESH || TemplateIcons.HISTORY;
+            btn.title = t('retryButtonTitle');
+            btn.setAttribute('aria-label', t('retryButtonTitle'));
+            btn.innerHTML = TemplateIcons.REFRESH;
             btn.addEventListener('click', () => {
                 if (typeof options.onRetry === 'function') {
                     options.onRetry(messageElement, currentText);
@@ -390,15 +391,14 @@ export function appendMessage(
             sourcesDiv = builtSources;
             contentHost.appendChild(sourcesDiv);
         },
-        // Mark an already-finalized bubble as an error so CSS can add an
-        // error tint and the UI can offer a retry affordance. Called by
-        // renderGeminiReply when a streaming bubble receives an error reply.
-        markError: (errorKind, retryable) => {
+        // Mark an already-finalized bubble as an error so CSS can add the error
+        // tint. Called by renderGeminiReply when a streaming bubble receives an
+        // error reply. The retry affordance is not decided here: it is created with
+        // the bubble, so this only restyles an existing row.
+        markError: () => {
             options.isError = true;
-            options.errorKind = errorKind;
-            options.retryable = retryable;
             if (contentDiv) contentDiv.classList.add('msg-content-error');
-            if (messageElement) messageElement.classList.add('msg-error');
+            messageElement.classList.add('msg-error');
         },
     };
     messageElement.__messageController = controller;
@@ -425,7 +425,7 @@ function createMessageActionRail(role, { onEdit } = {}) {
     if (canEdit) {
         avatar = document.createElement('button');
         avatar.type = 'button';
-        avatar.className = `message-avatar message-avatar-${role === 'ai' ? 'ai' : 'user'} message-avatar-btn`;
+        avatar.className = `message-avatar message-avatar-${role} message-avatar-btn`;
         avatar.title = t('editMessage');
         avatar.setAttribute('aria-label', t('editMessage'));
         avatar.innerHTML = `

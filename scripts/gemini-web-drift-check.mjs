@@ -181,10 +181,12 @@ export function inspectGeminiWebSources({ html = '', script = '' } = {}) {
         script: script ? inspectScript(script) : null,
     };
 
+    const failures = buildFailures(report);
+
     return {
         ...report,
-        ok: buildFailures(report).length === 0,
-        failures: buildFailures(report),
+        ok: failures.length === 0,
+        failures,
     };
 }
 

@@ -2,7 +2,7 @@ import {
     buildHistoryImportStorageUpdate,
     buildSettingsImportStorageUpdate,
 } from '../../shared/data_management/index.js';
-import { getRuntimeLastError } from './bridge_storage.js';
+import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
 
 function postDataImportResult(frame, kind, ok, error = null) {
     frame.postMessage({

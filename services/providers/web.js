@@ -15,7 +15,11 @@ import {
     normalizeWebThinkingLevelForModel,
 } from '../../shared/models/web_thinking.js';
 import { debugLog } from '../../shared/logging/debug.js';
-import { WEB_CLIENT_CAPABILITIES, assertAuthToken } from './shared/web_auth.js';
+import {
+    WEB_CLIENT_CAPABILITIES,
+    assertAuthToken,
+    stripNativeContextIds,
+} from './shared/web_auth.js';
 
 async function handleFileUploads(files, signal, uploadContext) {
     const normalizedFiles = normalizeUserAttachments(files);
@@ -30,7 +34,6 @@ async function handleFileUploads(files, signal, uploadContext) {
     }
 
     debugLog(`[Gemini Web] Uploading ${normalizedFiles.length} files...`);
-    // Upload in parallel
     const fileList = await Promise.all(
         normalizedFiles.map((file) =>
             uploadFile(file, signal, uploadContext).then((url) => [[url], file.name])
@@ -56,11 +59,6 @@ function constructPayload(prompt, fileList, contextIds, { temporaryChat = false 
 
     // The API expects: f.req = JSON.stringify([null, JSON.stringify(requestPayload)])
     return JSON.stringify([null, JSON.stringify(requestPayload)]);
-}
-
-function stripNativeContextIds(context = {}) {
-    const { contextIds, ...authContext } = context;
-    return authContext;
 }
 
 function buildModelHeader(model, requestId, thinkingLevel, { temporaryChat = false } = {}) {
@@ -192,12 +190,11 @@ export async function sendWebMessage(
     let buffer = '';
     let finalResult = null;
     let isFirstChunk = true;
-    // True if the stream ended abnormally (reader error) AFTER at least one
-    // parsed result arrived. In that case we have a partial/truncated reply:
-    // we surface it as truncated rather than success so the UI does not treat
-    // a cut-off answer as complete, and the caller does not pin conversation
-    // continuity to the (stale) pre-request context.
-    let streamError = null;
+    // Set when the reader itself fails. A non-null value means the reply is
+    // truncated rather than complete, so the UI does not treat a cut-off answer
+    // as finished and the caller does not pin conversation continuity to the
+    // (stale) pre-request context.
+    let streamReadError = null;
 
     try {
         while (true) {
@@ -240,7 +237,7 @@ export async function sendWebMessage(
         // success. Record the error so the caller can surface a truncated
         // reply instead of treating it as a complete one.
         console.error('Stream reading error:', error);
-        streamError = error;
+        streamReadError = error;
     } finally {
         // Always release the reader lock and cancel the underlying fetch so
         // an aborted or errored stream does not leak the connection.
@@ -267,9 +264,9 @@ export async function sendWebMessage(
         }
         // Prefer the real stream failure over a generic empty-parse message so
         // callers and logs see the underlying network/SW abort reason.
-        if (streamError) {
+        if (streamReadError) {
             throw new Error(
-                `No valid response found. Check network. (stream error: ${streamError.message || streamError})`
+                `No valid response found. Check network. (stream error: ${streamReadError.message || streamReadError})`
             );
         }
         const sample = buffer.substring(0, 240).replace(/\s+/g, ' ').trim();
@@ -287,7 +284,7 @@ export async function sendWebMessage(
     // streamed) instead of returning success — otherwise the caller advances
     // auth context to the stale pre-request value and the user sees a
     // cut-off answer with no indication it was incomplete or any retry path.
-    if (streamError) {
+    if (streamReadError) {
         return {
             text: finalResult.text,
             thoughts: finalResult.thoughts,
@@ -299,7 +296,7 @@ export async function sendWebMessage(
             // desync future turns in this conversation.
             newContext: null,
             truncated: true,
-            error: streamError,
+            error: streamReadError,
         };
     }
 

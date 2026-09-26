@@ -151,8 +151,8 @@
             }
 
             if (!isLargerWindow) {
-                // Small Toolbar: CSS has transform: translateY(10px) (no horizontal transform)
-                // So style.left is exact position.
+                // Small Toolbar: the CSS entrance transform is vertical-only
+                // (translateY(8px)), so style.left is already the exact position.
                 element.style.left = `${visualLeft + scrollX}px`;
                 element.style.top = `${visualTop + scrollY}px`;
             } else {

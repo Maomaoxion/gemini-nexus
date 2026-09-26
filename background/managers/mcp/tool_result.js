@@ -4,14 +4,13 @@ const MAX_TEXT_LENGTH = 10000;
 
 /**
  * @param {string} text
- * @param {number} maxLength
  * @returns {string}
  */
-function truncateText(text, maxLength) {
-    if (text.length <= maxLength) return text;
+function truncateText(text) {
+    if (text.length <= MAX_TEXT_LENGTH) return text;
     return (
-        text.slice(0, maxLength) +
-        `\n\n[Output truncated at ${maxLength} characters to avoid context overflow. The full result was ${text.length} characters.]`
+        text.slice(0, MAX_TEXT_LENGTH) +
+        `\n\n[Output truncated at ${MAX_TEXT_LENGTH} characters to avoid context overflow. The full result was ${text.length} characters.]`
     );
 }
 
@@ -185,8 +184,7 @@ function appendStructuredContent(text, structuredContent) {
  * @returns {{ text: string, files: Array<{ base64: string, type: string, name: string }>, isError?: boolean }}
  */
 export function normalizeMcpToolResult(result) {
-    if (typeof result === 'string')
-        return { text: truncateText(result, MAX_TEXT_LENGTH), files: [] };
+    if (typeof result === 'string') return { text: truncateText(result), files: [] };
 
     if (result && typeof result === 'object') {
         /** @type {Record<string, any>} */
@@ -194,10 +192,7 @@ export function normalizeMcpToolResult(result) {
         if (Array.isArray(objectResult.content)) {
             const text = extractTextFromContent(objectResult.content);
             return {
-                text: truncateText(
-                    appendStructuredContent(text, objectResult.structuredContent),
-                    MAX_TEXT_LENGTH
-                ),
+                text: truncateText(appendStructuredContent(text, objectResult.structuredContent)),
                 files: extractFilesFromContent(objectResult.content),
                 ...(objectResult.isError === true ? { isError: true } : {}),
             };
@@ -206,8 +201,7 @@ export function normalizeMcpToolResult(result) {
         if (typeof objectResult.text === 'string') {
             return {
                 text: truncateText(
-                    appendStructuredContent(objectResult.text, objectResult.structuredContent),
-                    MAX_TEXT_LENGTH
+                    appendStructuredContent(objectResult.text, objectResult.structuredContent)
                 ),
                 files: [],
                 ...(objectResult.isError === true ? { isError: true } : {}),
@@ -217,9 +211,9 @@ export function normalizeMcpToolResult(result) {
 
     try {
         const serialized = JSON.stringify(result, null, 2);
-        return { text: truncateText(serialized, MAX_TEXT_LENGTH), files: [] };
+        return { text: truncateText(serialized), files: [] };
     } catch {
-        return { text: truncateText(String(result), MAX_TEXT_LENGTH), files: [] };
+        return { text: truncateText(String(result)), files: [] };
     }
 }
 

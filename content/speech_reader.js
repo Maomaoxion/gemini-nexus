@@ -72,29 +72,35 @@
         try {
             const voices = speechSynthesis?.getVoices?.() || [];
             if (!voices.length) return null;
-            const isCantoneseVoice = (v) =>
-                /粤语|cantonese|yue|sin-ji|hong kong|hk|mo/i.test(`${v.name} ${v.lang}`);
-            const isMandarinVoice = (v) =>
+            const isCantoneseVoice = (voiceOption) =>
+                /粤语|cantonese|yue|sin-ji|hong kong|hk|mo/i.test(
+                    `${voiceOption.name} ${voiceOption.lang}`
+                );
+            const isMandarinVoice = (voiceOption) =>
                 /普通话|mandarin|cmn-hans|zh-cn|ting-ting|google.*普通话/i.test(
-                    `${v.name} ${v.lang}`
+                    `${voiceOption.name} ${voiceOption.lang}`
                 );
             // 1. 精确 zh-CN 且非粤语
-            let voice = voices.find((v) => v.lang === 'zh-CN' && !isCantoneseVoice(v));
+            let voice = voices.find(
+                (voiceOption) => voiceOption.lang === 'zh-CN' && !isCantoneseVoice(voiceOption)
+            );
             if (voice) return voice;
             // 2. 任何普通话特征的 voice
-            voice = voices.find((v) => isMandarinVoice(v) && !isCantoneseVoice(v));
+            voice = voices.find(
+                (voiceOption) => isMandarinVoice(voiceOption) && !isCantoneseVoice(voiceOption)
+            );
             if (voice) return voice;
             // 3. 任意 zh 但排除粤语
             voice = voices.find(
-                (v) =>
-                    String(v.lang || '')
+                (voiceOption) =>
+                    String(voiceOption.lang || '')
                         .toLowerCase()
-                        .startsWith('zh') && !isCantoneseVoice(v)
+                        .startsWith('zh') && !isCantoneseVoice(voiceOption)
             );
             if (voice) return voice;
             // 4. preferredLang 匹配
             if (preferredLang) {
-                voice = voices.find((v) => v.lang === preferredLang);
+                voice = voices.find((voiceOption) => voiceOption.lang === preferredLang);
                 if (voice) return voice;
             }
             return null;
@@ -188,8 +194,8 @@
                         throw error;
                     }
                     // 避免对“无文本”等业务错误做无意义回退
-                    const msg = String(error?.message || '');
-                    if (msg.includes('No readable text')) throw error;
+                    const errorMessage = String(error?.message || '');
+                    if (errorMessage.includes('No readable text')) throw error;
                     return this._readWithSystemTts(normalizedText, title);
                 }
             }
@@ -255,8 +261,8 @@
                 precreatedAudio.preload = 'auto';
                 // 静默解锁：部分浏览器需要先 resume
                 precreatedAudio.muted = true;
-                const p = precreatedAudio.play?.();
-                if (p?.catch) p.catch(() => {});
+                const playAttempt = precreatedAudio.play?.();
+                if (playAttempt?.catch) playAttempt.catch(() => {});
                 precreatedAudio.pause?.();
                 precreatedAudio.muted = false;
             } catch {}
@@ -307,15 +313,15 @@
             try {
                 await this.audio.play();
             } catch (error) {
-                const msg = String(error?.message || error);
+                const errorMessage = String(error?.message || error);
                 // 自动播放被拦是最高频的“总是错误”根因
-                if (msg.includes('NotAllowedError') || error?.name === 'NotAllowedError') {
+                if (errorMessage.includes('NotAllowedError') || error?.name === 'NotAllowedError') {
                     this.stop();
-                    const e = new Error(
-                        '浏览器拦截了自动播放，请再次点击朗读（已自动回退到系统语音可尝试）。'
+                    const autoplayError = new Error(
+                        getStrings().speechAutoplayBlocked || 'The browser blocked autoplay.'
                     );
-                    e.cause = error;
-                    throw e;
+                    autoplayError.cause = error;
+                    throw autoplayError;
                 }
                 this.stop();
                 throw error;
@@ -323,20 +329,23 @@
             return { status: 'started', title, chunks: 1, provider: 'gemini' };
         }
 
+        // Detection below matches provider error text; the returned copy is the
+        // user-facing hint and must come from the toolbar dictionary.
         _humanizeTtsError(raw) {
             const s = String(raw || '');
+            const strings = getStrings();
             if (
                 s.includes('未登录') ||
                 s.includes('Session expired') ||
                 s.includes('Missing Gemini Web auth token')
             ) {
-                return 'Gemini TTS 需要先登录 https://gemini.google.com 并刷新页面（扩展依赖网页登录态）。已自动回退到系统语音。';
+                return strings.speechTtsLoginRequired || s;
             }
             if (s.includes('429') || s.includes('RESOURCE_EXHAUSTED')) {
-                return 'Gemini TTS 触发限流（429），已自动回退到系统语音，稍后重试。';
+                return strings.speechTtsRateLimited || s;
             }
             if (s.includes('400') || s.includes('401') || s.includes('403')) {
-                return `Gemini TTS 鉴权失败（${s}），请到 gemini.google.com 重新登录后重试。已自动回退到系统语音。`;
+                return strings.speechTtsAuthFailed?.(s) || s;
             }
             return s;
         }

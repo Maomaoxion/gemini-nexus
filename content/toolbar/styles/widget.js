@@ -183,8 +183,6 @@
             color: var(--gnx-fg);
         }
 
-        /* --- Image AI Tools Menu --- */
-
         .image-btn {
             position: absolute;
             z-index: 1000000;

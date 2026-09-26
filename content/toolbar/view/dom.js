@@ -25,7 +25,7 @@
             this.shadow = this.host.attachShadow({ mode: 'closed' });
 
             this._render();
-            this._loadMathLibs();
+            this._loadVendorAssets();
 
             return { host: this.host, shadow: this.shadow };
         }
@@ -40,10 +40,10 @@
             if (!this.shadow) return;
             this.shadow.innerHTML = '';
             this._render();
-            this._loadMathLibs();
+            this._loadVendorAssets();
         }
 
-        _loadMathLibs() {
+        _loadVendorAssets() {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             link.href = chrome.runtime.getURL('vendor/katex/katex.min.css');

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getYouTubeVideoId, getYouTubeVideoUrl, isYouTubeVideoUrl } from './youtube.js';
+
+import './youtube_global.js';
+
+const { getYouTubeVideoId, getYouTubeVideoUrl, isYouTubeVideoUrl } = globalThis.GeminiNexusYouTube;
 
 const VIDEO_ID = 'nU9c-PffHPg';
 const WATCH_URL = `https://www.youtube.com/watch?v=${VIDEO_ID}`;

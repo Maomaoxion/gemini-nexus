@@ -41,16 +41,6 @@ export class QuickAskHandler {
         return this.activeTabIds.has(tabId);
     }
 
-    // legacy single field for tests
-    get activeTabId() {
-        return this.activeTabIds.size === 1 ? [...this.activeTabIds][0] : null;
-    }
-
-    set activeTabId(value) {
-        this.activeTabIds.clear();
-        if (value != null) this.activeTabIds.add(value);
-    }
-
     _sendToTab(tabId, payload) {
         if (!tabId) return;
         chrome.tabs.sendMessage(tabId, payload).catch(() => {});
@@ -111,19 +101,7 @@ export class QuickAskHandler {
         try {
             const promptRequest = await this._withPageContext(request, tabId);
 
-            if (!promptRequest.sessionId) {
-                await this.sessionManager.resetContext();
-            } else {
-                await this.sessionManager.ensureInitialized();
-            }
-
-            const onUpdate = this._createStreamUpdateHandler(tabId, request);
-            const abortKey = tabId != null ? `quickAsk:${tabId}` : 'quickAsk';
-            const result = await this.sessionManager.handleSendPrompt(
-                promptRequest,
-                onUpdate,
-                abortKey
-            );
+            const result = await this._runQuickAskPrompt(promptRequest, request, tabId);
             const savedSession = await this._saveSuccessfulResult(
                 request.text,
                 result,
@@ -141,10 +119,10 @@ export class QuickAskHandler {
         const tabId = sender.tab ? sender.tab.id : null;
 
         try {
-            const imgRes = await this.imageHandler.fetchImage(request.url);
+            const fetchedImage = await this.imageHandler.fetchImage(request.url);
 
-            if (imgRes.error) {
-                const imageErrorMessage = 'Failed to load image: ' + imgRes.error;
+            if (fetchedImage.error) {
+                const imageErrorMessage = 'Failed to load image: ' + fetchedImage.error;
                 const { kind: errorKind, retryable } = classifyProviderError(imageErrorMessage);
                 this._sendStreamDone(
                     tabId,
@@ -162,36 +140,22 @@ export class QuickAskHandler {
 
             const promptRequest = {
                 ...request,
-                text: request.text,
-                model: request.model,
                 sessionId: request.sessionId || null,
                 files: [
                     {
-                        base64: imgRes.base64,
-                        type: imgRes.type,
-                        name: imgRes.name,
+                        base64: fetchedImage.base64,
+                        type: fetchedImage.type,
+                        name: fetchedImage.name,
                     },
                 ],
             };
 
-            if (!promptRequest.sessionId) {
-                await this.sessionManager.resetContext();
-            } else {
-                await this.sessionManager.ensureInitialized();
-            }
-
-            const onUpdate = this._createStreamUpdateHandler(tabId, request);
-            const abortKey = tabId != null ? `quickAsk:${tabId}` : 'quickAsk';
-            const result = await this.sessionManager.handleSendPrompt(
-                promptRequest,
-                onUpdate,
-                abortKey
-            );
+            const result = await this._runQuickAskPrompt(promptRequest, request, tabId);
             const normalizedResult = this._normalizeImageQuickAskResult(request, result);
             const savedSession = await this._saveSuccessfulResult(
                 request.text,
                 normalizedResult,
-                [{ base64: imgRes.base64 }],
+                [{ base64: fetchedImage.base64 }],
                 promptRequest.sessionId || null
             );
             this._sendStreamDone(tabId, normalizedResult, savedSession, request);
@@ -199,6 +163,21 @@ export class QuickAskHandler {
             console.error('[Gemini Nexus] Image quick ask failed:', error);
             this._sendStreamDone(tabId, createErrorResult(error), undefined, request);
         }
+    }
+
+    // Shared by text and image quick asks: a run without a session id starts
+    // from a cleared context, a run that continues one only needs the manager
+    // initialised, and both then stream under the per-tab abort key.
+    async _runQuickAskPrompt(promptRequest, request, tabId) {
+        if (!promptRequest.sessionId) {
+            await this.sessionManager.resetContext();
+        } else {
+            await this.sessionManager.ensureInitialized();
+        }
+
+        const onUpdate = this._createStreamUpdateHandler(tabId, request);
+        const abortKey = tabId != null ? `quickAsk:${tabId}` : 'quickAsk';
+        return this.sessionManager.handleSendPrompt(promptRequest, onUpdate, abortKey);
     }
 
     async _withPageContext(request, tabId) {

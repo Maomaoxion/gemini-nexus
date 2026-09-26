@@ -5,68 +5,22 @@
         return;
     }
 
-    const nexusConfig = globalThis.GeminiNexusConfig || {};
-    const DEFAULT_SHORTCUTS = nexusConfig.DEFAULT_SHORTCUTS || {
-        quickAsk: 'Alt+Q',
-        openPanel: 'Alt+G',
-        browserControl: 'Ctrl+B',
-        ocrCapture: 'Alt+O',
-    };
-    const LEGACY_DEFAULT_SHORTCUTS = [
-        {
-            quickAsk: 'Ctrl+Q',
-            openPanel: 'Alt+G',
-            browserControl: 'Ctrl+B',
-            ocrCapture: 'Alt+O',
-        },
-        {
-            quickAsk: 'Ctrl+G',
-            openPanel: 'Alt+S',
-            browserControl: 'Ctrl+B',
-            ocrCapture: 'Alt+O',
-        },
-    ];
+    // shared/config/constants_global.js is listed before this file in the same
+    // manifest content_scripts entry, so the shortcut defaults and their
+    // migration live there rather than being re-declared here.
+    const nexusConfig = globalThis.GeminiNexusConfig;
     const MODIFIER_KEYS = ['ctrl', 'alt', 'shift', 'meta', 'command'];
 
-    function isDefaultShortcutValue(key, value) {
-        return (
-            value === DEFAULT_SHORTCUTS[key] ||
-            LEGACY_DEFAULT_SHORTCUTS.some((shortcuts) => value === shortcuts[key])
-        );
-    }
-
-    function normalizeDefaultShortcutValue(key, value) {
-        return isDefaultShortcutValue(key, value) ? DEFAULT_SHORTCUTS[key] : value;
+    function isShortcutObject(shortcuts) {
+        return shortcuts && typeof shortcuts === 'object' && !Array.isArray(shortcuts);
     }
 
     function normalizeShortcuts(shortcuts) {
-        if (typeof nexusConfig.normalizeShortcutDefaults === 'function') {
-            return nexusConfig.normalizeShortcutDefaults(shortcuts);
-        }
-
-        const stored =
-            shortcuts && typeof shortcuts === 'object' && !Array.isArray(shortcuts)
-                ? shortcuts
-                : {};
-        const usesOnlyDefaultValues = Object.keys(DEFAULT_SHORTCUTS).every((key) => {
-            if (!Object.prototype.hasOwnProperty.call(stored, key)) return true;
-            return isDefaultShortcutValue(key, stored[key]);
-        });
-        const migrated = { ...stored };
-
-        if (usesOnlyDefaultValues) {
-            Object.keys(DEFAULT_SHORTCUTS).forEach((key) => {
-                if (Object.prototype.hasOwnProperty.call(migrated, key)) {
-                    migrated[key] = normalizeDefaultShortcutValue(key, migrated[key]);
-                }
-            });
-        }
-
-        return { ...DEFAULT_SHORTCUTS, ...migrated };
+        return nexusConfig.normalizeShortcutDefaults(shortcuts);
     }
 
     function needsShortcutMigration(stored, normalized) {
-        if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return false;
+        if (!isShortcutObject(stored)) return false;
         return ['quickAsk', 'openPanel'].some(
             (key) =>
                 Object.prototype.hasOwnProperty.call(stored, key) && stored[key] !== normalized[key]

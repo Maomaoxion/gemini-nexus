@@ -2,6 +2,12 @@
     window.GeminiNexusShortcutFrameBridgeReady = true;
     window.GeminiNexusShortcutFrameBridge?.destroy?.();
 
+    // This bridge runs as its own `all_frames: true` / `document_start`
+    // content_scripts entry, while shared/config/constants_global.js is loaded
+    // by the main bundle (`all_frames: false`, `document_end`). So
+    // globalThis.GeminiNexusConfig is not reliably available here and these
+    // defaults must stay self-contained. Keep them in sync with
+    // shared/config/constants_global.js when changing a shortcut default.
     const DEFAULT_SHORTCUTS = Object.freeze({
         quickAsk: 'Alt+Q',
         openPanel: 'Alt+G',

@@ -1,5 +1,6 @@
 import { MathPlaceholderProtector } from './math_placeholders.js';
 import { LIVE_ARTIFACT_HTML_LANGUAGE } from '../core/live_artifacts.js';
+import { escapeHtml } from '../../shared/utils/escape.js';
 
 const ALLOWED_TAGS = new Set([
     'a',
@@ -116,15 +117,6 @@ const HTML_FRAGMENT_REGEX = new RegExp(
     'i'
 );
 const UNSAFE_ARTIFACT_FRAGMENT_TAG_REGEX = /<(?:script|style|iframe|object|embed)\b/i;
-
-function escapeHtml(text) {
-    return String(text || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
 
 function isAllowedAttribute(tagName, attrName) {
     const lower = attrName.toLowerCase();

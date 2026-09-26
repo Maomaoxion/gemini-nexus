@@ -2,6 +2,8 @@
  * Maps string tool names to executable actions.
  * Decouples logic from the main ControlManager.
  */
+import { formatInlinePageSnapshot } from './snapshot/marker.js';
+
 export class ToolDispatcher {
     static DEBUGGER_OPTIONAL_TOOL_NAMES = new Set([
         'navigate_page',
@@ -168,7 +170,7 @@ export class ToolDispatcher {
         }
 
         const snapshot = await this.snapshotManager.takeSnapshot();
-        return `${result}\n\n## Latest page snapshot\n${snapshot}`;
+        return `${result}${formatInlinePageSnapshot(snapshot)}`;
     }
 
     async dispatch(name, args) {

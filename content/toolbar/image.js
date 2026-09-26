@@ -126,7 +126,6 @@
 
             if (mouseEvent.target.tagName !== 'IMG') return;
 
-            // Ignore small images (icons, spacers)
             const imageElement = mouseEvent.target;
             if (!shouldShowImageTools(imageElement)) return;
 

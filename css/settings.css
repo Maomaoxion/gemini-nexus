@@ -3,7 +3,6 @@
     --settings-transition-speed-slow: 0.3s;
     --settings-transition-easing: var(--ease-standard);
     --settings-transition-easing-bezier: var(--ease-emphasized);
-    --settings-shadow-depth-1: var(--shadow-sm);
     --settings-shadow-depth-2: var(--shadow-md);
     --settings-shadow-depth-3: var(--shadow-lg);
     --bg-active-tab: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -14,7 +13,6 @@
 [data-theme='dark'] {
     --settings-shadow-depth-3: 0 24px 64px rgba(0, 0, 0, 0.45);
     --bg-active-tab: color-mix(in srgb, var(--primary) 16%, transparent);
-    --text-active-tab: var(--primary);
     --border-card-hover: color-mix(in srgb, var(--primary) 36%, transparent);
 }
 
@@ -145,16 +143,6 @@
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-}
-
-.settings-field-label {
-    display: block;
-    margin-bottom: 2px;
-    font-weight: 500;
-}
-
-.settings-field-label.spacious {
-    margin-bottom: 6px;
 }
 
 .settings-stack {

@@ -1,6 +1,7 @@
 import { ActionWaiter } from '../action_waiter.js';
 import { cursorController } from '../cursor_controller.js';
 import { SnapshotManager } from '../snapshot/index.js';
+import { formatInlinePageSnapshot } from '../snapshot/marker.js';
 
 const FOCUS_STEAL_CACHE_MS = 5000;
 const FOCUS_STEAL_STORAGE_KEY = 'BACKGROUND_INTERACTION_ENABLED';
@@ -36,11 +37,11 @@ export class BaseActionHandler {
      * recovery snapshot attached so the agent can continue without an extra
      * take_snapshot turn.
      */
-    async getObjectIdFromUid(uid, { allowRefresh = true } = {}) {
+    async getObjectIdFromUid(uid) {
         try {
             return await this._resolveObjectIdFromUid(uid);
         } catch (error) {
-            if (!allowRefresh || !SnapshotManager.isUidResolutionError(error)) {
+            if (!SnapshotManager.isUidResolutionError(error)) {
                 throw error;
             }
 
@@ -58,7 +59,7 @@ export class BaseActionHandler {
                     typeof recoverySnapshot === 'string' &&
                     recoverySnapshot &&
                     !recoverySnapshot.startsWith('Error')
-                        ? `\n\n## Latest page snapshot\n${recoverySnapshot}`
+                        ? formatInlinePageSnapshot(recoverySnapshot)
                         : '';
                 throw new Error(`${retryError.message}${snapText}`);
             }
@@ -205,7 +206,5 @@ export class BaseActionHandler {
                 throw error;
             }
         }
-
-        throw new Error('Unable to resolve element center');
     }
 }

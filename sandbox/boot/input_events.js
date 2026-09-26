@@ -247,9 +247,6 @@ export function bindInputEvents(app, ui, setResizeRef) {
         };
 
         inputFn.addEventListener('keydown', handleInputKeyDown);
-        // Use pointerup as well so a visually-enabled but still-disabled button
-        // (race during IME composition) can be recovered via direct call path
-        // when we stop relying solely on the disabled attribute for empty state.
         sendBtn.addEventListener('click', handleSendClick);
         cleanupHandlers.push(() => inputFn.removeEventListener('keydown', handleInputKeyDown));
         cleanupHandlers.push(() => sendBtn.removeEventListener('click', handleSendClick));

@@ -39,20 +39,6 @@ export const TemplateIcons = {
             <path d="M12 19h8"></path>
         </svg>
     `,
-    CHEVRON_LEFT: icon`
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-    `,
-    CHEVRON_RIGHT: icon`
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-    `,
     CLOSE: icon`
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -199,25 +185,6 @@ export const TemplateIcons = {
             <path d="M21 3v5h-5"></path>
             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
             <path d="M3 8v5h5"></path>
-        </svg>
-    `,
-    FORK: icon`
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="18" r="3"></circle>
-            <circle cx="6" cy="6" r="3"></circle>
-            <circle cx="18" cy="6" r="3"></circle>
-            <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path>
-            <path d="M12 12v3"></path>
-        </svg>
-    `,
-    CONTINUE: icon`
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polygon points="10 8 16 12 10 16 10 8"></polygon>
         </svg>
     `,
     TRASH: icon`
@@ -473,17 +440,6 @@ export const TemplateIcons = {
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path>
             <circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle>
-        </svg>
-    `,
-    PALETTE: icon`
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 2 1 3 2.5 4.5.75.75 1.5 1.5 1.5 2.5.003 1.644 1.356 3 3 3H12z"></path>
-            <circle cx="7.5" cy="10.5" r="1.5" stroke="none" fill="currentColor"></circle>
-            <circle cx="11.5" cy="7.5" r="1.5" stroke="none" fill="currentColor"></circle>
-            <circle cx="16.5" cy="9.5" r="1.5" stroke="none" fill="currentColor"></circle>
-            <circle cx="15.5" cy="14.5" r="1.5" stroke="none" fill="currentColor"></circle>
         </svg>
     `,
     /* AMC SettingsSidebar: interface LayoutPanelLeft, shortcuts Command — lucide */

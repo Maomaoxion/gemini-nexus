@@ -24,6 +24,7 @@ vi.mock('../../../shared/messaging/index.js', () => ({
     saveContextSettingsToStorage: vi.fn(),
     saveGeneratedImageWatermarkRemovalToStorage: vi.fn(),
     saveImageToolsToStorage: vi.fn(),
+    saveImageToolsBlacklistToStorage: vi.fn(),
     saveLanguageToStorage: vi.fn(),
     saveShortcutsToStorage: vi.fn(),
     saveSidebarBehaviorToStorage: vi.fn(),
@@ -66,6 +67,20 @@ describe('SettingsController', () => {
 
         expect(saveAccountIndicesToStorage).toHaveBeenCalledWith('0,2');
         expect(document.getElementById('account-indices-input').value).toBe('0,2');
+    });
+
+    it('saves the image tools blacklist and the watermark preference from the form', async () => {
+        const { saveImageToolsBlacklistToStorage, saveGeneratedImageWatermarkRemovalToStorage } =
+            await import('../../../shared/messaging/index.js');
+        const controller = new SettingsController();
+
+        document.getElementById('image-tools-blacklist').value = 'github.com\n*.google.com';
+        document.getElementById('generated-image-watermark-toggle').checked = false;
+
+        controller.saveSettings(controller.view.getFormData());
+
+        expect(saveImageToolsBlacklistToStorage).toHaveBeenCalledWith('github.com\n*.google.com');
+        expect(saveGeneratedImageWatermarkRemovalToStorage).toHaveBeenCalledWith(false);
     });
 
     it('keeps settings open and shows saved feedback after saving', async () => {

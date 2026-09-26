@@ -1,21 +1,6 @@
 import { getActiveTabContent } from './session/active_tab_content.js';
 import { respondWithUiTask } from './ui_async.js';
-
-async function getRequestTab(context, request, sender) {
-    const targetTabId = context.getTargetSidePanelTabId(request, sender);
-    if (Number.isInteger(targetTabId) && targetTabId > 0) {
-        try {
-            return await chrome.tabs.get(targetTabId);
-        } catch {
-            // 静默降级:目标 tab 已关闭时回退到 sender.tab 或活动 tab
-        }
-    }
-
-    if (sender.tab?.id) return sender.tab;
-
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    return tab || null;
-}
+import { getRequestTab } from '../control/tabs.js';
 
 export function handleGetActiveSelection(context, request, sender, sendResponse) {
     respondWithUiTask(

@@ -74,7 +74,6 @@ export class NavigationActions extends BaseActionHandler {
         }
 
         let action = '';
-        const willNavigate = true;
 
         const waitResult = await this.waitHelper.execute(async () => {
             if (navigationType === 'back') {
@@ -93,9 +92,7 @@ export class NavigationActions extends BaseActionHandler {
             }
         });
 
-        if (willNavigate) {
-            this.snapshotManager.reset?.();
-        }
+        this.snapshotManager.reset?.();
 
         if (!action) return 'Error: Invalid navigation arguments.';
 

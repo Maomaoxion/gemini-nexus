@@ -26,7 +26,7 @@
 
             const selection = window.getSelection();
             if (!selection.rangeCount) {
-                this._reset();
+                this.reset();
                 return;
             }
 
@@ -50,7 +50,7 @@
                 this.sourceSelectionStart = null;
                 this.sourceSelectionEnd = null;
             } else {
-                this._reset();
+                this.reset();
             }
         }
 
@@ -118,15 +118,11 @@
             return this.sourceSelectionRange;
         }
 
-        _reset() {
+        reset() {
             this.sourceInputElement = null;
             this.sourceSelectionRange = null;
             this.sourceSelectionStart = null;
             this.sourceSelectionEnd = null;
-        }
-
-        reset() {
-            this._reset();
         }
     }
 

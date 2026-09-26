@@ -109,7 +109,7 @@ describe('AuthManager', () => {
             uploadClientPctx: 'client-pctx-token',
         };
 
-        await manager.updateContext(context, 'gemini-3-pro');
+        await manager.updateContext(context);
 
         expect(chrome.storage.local.set).toHaveBeenCalledWith({
             geminiContext: expectedContext,

@@ -152,7 +152,6 @@ class KeepAliveManager {
             });
 
             if (response.ok) {
-                await this._setLastRotationAttempt(Date.now());
                 this.consecutiveErrors = 0;
                 debugLog('[Gemini Nexus] Keep-Alive: Rotation successful');
             } else {

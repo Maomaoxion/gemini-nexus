@@ -402,8 +402,8 @@
             );
         }
 
-        showLoading(msg) {
-            this.view.showLoading(msg);
+        showLoading(loadingMessage) {
+            this.view.showLoading(loadingMessage);
         }
 
         stopLoading() {

@@ -222,4 +222,31 @@ describe('extractOfficialResponseData', () => {
             )
         ).rejects.toThrow(/blocked/);
     });
+
+    it('surfaces the Gemini API error message instead of the raw JSON body', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            text: async () =>
+                '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}',
+        });
+
+        await expect(
+            sendOfficialMessage(
+                'Hello',
+                '',
+                [],
+                {
+                    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+                    apiKey: 'bad-key',
+                    model: 'gemini-3-pro',
+                },
+                'low',
+                [],
+                false,
+                null,
+                vi.fn()
+            )
+        ).rejects.toThrow('API Error (400): API key not valid. Please pass a valid API key.');
+    });
 });

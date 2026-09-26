@@ -1,4 +1,5 @@
 import { downloadFile, downloadText } from './downloads.js';
+import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
 import {
     HISTORY_STORAGE_KEYS,
     SETTINGS_STORAGE_KEYS,
@@ -175,11 +176,6 @@ const WINDOW_MESSAGE_HANDLERS = {
         bridge.saveConnectionSettings(payload);
     },
 };
-
-function getRuntimeLastError() {
-    const message = chrome.runtime?.lastError?.message;
-    return message ? new Error(message) : null;
-}
 
 function exportStorageData(storageKeys, kind, buildPayload) {
     chrome.storage.local.get(storageKeys, (result) => {

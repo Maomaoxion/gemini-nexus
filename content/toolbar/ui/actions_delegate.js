@@ -21,24 +21,22 @@
             this.manager.fireCallback('onAction', action);
         }
 
+        // Separate names because events.js dispatches by method name; the body is
+        // always the same consume-and-fire-onAction pair.
         cancelAsk(event) {
-            consumeEvent(event);
-            this.manager.fireCallback('onAction', 'cancel_ask');
+            this.triggerAction(event, 'cancel_ask');
         }
 
         stopAsk(event) {
-            consumeEvent(event);
-            this.manager.fireCallback('onAction', 'stop_ask');
+            this.triggerAction(event, 'stop_ask');
         }
 
         retryAsk(event) {
-            consumeEvent(event);
-            this.manager.fireCallback('onAction', 'retry_ask');
+            this.triggerAction(event, 'retry_ask');
         }
 
         continueChat(event) {
-            consumeEvent(event);
-            this.manager.fireCallback('onAction', 'continue_chat');
+            this.triggerAction(event, 'continue_chat');
         }
 
         submitAsk() {

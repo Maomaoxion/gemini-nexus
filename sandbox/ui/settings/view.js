@@ -17,9 +17,14 @@ export class SettingsView {
 
         this.connection = new ConnectionSection();
 
+        // Forward exactly the events GeneralSection fires (see general.js); a key
+        // here with no matching `fire()` in the section is a silently dead callback.
         this.general = new GeneralSection({
             onTextSelectionChange: (value) => this.fire('onTextSelectionChange', value),
             onImageToolsChange: (value) => this.fire('onImageToolsChange', value),
+            onImageToolsBlacklistChange: (value) => this.fire('onImageToolsBlacklistChange', value),
+            onGeneratedImageWatermarkRemovalChange: (value) =>
+                this.fire('onGeneratedImageWatermarkRemovalChange', value),
             onSidebarBehaviorChange: (value) => this.fire('onSidebarBehaviorChange', value),
             onSidePanelScopeChange: (value) => this.fire('onSidePanelScopeChange', value),
         });
@@ -164,6 +169,8 @@ export class SettingsView {
             textSelectionBlacklist: generalData.textSelectionBlacklist,
             customSelectionTools: generalData.customSelectionTools,
             imageTools: generalData.imageTools,
+            imageToolsBlacklist: generalData.imageToolsBlacklist,
+            generatedImageWatermarkRemoval: generalData.generatedImageWatermarkRemoval,
             accountIndices: generalData.accountIndices,
             sidebarBehavior: generalData.sidebarBehavior,
             sidePanelScope: generalData.sidePanelScope,

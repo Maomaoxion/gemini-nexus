@@ -41,14 +41,14 @@
             this.lastTranslationRequest = null;
         }
 
-        get t() {
+        get toolbarStrings() {
             return window.GeminiToolbarStrings;
         }
 
         getTranslationTargets() {
             return (
                 this.ui.getSelectedTranslationTargets?.() ||
-                this.t.defaultTranslationTargets || ['auto']
+                this.toolbarStrings.defaultTranslationTargets || ['auto']
             );
         }
 
@@ -61,16 +61,19 @@
         }
 
         buildImageTranslatePrompt() {
-            const prompt = this.t.prompts.imageTranslate;
+            const prompt = this.toolbarStrings.prompts.imageTranslate;
             return typeof prompt === 'function' ? prompt(this.getTranslationTargets()) : prompt;
         }
 
         buildTextTranslatePrompt(selection) {
-            return this.t.prompts.textTranslate(selection, this.getTranslationTargets());
+            return this.toolbarStrings.prompts.textTranslate(
+                selection,
+                this.getTranslationTargets()
+            );
         }
 
         buildGenerateImagePrompt(selection) {
-            const prompt = this.t.prompts.generateImage;
+            const prompt = this.toolbarStrings.prompts.generateImage;
             return typeof prompt === 'function' ? prompt(selection) : selection;
         }
 
@@ -117,7 +120,7 @@
          * @param {string} model - Model name
          */
         async handleImagePrompt(imageDataUrl, rect, mode, model = '') {
-            const strings = this.t;
+            const strings = this.toolbarStrings;
             let title, prompt, loadingMessage, inputValue;
 
             switch (mode) {
@@ -195,11 +198,9 @@
             this.ui.showLoading(loadingMessage);
             this.ui.setInputValue(inputValue);
 
-            const targetModel = window.GeminiWebModels.resolveImagePromptModel({
-                provider,
-                mode,
-                model: model || getDefaultToolbarModel(),
-            });
+            const targetModel = window.GeminiWebModels.resolveImagePromptModel(
+                model || getDefaultToolbarModel()
+            );
 
             const message = withProviderOptions(
                 {
@@ -225,13 +226,13 @@
                 url: imageDataUrl,
             };
 
-            const title = this.t.chatWithImage || this.t.titles.analyze;
+            const title = this.toolbarStrings.chatWithImage || this.toolbarStrings.titles.analyze;
             await this.ui.showAskWindow(rect, null, title);
             this.ui.setInputValue('');
         }
 
         async handleQuickAction(actionType, selection, rect, model = '', mousePoint = null) {
-            const strings = this.t;
+            const strings = this.toolbarStrings;
             let prompt, title, inputPlaceholder, loadingMessage;
 
             if (actionType === 'translate') {
@@ -268,17 +269,7 @@
 
             this.ui.setInputValue(inputPlaceholder);
 
-            const provider = this.getCurrentProvider();
-            const message = withProviderOptions(
-                {
-                    action: 'QUICK_ASK',
-                    text: prompt,
-                    model: model || getDefaultToolbarModel(),
-                },
-                provider,
-                this.getCurrentWebThinkingLevel()
-            );
-
+            const message = this._buildQuickAskMessage(prompt, model);
             this.lastRequest = message;
             this.lastTranslationRequest =
                 actionType === 'translate' ? { type: 'text', selection } : null;
@@ -286,29 +277,31 @@
         }
 
         async handleGenerateImage(selection, rect, model = '', mousePoint = null) {
-            const title = this.t.titles.generateImage;
+            const title = this.toolbarStrings.titles.generateImage;
             const prompt = this.buildGenerateImagePrompt(selection);
 
             this.lastTranslationRequest = null;
             this.ui.hide();
             await this.ui.showAskWindow(rect, selection, title, mousePoint);
             this.ui.setTranslationTargetMode?.(false);
-            this.ui.showLoading(this.t.loading.generateImage);
-            this.ui.setInputValue(this.t.inputs.generateImage);
+            this.ui.showLoading(this.toolbarStrings.loading.generateImage);
+            this.ui.setInputValue(this.toolbarStrings.inputs.generateImage);
 
-            const provider = this.getCurrentProvider();
-            const message = withProviderOptions(
+            const message = this._buildQuickAskMessage(prompt, model);
+            this.lastRequest = message;
+            this.sendRuntimeMessage(message);
+        }
+
+        _buildQuickAskMessage(prompt, model = '') {
+            return withProviderOptions(
                 {
                     action: 'QUICK_ASK',
                     text: prompt,
                     model: model || getDefaultToolbarModel(),
                 },
-                provider,
+                this.getCurrentProvider(),
                 this.getCurrentWebThinkingLevel()
             );
-
-            this.lastRequest = message;
-            this.sendRuntimeMessage(message);
         }
 
         async handleCustomSelectionTool(tool, selection, rect, model = '', mousePoint = null) {
@@ -319,20 +312,13 @@
             this.ui.hide();
             await this.ui.showAskWindow(rect, selection, title, mousePoint);
             this.ui.setTranslationTargetMode?.(false);
-            this.ui.showLoading(this.t.loading.customSelectionTool || this.t.loading.analyze);
+            this.ui.showLoading(
+                this.toolbarStrings.loading.customSelectionTool ||
+                    this.toolbarStrings.loading.analyze
+            );
             this.ui.setInputValue(title);
 
-            const provider = this.getCurrentProvider();
-            const message = withProviderOptions(
-                {
-                    action: 'QUICK_ASK',
-                    text: prompt,
-                    model: model || getDefaultToolbarModel(),
-                },
-                provider,
-                this.getCurrentWebThinkingLevel()
-            );
-
+            const message = this._buildQuickAskMessage(prompt, model);
             this.lastRequest = message;
             this.sendRuntimeMessage(message);
         }
@@ -344,11 +330,7 @@
             const provider = this.getCurrentProvider();
 
             if (this.pendingImageChat) {
-                const targetModel = window.GeminiWebModels.resolveImagePromptModel({
-                    provider,
-                    mode: 'chat',
-                    model: selectedModel,
-                });
+                const targetModel = window.GeminiWebModels.resolveImagePromptModel(selectedModel);
                 const message = withProviderOptions(
                     {
                         action: 'QUICK_ASK_IMAGE',
@@ -413,11 +395,7 @@
             if (currentModel) {
                 retryRequest.model =
                     retryRequest.action === 'QUICK_ASK_IMAGE'
-                        ? window.GeminiWebModels.resolveImagePromptModel({
-                              provider,
-                              mode: retryRequest.imageMode,
-                              model: currentModel,
-                          })
+                        ? window.GeminiWebModels.resolveImagePromptModel(currentModel)
                         : currentModel;
             }
 
@@ -427,7 +405,7 @@
                 this.getCurrentWebThinkingLevel()
             );
             this.lastRequest = retryMessage;
-            const loadingMessage = this.t.loading.regenerate;
+            const loadingMessage = this.toolbarStrings.loading.regenerate;
             this.ui.showLoading(loadingMessage);
             this.sendRuntimeMessage(retryMessage);
         }

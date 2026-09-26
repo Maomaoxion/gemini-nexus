@@ -3,6 +3,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function installShortcuts() {
+    // The manifest lists shared/config/constants_global.js before content/shortcuts.js
+    // in the same content_scripts entry, so load it first the way the page does.
+    await import('../shared/config/constants_global.js');
     await import('./shortcuts.js');
 }
 

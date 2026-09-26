@@ -1,4 +1,13 @@
 (function () {
+    // Image-editing toolbar actions and the edit mode each one sends to the model.
+    const IMAGE_EDIT_MODES = {
+        image_upscale: 'upscale',
+        image_remove_bg: 'remove_bg',
+        image_remove_watermark: 'remove_watermark',
+        image_expand: 'expand',
+        image_remove_text: 'remove_text',
+    };
+
     class ToolbarDispatcher {
         constructor(controller) {
             this.controller = controller;
@@ -15,6 +24,25 @@
         }
         get imageDetector() {
             return this.controller.imageDetector;
+        }
+
+        /**
+         * Image actions all start from the hovered image: resolve the URL to send
+         * and the rect the ask-window anchors to, then dismiss the hover button and
+         * drop the session link so the next run starts a fresh conversation.
+         * Returns null when no image is under the cursor.
+         */
+        async _beginImageAction() {
+            const currentImage = this.imageDetector.getCurrentImage();
+            if (!currentImage) return null;
+
+            const imageUrl = await this._resolveImageUrl(currentImage);
+            const imageRect = currentImage.getBoundingClientRect();
+
+            this.ui.hideImageButton();
+            this.controller.lastSessionId = null;
+
+            return { imageUrl, imageRect };
         }
 
         async dispatch(actionType, actionPayload) {
@@ -37,17 +65,11 @@
                     case 'image_analyze':
                     case 'image_describe':
                         {
-                            const currentImage = this.imageDetector.getCurrentImage();
-                            if (!currentImage) return;
-
-                            const imageUrl = await this._resolveImageUrl(currentImage);
-                            const imageRect = currentImage.getBoundingClientRect();
-
-                            this.ui.hideImageButton();
-                            this.controller.lastSessionId = null;
+                            const imageAction = await this._beginImageAction();
+                            if (!imageAction) return;
                             this.actions.handleImagePrompt(
-                                imageUrl,
-                                imageRect,
+                                imageAction.imageUrl,
+                                imageAction.imageRect,
                                 'analyze',
                                 currentModel
                             );
@@ -56,31 +78,22 @@
 
                     case 'image_chat':
                         {
-                            const currentImage = this.imageDetector.getCurrentImage();
-                            if (!currentImage) return;
-
-                            const imageUrl = await this._resolveImageUrl(currentImage);
-                            const imageRect = currentImage.getBoundingClientRect();
-
-                            this.ui.hideImageButton();
-                            this.controller.lastSessionId = null;
-                            this.actions.handleImageChat(imageUrl, imageRect);
+                            const imageAction = await this._beginImageAction();
+                            if (!imageAction) return;
+                            this.actions.handleImageChat(
+                                imageAction.imageUrl,
+                                imageAction.imageRect
+                            );
                         }
                         break;
 
                     case 'image_extract':
                         {
-                            const currentImage = this.imageDetector.getCurrentImage();
-                            if (!currentImage) return;
-
-                            const imageUrl = await this._resolveImageUrl(currentImage);
-                            const imageRect = currentImage.getBoundingClientRect();
-
-                            this.ui.hideImageButton();
-                            this.controller.lastSessionId = null;
+                            const imageAction = await this._beginImageAction();
+                            if (!imageAction) return;
                             this.actions.handleImagePrompt(
-                                imageUrl,
-                                imageRect,
+                                imageAction.imageUrl,
+                                imageAction.imageRect,
                                 'ocr',
                                 currentModel
                             );
@@ -89,17 +102,11 @@
 
                     case 'image_translate':
                         {
-                            const currentImage = this.imageDetector.getCurrentImage();
-                            if (!currentImage) return;
-
-                            const imageUrl = await this._resolveImageUrl(currentImage);
-                            const imageRect = currentImage.getBoundingClientRect();
-
-                            this.ui.hideImageButton();
-                            this.controller.lastSessionId = null;
+                            const imageAction = await this._beginImageAction();
+                            if (!imageAction) return;
                             this.actions.handleImagePrompt(
-                                imageUrl,
-                                imageRect,
+                                imageAction.imageUrl,
+                                imageAction.imageRect,
                                 'translate',
                                 currentModel
                             );
@@ -112,22 +119,15 @@
                     case 'image_upscale':
                     case 'image_expand':
                         {
-                            const currentImage = this.imageDetector.getCurrentImage();
-                            if (!currentImage) return;
+                            const imageAction = await this._beginImageAction();
+                            if (!imageAction) return;
 
-                            const imageUrl = await this._resolveImageUrl(currentImage);
-                            const imageRect = currentImage.getBoundingClientRect();
-
-                            this.ui.hideImageButton();
-                            this.controller.lastSessionId = null;
-
-                            let mode = 'remove_text';
-                            if (actionType === 'image_upscale') mode = 'upscale';
-                            if (actionType === 'image_remove_bg') mode = 'remove_bg';
-                            if (actionType === 'image_remove_watermark') mode = 'remove_watermark';
-                            if (actionType === 'image_expand') mode = 'expand';
-
-                            this.actions.handleImagePrompt(imageUrl, imageRect, mode, currentModel);
+                            this.actions.handleImagePrompt(
+                                imageAction.imageUrl,
+                                imageAction.imageRect,
+                                IMAGE_EDIT_MODES[actionType],
+                                currentModel
+                            );
                         }
                         break;
 

@@ -55,6 +55,5 @@
         }
     }
 
-    TranslationTargetStore.STORAGE_KEY = TRANSLATION_TARGET_STORAGE_KEY;
     window.GeminiTranslationTargetStore = TranslationTargetStore;
 })();

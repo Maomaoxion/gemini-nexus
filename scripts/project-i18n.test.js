@@ -33,3 +33,27 @@ describe('project i18n', () => {
         }
     });
 });
+
+describe('project i18n referenced keys', () => {
+    it('defines every key the runtime asks for', async () => {
+        // t() falls back to returning the key itself, so a missing entry does not
+        // throw — it renders the raw identifier as a visible label or tooltip.
+        const { translations } = await import('../sandbox/core/translations.js');
+        const runtimeFiles = (await collectProjectSourceFiles()).filter(isSandboxI18nSourceFile);
+        const usedKeys = new Set();
+
+        for (const runtimeFile of runtimeFiles) {
+            const source = await readProjectFile(runtimeFile);
+            for (const key of collectI18nKeysFromSource(source)) {
+                usedKeys.add(key);
+            }
+        }
+
+        for (const language of Object.keys(translations)) {
+            const dictionary = translations[language];
+            for (const key of usedKeys) {
+                expect(dictionary[key], `${language}.${key}`).toBeTypeOf('string');
+            }
+        }
+    });
+});

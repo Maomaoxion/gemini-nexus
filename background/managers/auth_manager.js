@@ -144,13 +144,8 @@ export class AuthManager {
     }
 
     async resetContext() {
-        this.currentContext = null;
-        // Do not remove geminiModel to preserve user preference in UI
-        try {
-            await chrome.storage.local.remove(['geminiContext']);
-        } catch (error) {
-            console.warn('[Gemini Nexus] Failed to clear Web auth context:', error);
-        }
+        // clearContext keeps geminiModel so the UI preference survives a reset.
+        await this.clearContext();
 
         // Rotate to spread load on reset
         if (this.accountIndices.length > 1) {

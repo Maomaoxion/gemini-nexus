@@ -206,7 +206,6 @@
 }
 
 .setting-field .settings-input {
-    grid-column: 1 / -1;
     width: 100%;
     box-sizing: border-box;
     text-align: left;

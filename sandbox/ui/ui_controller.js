@@ -146,9 +146,6 @@ export class UIController {
     restoreChatScrollState(state) {
         this.chat.restoreScrollState(state);
     }
-    followStreamingContent() {
-        this.chat.followStreamingContent();
-    }
     scrollToBottom(options) {
         this.chat.scrollToBottom(options);
     }

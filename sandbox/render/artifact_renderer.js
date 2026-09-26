@@ -396,5 +396,3 @@ export function setGraphvizLoaderForTest(loader) {
     graphvizInstancePromise = null;
     graphvizCache.clear();
 }
-
-export { getArtifactKind };

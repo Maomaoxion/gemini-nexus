@@ -9,13 +9,9 @@ describe('toolbar web model helper', () => {
     });
 
     it('keeps image editing actions on the selected Web model', () => {
-        expect(
-            window.GeminiWebModels.resolveImagePromptModel({
-                provider: 'web',
-                mode: 'remove_bg',
-                model: 'e6fa609c3fa255c0',
-            })
-        ).toBe('e6fa609c3fa255c0');
+        expect(window.GeminiWebModels.resolveImagePromptModel('e6fa609c3fa255c0')).toBe(
+            'e6fa609c3fa255c0'
+        );
     });
 
     it('lists only current Web chat models', () => {
@@ -34,12 +30,14 @@ describe('toolbar web model helper', () => {
     });
 
     it('keeps non-generation image analysis on the selected model', () => {
-        expect(
-            window.GeminiWebModels.resolveImagePromptModel({
-                provider: 'web',
-                mode: 'ocr',
-                model: 'e6fa609c3fa255c0',
-            })
-        ).toBe('e6fa609c3fa255c0');
+        expect(window.GeminiWebModels.resolveImagePromptModel('e6fa609c3fa255c0')).toBe(
+            'e6fa609c3fa255c0'
+        );
+    });
+
+    it('falls back to the default Web model when none is selected', () => {
+        expect(window.GeminiWebModels.resolveImagePromptModel('')).toBe(
+            window.GeminiWebModels.DEFAULT_WEB_MODEL
+        );
     });
 });

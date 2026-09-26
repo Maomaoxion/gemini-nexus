@@ -16,6 +16,5 @@
             return computeDisabled() ? 'mhtml' : null;
         },
         isMhtmlArchiveUrl,
-        isDisabledValue: computeDisabled(),
     };
 })();

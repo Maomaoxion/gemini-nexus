@@ -222,6 +222,38 @@ describe('project code hygiene', () => {
         }
     });
 
+    it('keeps source files free of raw control characters', async () => {
+        // A literal C0 byte (for example a raw U+0000 written as the start of a regex
+        // range instead of the escape) makes git treat the whole file as binary, so
+        // every future diff of that file becomes unreviewable.
+        const sourceFiles = await collectProjectSourceFiles();
+
+        for (const sourcePath of sourceFiles) {
+            const source = await readProjectFile(sourcePath);
+            const controlChars = source.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g);
+
+            expect(controlChars, sourcePath).toBeNull();
+        }
+    });
+
+    it('does not keep decorative section-banner comments', async () => {
+        // The repo groups code with descriptive function names instead of ruled
+        // banners, so a '// --- Section ---' header is noise that goes stale silently
+        // once the members under it change. Stylesheets and the CSS template strings in
+        // the toolbar style modules use the `/* --- Section --- */` spelling, which the
+        // line-comment form above never caught.
+        const sourceFiles = await collectProjectSourceFiles();
+        const stylesheetFiles = await collectProjectSourceFiles('css', /\.css$/);
+        const decorativeBanner = /^\s*(?:\/\/|\/\*)\s*[-=*~_]{3,}/;
+
+        for (const sourcePath of [...sourceFiles, ...stylesheetFiles]) {
+            const source = await readProjectFile(sourcePath);
+            const banner = source.split('\n').find((line) => decorativeBanner.test(line));
+
+            expect(banner, `${sourcePath}: ${banner}`).toBeUndefined();
+        }
+    });
+
     it('does not keep redundant source path banner comments', async () => {
         const sourceFiles = await collectProjectSourceFiles();
 
@@ -765,10 +797,15 @@ describe('project code hygiene', () => {
             'background/index.js',
             'background/managers/image_manager.js',
             'background/managers/auth_manager.js',
+            'background/managers/control_manager.js',
             'background/managers/history_manager.js',
             'background/managers/keep_alive.js',
+            'background/managers/log_manager.js',
+            'background/managers/session_manager.js',
             'background/managers/session/settings_store.js',
             'background/managers/session/request_dispatcher.js',
+            'background/control/action_waiter.js',
+            'background/control/snapshot/index.js',
             'background/handlers/session/prompt/tool_executor.js',
             'background/handlers/ui.js',
             'content/index.js',
@@ -925,6 +962,20 @@ describe('project code hygiene', () => {
             '--- AI Prompts (Centralized) ---',
             'Image Actions',
             '--- View Manipulation ---',
+            'Control Lifecycle',
+            'Internal Helpers',
+            'Execution Entry Point',
+            'SW Lifecycle Persistence',
+            'Console Interception Helper',
+            'Prune if too large',
+            'Normalize files',
+            'Handle common user-facing errors',
+            'Delegate to dispatcher',
+            'Upload in parallel',
+            'Start observing',
+            'Clear maps',
+            'Increment Snapshot ID',
+            'Map console level to LogManager level',
         ];
 
         for (const sourcePath of sourceFiles) {
@@ -1060,9 +1111,11 @@ describe('project code hygiene', () => {
     });
 
     it('uses descriptive fallback UUID names and the vendored Gemini watermark runtime wrapper', async () => {
-        const utils = await readProjectFile('shared/utils/index.js');
+        const utils = await readProjectFile('shared/utils/id_global.js');
         const watermarkRemover = await readProjectFile('shared/media/watermark_remover_global.js');
 
+        // index.js only forwards these two helpers, so the naming guard belongs
+        // on the module that owns the fallback generator.
         expect(utils).toContain('randomNibble');
         expect(utils).toContain('uuidNibble');
         expect(utils).not.toMatch(/\.replace\(\s*\/\[xy\]\/g,\s*\(c\)\s*=>/);
@@ -1074,5 +1127,32 @@ describe('project code hygiene', () => {
         expect(watermarkRemover).not.toContain('watermarkX');
         expect(watermarkRemover).not.toContain('SAMPLE_SIZE');
         expect(watermarkRemover).not.toContain('fillRect');
+    });
+});
+
+describe('project stylesheet hygiene', () => {
+    it('declares every custom property the stylesheets reference', async () => {
+        // An unresolved var() silently drops the declaration, so a renamed or
+        // deleted token fails visually instead of failing loudly. References that
+        // carry their own fallback (var(--x, 140px)) are intentional and skipped.
+        const { readdir } = await import('node:fs/promises');
+        const cssDir = new URL('../css/', import.meta.url);
+        const entries = await readdir(cssDir, { withFileTypes: true });
+        const stylePaths = entries
+            .filter((e) => e.isFile() && e.name.endsWith('.css'))
+            .map((e) => `css/${e.name}`);
+
+        const styles = await Promise.all(stylePaths.map((p) => readProjectFile(p)));
+        const declared = new Set();
+        for (const style of styles) {
+            for (const match of style.matchAll(/(--[a-z0-9-]+)\s*:/g)) declared.add(match[1]);
+        }
+
+        for (const [index, style] of styles.entries()) {
+            // Only references without an inline fallback depend on the declaration.
+            for (const match of style.matchAll(/var\(\s*(--[a-z0-9-]+)\s*\)/g)) {
+                expect(declared.has(match[1]), `${stylePaths[index]}: ${match[1]}`).toBe(true);
+            }
+        }
     });
 });

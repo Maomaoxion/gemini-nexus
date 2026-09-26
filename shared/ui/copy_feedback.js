@@ -23,7 +23,6 @@
     }
 
     globalThis.GeminiCopyFeedback = {
-        CHECK_ICON: FALLBACK_CHECK_ICON,
         showCopied,
     };
 })();

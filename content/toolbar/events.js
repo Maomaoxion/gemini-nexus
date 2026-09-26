@@ -33,8 +33,8 @@
     ];
 
     class ToolbarEvents {
-        constructor(controller) {
-            this.controller = controller;
+        constructor(toolbarUi) {
+            this.toolbarUi = toolbarUi;
             this.resizeObserver = null;
             this.submenuPlacementHandlers = [];
             this.handleGlobalKeydown = this.handleGlobalKeydown.bind(this);
@@ -59,10 +59,10 @@
             this._add(imageBtn, 'click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this.controller.handleImageClick();
+                this.toolbarUi.handleImageClick();
             });
-            this._add(imageBtn, 'mouseover', () => this.controller.handleImageHover(true));
-            this._add(imageBtn, 'mouseout', () => this.controller.handleImageHover(false));
+            this._add(imageBtn, 'mouseover', () => this.toolbarUi.handleImageHover(true));
+            this._add(imageBtn, 'mouseout', () => this.toolbarUi.handleImageHover(false));
 
             IMAGE_MENU_ACTIONS.forEach(([buttonName, actionName]) => {
                 this._bindTrigger(buttons[buttonName], 'click', actionName, {
@@ -78,19 +78,19 @@
             this._add(askInput, 'keydown', (event) => {
                 if (event.key === 'Enter' && !event.isComposing) {
                     event.preventDefault();
-                    this.controller.actions.submitAsk(event);
+                    this.toolbarUi.actions.submitAsk(event);
                 }
                 event.stopPropagation();
             });
 
             this._add(askModelSelect, 'change', (event) => {
-                this.controller.handleModelChange(event.target.value);
+                this.toolbarUi.handleModelChange(event.target.value);
                 const Layout = window.GeminiViewLayout;
                 if (Layout && Layout.resizeSelect) Layout.resizeSelect(event.target);
             });
 
             this._add(askProviderSelect, 'change', (event) => {
-                this.controller.handleProviderChange?.(event.target.value);
+                this.toolbarUi.handleProviderChange?.(event.target.value);
                 const Layout = window.GeminiViewLayout;
                 if (Layout && Layout.resizeSelect) Layout.resizeSelect(event.target);
             });
@@ -98,7 +98,7 @@
             this._add(askThinkingToggle, 'click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this.controller.handleWebThinkingToggle?.();
+                this.toolbarUi.handleWebThinkingToggle?.();
             });
 
             this._add(translationTargets, 'change', (event) => {
@@ -108,16 +108,16 @@
                 ]
                     .filter((input) => input.checked)
                     .map((input) => input.value);
-                this.controller.handleTranslationTargetsChange(selected);
+                this.toolbarUi.handleTranslationTargetsChange(selected);
                 // Single-choice menu: collapse once a language is picked.
-                this.controller.closeTranslationTargetDropdown?.();
+                this.toolbarUi.closeTranslationTargetDropdown?.();
                 event.stopPropagation();
             });
 
             this._add(translationTargetTrigger, 'click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this.controller.toggleTranslationTargetDropdown();
+                this.toolbarUi.toggleTranslationTargetDropdown();
             });
 
             // Prevent event bubbling to page
@@ -127,26 +127,25 @@
 
             if (elements.resultText) {
                 this._add(elements.resultText, 'click', (event) =>
-                    this.controller.codeCopy.handle(event)
+                    this.toolbarUi.codeCopy.handle(event)
                 );
             }
 
             this._initResizeObserver(askWindow);
 
-            // Bind Global Escape Key
             document.addEventListener('keydown', this.handleGlobalKeydown, true);
         }
 
         handleGlobalKeydown(event) {
             if (event.key === 'Escape') {
-                if (this.controller.isWindowVisible()) {
+                if (this.toolbarUi.isWindowVisible()) {
                     event.preventDefault();
                     event.stopPropagation();
-                    this.controller.actions.cancelAsk(event);
-                } else if (this.controller.isVisible()) {
+                    this.toolbarUi.actions.cancelAsk(event);
+                } else if (this.toolbarUi.isVisible()) {
                     // Hides small toolbar (selection or image button)
-                    this.controller.hide();
-                    this.controller.hideImageButton();
+                    this.toolbarUi.hide();
+                    this.toolbarUi.hideImageButton();
                 }
             }
         }
@@ -163,12 +162,12 @@
                     event.preventDefault();
                     event.stopPropagation();
                 }
-                this.controller.actions.triggerAction(event, actionName);
+                this.toolbarUi.actions.triggerAction(event, actionName);
             });
         }
 
         _bindActionMethod(button, methodName) {
-            this._add(button, 'click', (event) => this.controller.actions[methodName](event));
+            this._add(button, 'click', (event) => this.toolbarUi.actions[methodName](event));
         }
 
         _initResizeObserver(targetElement) {
@@ -176,7 +175,7 @@
 
             this.resizeObserver = new ResizeObserver((entries) => {
                 for (const entry of entries) {
-                    if (this.controller.isWindowVisible()) {
+                    if (this.toolbarUi.isWindowVisible()) {
                         let width, height;
                         if (entry.borderBoxSize && entry.borderBoxSize.length > 0) {
                             width = entry.borderBoxSize[0].inlineSize;
@@ -187,7 +186,7 @@
                         }
 
                         if (width > 50 && height > 50) {
-                            this.controller.saveWindowDimensions(width, height);
+                            this.toolbarUi.saveWindowDimensions(width, height);
                         }
                     }
                 }

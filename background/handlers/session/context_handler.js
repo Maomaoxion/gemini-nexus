@@ -5,7 +5,7 @@ export class ContextHandler {
 
     handleSetContext(request, sendResponse) {
         this.sessionManager
-            .setContext(request.context, request.model)
+            .setContext(request.context)
             .then(() => sendResponse({ status: 'context_updated' }))
             .catch((error) => {
                 console.error('[Gemini Nexus] Failed to set Web auth context:', error);

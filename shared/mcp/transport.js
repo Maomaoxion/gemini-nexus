@@ -19,9 +19,7 @@ export function asWsUrl(url) {
  */
 export function asHttpUrl(url) {
     if (!url || typeof url !== 'string') return '';
-    const trimmed = url.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    return trimmed;
+    return url.trim();
 }
 
 /**

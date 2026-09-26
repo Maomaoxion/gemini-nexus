@@ -76,7 +76,7 @@ function buildContextMenuItems() {
     const isZh = chrome.i18n.getUILanguage().startsWith('zh');
 
     const titles = {
-        main: isZh ? 'Gemini Nexus' : 'Gemini Nexus',
+        main: 'Gemini Nexus',
         ask: isZh ? '快速提问' : 'Quick Ask',
         pageChat: isZh ? '与当前网页对话' : 'Chat with Page',
         readPage: isZh ? '朗读当前网页' : 'Read page aloud',

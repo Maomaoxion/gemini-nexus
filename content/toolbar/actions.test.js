@@ -88,7 +88,7 @@ describe('ToolbarActions', () => {
         };
         installToolbarStrings();
         window.GeminiWebModels = {
-            resolveImagePromptModel: ({ model }) => model,
+            resolveImagePromptModel: (model) => model,
         };
         await installToolbarActions();
     });

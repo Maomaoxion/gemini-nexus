@@ -33,6 +33,8 @@ const requiredPaths = [
     'manifest.json',
     'logo.png',
     'assets/icons',
+    'assets/cursors',
+    'content/cursor',
     'background',
     'shared',
     'services',
@@ -280,34 +282,22 @@ async function writePackagedManifest() {
     );
 }
 
-async function writeContentBundle() {
-    /** @type {string[]} */
-    const contentScriptOrder = CONTENT_SCRIPT_ORDER;
+/**
+ * Concatenate one manifest script order into a single bundled classic script.
+ * @param {string[]} scriptOrder
+ * @param {string} targetRelativePath
+ */
+async function writeContentBundle(scriptOrder, targetRelativePath) {
     const segments = await Promise.all(
-        contentScriptOrder.map(async (relativePath) => ({
+        scriptOrder.map(async (relativePath) => ({
             relativePath,
             source: await readFile(path.join(rootDir, relativePath), 'utf8'),
         }))
     );
 
-    const target = path.join(packageDir, 'content/index.js');
+    const target = path.join(packageDir, targetRelativePath);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, formatContentBundle(segments), 'utf8');
-}
-
-async function writeYouTubeBundle() {
-    /** @type {string[]} */
-    const youtubeScriptOrder = YOUTUBE_SCRIPT_ORDER;
-    const segments = await Promise.all(
-        youtubeScriptOrder.map(async (relativePath) => ({
-            relativePath,
-            source: await readFile(path.join(rootDir, relativePath), 'utf8'),
-        }))
-    );
-
-    const bundleTarget = path.join(packageDir, 'content/youtube_summary_bundle.js');
-    await mkdir(path.dirname(bundleTarget), { recursive: true });
-    await writeFile(bundleTarget, formatContentBundle(segments), 'utf8');
 }
 
 async function copyUnbundledContentScripts() {
@@ -360,8 +350,8 @@ async function main() {
         copyIntoPackage('assets/icons'),
         copyIntoPackage('assets/cursors'),
         copyIntoPackage('background'),
-        writeContentBundle(),
-        writeYouTubeBundle(),
+        writeContentBundle(CONTENT_SCRIPT_ORDER, 'content/index.js'),
+        writeContentBundle(YOUTUBE_SCRIPT_ORDER, 'content/youtube_summary_bundle.js'),
         copyUnbundledContentScripts(),
         copyIntoPackage('content/cursor'),
         copyIntoPackage('shared'),
