@@ -240,6 +240,15 @@ export class MessageHandler {
         this.app.prompt.forceClearGenerating();
         this.clearStreamState(this.getRequestSessionId(request));
 
+        if (request.status === 'success' && request.historySaved === false) {
+            // The reply is on screen but the session store did not accept it
+            // (storage refused the write), so it will not survive a reload.
+            this.ui.updateStatus?.(t('historyNotSaved'));
+            setTimeout(() => {
+                if (!this.app.isGenerating) this.ui.updateStatus?.('');
+            }, 5000);
+        }
+
         if (!this.isCurrentSessionMessage(request)) {
             this.resetStream();
             return;

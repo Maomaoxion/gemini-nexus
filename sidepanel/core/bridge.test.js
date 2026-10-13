@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MessageBridge } from './bridge.js';
+import { MessageBridge, setUnlimitedStorageGrantForTest } from './bridge.js';
 
 function createFrame() {
     const sandboxWindow = {};
@@ -866,6 +866,76 @@ describe('MessageBridge model persistence', () => {
         expect(state.save).not.toHaveBeenCalled();
         expect(chrome.storage.local.set).not.toHaveBeenCalled();
         warn.mockRestore();
+    });
+
+    it('skips the near-full guard once unlimitedStorage is granted', async () => {
+        const frame = createFrame();
+        const state = createState();
+        const bridge = new MessageBridge(frame, state);
+        chrome.storage.local.QUOTA_BYTES = 10485760;
+        chrome.storage.local.getBytesInUse = vi.fn((callback) => callback(10485760 * 0.99));
+        chrome.storage.local.get.mockImplementation((keys, callback) =>
+            callback({ geminiSessions: [] })
+        );
+        setUnlimitedStorageGrantForTest(true);
+
+        try {
+            bridge.handleWindowMessage({
+                source: frame.getWindow(),
+                data: {
+                    action: 'SAVE_SESSIONS',
+                    payload: [
+                        {
+                            id: 'session-1',
+                            title: 'Fresh',
+                            timestamp: 100,
+                            messages: [{ role: 'user', text: 'Hi' }],
+                        },
+                    ],
+                },
+            });
+
+            await vi.waitFor(() => expect(state.save).toHaveBeenCalled());
+            expect(chrome.storage.local.getBytesInUse).not.toHaveBeenCalled();
+        } finally {
+            setUnlimitedStorageGrantForTest(null);
+        }
+    });
+
+    it('tells the sandbox when a full storage area blocks the session save', () => {
+        const frame = createFrame();
+        const state = createState();
+        const bridge = new MessageBridge(frame, state);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        chrome.storage.local.QUOTA_BYTES = 10485760;
+        chrome.storage.local.getBytesInUse = vi.fn((callback) => callback(10485760 * 0.99));
+        setUnlimitedStorageGrantForTest(false);
+
+        try {
+            bridge.handleWindowMessage({
+                source: frame.getWindow(),
+                data: {
+                    action: 'SAVE_SESSIONS',
+                    payload: [
+                        {
+                            id: 'session-1',
+                            title: 'Blocked',
+                            timestamp: 100,
+                            messages: [{ role: 'user', text: 'Hi' }],
+                        },
+                    ],
+                },
+            });
+
+            expect(state.save).not.toHaveBeenCalled();
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'HISTORY_SAVE_BLOCKED', reason: 'quota' },
+            });
+        } finally {
+            setUnlimitedStorageGrantForTest(null);
+            warn.mockRestore();
+        }
     });
 
     it('applies group updates without truncating newer stored messages', async () => {

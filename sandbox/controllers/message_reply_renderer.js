@@ -48,12 +48,25 @@ export class MessageReplyRenderState {
     }
 }
 
+// Keep the session model in step with what is on screen. The chat view is
+// rebuilt from session.messages on every switch, so a terminal reply the
+// storage round-trip did not carry (storage write failed / skipped) would
+// disappear as soon as the user switches chats.
+function ensureSessionAiRow(handler, session, request) {
+    if (request.status !== 'success' && request.status !== 'error') return;
+    if (handler.hasPersistedAiReply(session, request)) return;
+
+    handler.sessionManager.addAiMessage(session.id, request);
+}
+
 export function renderGeminiReply(handler, session, request) {
     if (!session) return;
 
     if (request.status === 'success') {
         handler.sessionManager.updateContext(session.id, request.context);
     }
+
+    ensureSessionAiRow(handler, session, request);
 
     // Error and cancelled replies need the same streaming-bubble teardown
     // as success, otherwise the partial streaming bubble is left dangling

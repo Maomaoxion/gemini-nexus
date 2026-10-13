@@ -256,15 +256,28 @@ describe('input events', () => {
         expect(app.handleSendMessage).not.toHaveBeenCalled();
     });
 
-    it('force-sends after cancel when generation is stuck and draft has text', () => {
+    it('sends the draft after cancelling when the stop button is clicked with text', () => {
         const { app, sendBtn, inputFn } = bindHarness({ isGenerating: true });
         inputFn.value = 'retry me';
-        app.prompt = {
-            isGenerationLikelyStuck: () => true,
-        };
         sendBtn.click();
         expect(app.handleCancel).toHaveBeenCalledTimes(1);
         expect(app.handleSendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('explains the running generation when Enter is pressed with a draft', () => {
+        const { app, inputFn, ui } = bindHarness({ isGenerating: true });
+        ui.updateStatus = vi.fn();
+        inputFn.value = 'next question';
+        inputFn.focus();
+
+        const keyEvent = createKeyboardEvent('Enter');
+        inputFn.dispatchEvent(keyEvent);
+
+        expect(keyEvent.defaultPrevented).toBe(true);
+        expect(app.handleSendMessage).not.toHaveBeenCalled();
+        expect(app.handleCancel).not.toHaveBeenCalled();
+        expect(ui.updateStatus).toHaveBeenCalledTimes(1);
+        expect(ui.updateStatus.mock.calls[0][0]).not.toBe('');
     });
 
     it('cycles models with Tab from the prompt, not from arbitrary UI targets', () => {

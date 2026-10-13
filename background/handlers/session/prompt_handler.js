@@ -385,11 +385,15 @@ export class PromptHandler {
                         // Only final replies are persisted and sent as GEMINI_REPLY.
                         // Intermediate tool-call JSON is consumed by the loop and should not
                         // terminate the UI streaming state.
+                        let historySaved = true;
                         if (request.sessionId) {
-                            await appendAiMessage(request.sessionId, result);
+                            historySaved =
+                                (await appendAiMessage(request.sessionId, result)) !== false;
                         }
 
-                        chrome.runtime.sendMessage(result).catch(() => {});
+                        // Carry the save outcome so the UI can tell the user the
+                        // reply is on screen only until the next reload.
+                        chrome.runtime.sendMessage({ ...result, historySaved }).catch(() => {});
                         keepLooping = false;
                     }
                 }

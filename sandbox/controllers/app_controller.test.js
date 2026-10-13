@@ -408,6 +408,22 @@ describe('AppController session restore behavior', () => {
         expect(ui.updateStatus).toHaveBeenCalledWith('Side panel unavailable');
     });
 
+    it('shows a blocked history save instead of failing silently', async () => {
+        const { app, ui } = createAppHarness();
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'HISTORY_SAVE_BLOCKED',
+                    reason: 'quota',
+                },
+            },
+        });
+
+        expect(ui.updateStatus).toHaveBeenCalledWith('historySaveBlocked');
+    });
+
     it('shows open-tabs result errors instead of opening an empty selector', async () => {
         const { app, ui } = createAppHarness();
 

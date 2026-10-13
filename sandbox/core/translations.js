@@ -200,6 +200,11 @@ export const translations = {
         enterMessageToSend: 'Enter a message to send.',
         sessionCreateFailed: 'Could not create chat session.',
         requestTimedOut: 'Request timed out. Please try again.',
+        sendWhileGeneratingHint: 'Still generating. Wait for it to finish, or press Stop to send.',
+        historyNotSaved:
+            'Reply shown but not saved to chat history; it can disappear after a reload.',
+        historySaveBlocked:
+            'Chat history storage is full, so newer messages were not saved. Delete old chats to free space.',
         deleteChatConfirm: 'Delete this chat?',
         delete: 'Delete',
         renameChat: 'Rename',
@@ -506,6 +511,9 @@ export const translations = {
         enterMessageToSend: '请先输入内容再发送。',
         sessionCreateFailed: '无法创建会话。',
         requestTimedOut: '请求超时，请重试。',
+        sendWhileGeneratingHint: '正在生成中，请等待完成，或点击停止后再发送。',
+        historyNotSaved: '回复已显示但未能写入会话历史，刷新后可能丢失。',
+        historySaveBlocked: '会话历史存储空间已满，最新消息未能保存，请删除旧会话释放空间。',
         deleteChatConfirm: '确认删除此对话？',
         delete: '删除',
         renameChat: '重命名',

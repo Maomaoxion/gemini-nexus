@@ -483,6 +483,15 @@ export class AppController {
                 }
                 return;
             }
+            if (payload.action === 'HISTORY_SAVE_BLOCKED') {
+                // Storage refused the session save; the chat on screen is ahead
+                // of what a reload would restore, so say so instead of staying quiet.
+                this.ui.updateStatus(t('historySaveBlocked'));
+                setTimeout(() => {
+                    if (!this.isGenerating) this.ui.updateStatus('');
+                }, 4000);
+                return;
+            }
             if (payload.action === 'PAGE_CONTEXT_RESULT') {
                 const pageContentLength = payload.length;
                 const formattedLength = new Intl.NumberFormat().format(pageContentLength);

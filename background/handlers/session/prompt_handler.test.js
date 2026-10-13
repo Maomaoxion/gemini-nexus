@@ -366,3 +366,86 @@ describe('PromptHandler tool continuation prompts', () => {
         expect(prompt).toContain('继续时必须使用简体中文回答');
     });
 });
+
+describe('PromptHandler history persistence outcome', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        globalThis.chrome = {
+            runtime: {
+                sendMessage: vi.fn(() => Promise.resolve()),
+            },
+        };
+    });
+
+    function createFinalReplyHandler(result) {
+        const sessionManager = {
+            cancelCurrentRequest: vi.fn(),
+            handleSendPrompt: vi.fn().mockResolvedValue(result),
+        };
+        return new PromptHandler(sessionManager, null, null);
+    }
+
+    it('flags the reply when the session store refused to save it', async () => {
+        appendAiMessage.mockResolvedValue(false);
+        const handler = createFinalReplyHandler({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'long reply',
+        });
+
+        handler.handle(
+            {
+                action: 'SEND_PROMPT',
+                text: 'hi',
+                model: 'gemini-test',
+                sessionId: 'session-1',
+            },
+            vi.fn()
+        );
+
+        await vi.waitFor(() =>
+            expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: 'GEMINI_REPLY',
+                    sessionId: 'session-1',
+                    historySaved: false,
+                })
+            )
+        );
+        expect(appendAiMessage).toHaveBeenCalledWith(
+            'session-1',
+            expect.objectContaining({ text: 'long reply' })
+        );
+    });
+
+    it('marks a stored reply as saved', async () => {
+        appendAiMessage.mockResolvedValue(true);
+        const handler = createFinalReplyHandler({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'stored reply',
+        });
+
+        handler.handle(
+            {
+                action: 'SEND_PROMPT',
+                text: 'hi',
+                model: 'gemini-test',
+                sessionId: 'session-1',
+            },
+            vi.fn()
+        );
+
+        await vi.waitFor(() =>
+            expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: 'GEMINI_REPLY',
+                    sessionId: 'session-1',
+                    historySaved: true,
+                })
+            )
+        );
+    });
+});

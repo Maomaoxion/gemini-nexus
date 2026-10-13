@@ -115,6 +115,61 @@ describe('MessageHandler.handleGeminiReply', () => {
         );
     });
 
+    it('records the final reply on the session when storage never carried it', () => {
+        const { handler, sessionManager } = createMessageHandlerHarness();
+        const session = sessionManager.getCurrentSession();
+        session.messages.pop();
+
+        handler.handleGeminiReply({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'Live reply',
+            thoughts: 'Long thinking',
+            thoughtsDurationSeconds: 12,
+            sources: [{ url: 'https://example.test' }],
+            historySaved: false,
+        });
+
+        expect(session.messages.at(-1)).toMatchObject({
+            role: 'ai',
+            text: 'Live reply',
+            thoughts: 'Long thinking',
+            thoughtsDurationSeconds: 12,
+            sources: [{ url: 'https://example.test' }],
+        });
+    });
+
+    it('keeps cancelled replies out of the session record', () => {
+        const { handler, sessionManager } = createMessageHandlerHarness();
+        const session = sessionManager.getCurrentSession();
+        session.messages.pop();
+
+        handler.handleGeminiReply({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'cancelled',
+            text: 'Request cancelled.',
+        });
+
+        expect(session.messages).toHaveLength(1);
+    });
+
+    it('warns when the reply could not be saved to chat history', () => {
+        const { handler, ui } = createMessageHandlerHarness();
+        ui.updateStatus = vi.fn();
+
+        handler.handleGeminiReply({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'Persisted reply',
+            historySaved: false,
+        });
+
+        expect(ui.updateStatus).toHaveBeenCalledWith('historyNotSaved');
+    });
+
     it('does not append a duplicate final reply after storage already rendered it', () => {
         const { handler, sessionManager } = createMessageHandlerHarness();
         sessionManager.getCurrentSession().messages[1].thoughts = 'Done thinking';

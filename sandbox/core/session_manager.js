@@ -249,6 +249,41 @@ export class SessionManager {
         return false;
     }
 
+    /**
+     * Records a finalized AI reply on the session itself.
+     * The session list is the source the chat view re-renders from, so a reply
+     * that only reached the screen (DOM) would be dropped on the next session
+     * switch when the storage round-trip did not carry it.
+     */
+    addAiMessage(id, reply = {}) {
+        const session = this.sessions.find((storedSession) => storedSession.id === id);
+        if (!session) return false;
+
+        const sessionMessage = {
+            role: 'ai',
+            text: typeof reply.text === 'string' ? reply.text : '',
+        };
+        if (typeof reply.thoughts === 'string' && reply.thoughts) {
+            sessionMessage.thoughts = reply.thoughts;
+        }
+        if (Number.isFinite(reply.thoughtsDurationSeconds)) {
+            sessionMessage.thoughtsDurationSeconds = reply.thoughtsDurationSeconds;
+        }
+        if (Array.isArray(reply.sources) && reply.sources.length > 0) {
+            sessionMessage.sources = reply.sources;
+        }
+        if (Array.isArray(reply.images) && reply.images.length > 0) {
+            sessionMessage.generatedImages = reply.images;
+        }
+        if (reply.suppressCopy === true) {
+            sessionMessage.suppressCopy = true;
+        }
+
+        session.messages.push(sessionMessage);
+        session.timestamp = Date.now();
+        return true;
+    }
+
     editUserMessageAndTruncate(id, messageIndex, text) {
         const session = this.sessions.find((storedSession) => storedSession.id === id);
         if (!session || !Array.isArray(session.messages)) return null;

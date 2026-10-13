@@ -51,6 +51,7 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
     root.appendChild(content);
 
     let currentThoughts = initialThoughts || '';
+    let renderedThoughts = currentThoughts;
     let startedAt = getThoughtsStartedAtFromOptions(options);
     let durationSeconds = Number.isFinite(options.thoughtsDurationSeconds)
         ? options.thoughtsDurationSeconds
@@ -58,6 +59,16 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
     let expanded = false;
     let finished = Boolean(options.isFinal);
     let statusTimer = null;
+
+    // Streaming resends the same cumulative thoughts with every token, and the
+    // block collapses once the answer starts, so redraw only when the text
+    // actually changed and the region is on screen.
+    const renderThoughts = (thoughts) => {
+        if (thoughts === renderedThoughts || content.hidden) return;
+
+        renderedThoughts = thoughts;
+        renderContent(content, thoughts, 'ai');
+    };
 
     const getCompleteLabel = () => {
         if (durationSeconds !== null) {
@@ -94,6 +105,7 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
         toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         toggle.setAttribute('aria-label', expanded ? t('thoughtsCollapse') : t('thoughtsExpand'));
         content.hidden = !expanded;
+        if (expanded) renderThoughts(currentThoughts);
     };
 
     const startStatusTimer = () => {
@@ -122,7 +134,7 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
     const update = (nextThoughts, state = {}) => {
         if (nextThoughts !== undefined) {
             currentThoughts = nextThoughts || '';
-            renderContent(content, currentThoughts, 'ai');
+            renderThoughts(currentThoughts);
         }
 
         const hasThoughts = hasDisplayableThoughts(currentThoughts);

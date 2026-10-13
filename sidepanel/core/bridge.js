@@ -44,6 +44,28 @@ function getModelSaveValue(payload) {
     return payload;
 }
 
+// With the `unlimitedStorage` permission granted, the 10MB local-storage quota
+// no longer applies to sessions, so the >95% guard below must not silently
+// skip writes it would otherwise allow. `null` means "not resolved yet" and
+// keeps the conservative (pre-permission) behavior.
+let unlimitedStorageGranted = null;
+
+export function setUnlimitedStorageGrantForTest(granted) {
+    unlimitedStorageGranted = granted === true ? true : granted === false ? false : null;
+}
+
+function refreshUnlimitedStorageGrant() {
+    try {
+        if (typeof chrome?.permissions?.contains !== 'function') return;
+        chrome.permissions.contains({ permissions: ['unlimitedStorage'] }, (granted) => {
+            if (chrome.runtime?.lastError) return;
+            unlimitedStorageGranted = granted === true;
+        });
+    } catch {
+        // Permission API unavailable; keep the conservative default.
+    }
+}
+
 export class MessageBridge {
     constructor(frameManager, stateManager) {
         this.frame = frameManager;
@@ -53,6 +75,7 @@ export class MessageBridge {
     init() {
         window.addEventListener('message', this.handleWindowMessage.bind(this));
         chrome.runtime.onMessage.addListener(this.handleRuntimeMessage.bind(this));
+        refreshUnlimitedStorageGrant();
     }
 
     handleWindowMessage(event) {
@@ -215,6 +238,10 @@ export class MessageBridge {
             performWrite();
             return;
         }
+        if (unlimitedStorageGranted === true) {
+            performWrite();
+            return;
+        }
 
         chrome.storage.local.getBytesInUse((bytesUsed) => {
             const quota = chrome.storage.local.QUOTA_BYTES;
@@ -227,6 +254,13 @@ export class MessageBridge {
                 console.warn(
                     `[Gemini Nexus] Storage nearly full (${bytesUsed}/${quota} bytes); skipping session save to avoid a quota error. Delete old sessions to free space.`
                 );
+                // The UI keeps its own copy, so a skipped save leaves storage
+                // (and the AI-reply sync that depends on it) behind. Tell the
+                // sandbox instead of failing silently.
+                this.postBackgroundMessage({
+                    action: 'HISTORY_SAVE_BLOCKED',
+                    reason: 'quota',
+                });
                 return;
             }
             if (ratio > 0.8) {

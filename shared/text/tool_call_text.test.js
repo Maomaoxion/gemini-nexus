@@ -148,4 +148,34 @@ describe('tool call text utilities', () => {
             args: { uid: '1_44' },
         });
     });
+
+    it('keeps prose that merely mentions tool names visible', () => {
+        const text = 'Use the "tool" key only inside JSON payloads.\nThat is all.';
+
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: text,
+            toolCallText: '',
+            hasToolCall: false,
+        });
+    });
+
+    it('still hides an indented streaming tool call', () => {
+        const text = 'Plan:\n    ```json\n    {"tool":"click","args":{}}';
+
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: 'Plan:',
+            toolCallText: '{"tool":"click","args":{}}',
+            hasToolCall: true,
+        });
+    });
+
+    it('leaves a long prose answer untouched', () => {
+        const text = `${Array.from({ length: 400 }, (_value, index) => `Step ${index}: keep going.`).join('\n')}\nDone.`;
+
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: text,
+            toolCallText: '',
+            hasToolCall: false,
+        });
+    });
 });

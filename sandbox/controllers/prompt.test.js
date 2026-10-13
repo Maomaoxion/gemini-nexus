@@ -74,23 +74,6 @@ describe('PromptController generation recovery', () => {
         expect(ui.updateStatus).toHaveBeenCalledWith('cleared');
     });
 
-    it('isGenerationLikelyStuck after silence window', () => {
-        const { app, controller } = createPromptHarness();
-        app.isGenerating = true;
-        controller.generationStartedAt = Date.now() - 20_000;
-        controller.lastGenerationActivityAt = Date.now() - 20_000;
-        expect(controller.isGenerationLikelyStuck()).toBe(true);
-    });
-
-    it('isGenerationLikelyStuck is false when activity is recent even if started long ago', () => {
-        const { app, controller } = createPromptHarness();
-        app.isGenerating = true;
-        // Browser-control runs routinely exceed 12s wall clock while still healthy.
-        controller.generationStartedAt = Date.now() - 120_000;
-        controller.lastGenerationActivityAt = Date.now() - 1_000;
-        expect(controller.isGenerationLikelyStuck()).toBe(false);
-    });
-
     it('markGenerationActivity re-arms the idle watchdog', () => {
         vi.useFakeTimers();
         try {

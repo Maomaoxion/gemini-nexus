@@ -296,14 +296,35 @@ function getLineBoundaryStarts(text) {
     return starts;
 }
 
+// Cheap pre-filter for the trailing scans below: a tool call (or its streaming
+// prefix) can only start with `{` or a code fence. Without it every line
+// boundary of the message is sliced and re-parsed, which is quadratic in the
+// message length and runs once per streamed token.
+function canStartToolCallAt(text, start) {
+    let index = start;
+    while (index < text.length && /\s/.test(text[index])) {
+        index++;
+    }
+    if (index >= text.length) return true;
+
+    const firstChar = text[index];
+    return firstChar === '{' || firstChar === '`';
+}
+
+// Line-boundary starts are preceded by a newline, so the "must begin at a line
+// start" guard needs no string copy (it can only reject non-boundary indexes).
+function startsAtLineBoundary(text, start) {
+    return start === 0 || text[start - 1] === '\n';
+}
+
 function findTrailingToolCallSequence(text, options = {}) {
     const starts = getLineBoundaryStarts(text);
     let bestMatch = null;
 
     for (let i = starts.length - 1; i >= 0; i--) {
         const start = starts[i];
-        const prefix = text.slice(0, start);
-        if (prefix.trim() && !/\n\s*$/.test(prefix)) continue;
+        if (!startsAtLineBoundary(text, start)) continue;
+        if (!canStartToolCallAt(text, start)) continue;
 
         const sequence = consumeLeadingToolCallSequence(text.slice(start), options);
         if (!sequence) continue;
@@ -328,8 +349,8 @@ function findTrailingPartialToolCallPrefix(text, options = {}) {
 
     for (let i = starts.length - 1; i >= 0; i--) {
         const start = starts[i];
-        const prefix = text.slice(0, start);
-        if (prefix.trim() && !/\n\s*$/.test(prefix)) continue;
+        if (!startsAtLineBoundary(text, start)) continue;
+        if (!canStartToolCallAt(text, start)) continue;
 
         const suffix = text.slice(start);
         if (!isPotentialPartialToolCallPrefix(suffix, options)) continue;

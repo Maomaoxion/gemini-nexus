@@ -92,4 +92,38 @@ describe('LogManager sinks', () => {
         expect(() => manager.add({ level: 'INFO', message: 'init' })).not.toThrow();
         expect(reentryCount).toBe(1); // re-entrant add was dropped by the guard
     });
+
+    it('drops the oldest entries once the retained log text exceeds its budget', () => {
+        const manager = new LogManager();
+        manager._save = () => {};
+        manager.MAX_LOG_BYTES = 4096;
+
+        for (let index = 0; index < 40; index++) {
+            manager.add({
+                level: 'ERROR',
+                context: 'System',
+                message: `entry-${index} ${'x'.repeat(400)}`,
+            });
+        }
+
+        const logs = manager.getLogs();
+        const retainedBytes = logs.reduce(
+            (total, entry) => total + manager._estimateEntryBytes(entry),
+            0
+        );
+
+        expect(logs.length).toBeLessThan(40);
+        expect(retainedBytes).toBeLessThanOrEqual(4096);
+        expect(logs.at(-1).message).toContain('entry-39');
+    });
+
+    it('keeps the newest entry even when it alone exceeds the log budget', () => {
+        const manager = new LogManager();
+        manager._save = () => {};
+        manager.MAX_LOG_BYTES = 128;
+
+        manager.add({ level: 'ERROR', message: 'x'.repeat(4096) });
+
+        expect(manager.getLogs()).toHaveLength(1);
+    });
 });

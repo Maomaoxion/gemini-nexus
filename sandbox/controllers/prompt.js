@@ -14,11 +14,6 @@ const WATCHDOG_BROWSER_CONTROL_MS = 3 * 60 * 1000;
 // Late updates from a cancelled run are dropped inside this window so they
 // cannot clobber a new run started right after cancelling.
 const CANCELLATION_RECENT_MS = 2000;
-// If the stop button is stuck with no stream activity, a second click may
-// force-clear and send instead of only cancelling forever.
-// Measured from last activity only — NOT from generation start (a healthy
-// multi-minute browser-control run still produces regular tool/stream events).
-const STUCK_GENERATION_MS = 12 * 1000;
 
 export class PromptController {
     constructor(sessionManager, uiController, imageManager, appController) {
@@ -152,18 +147,6 @@ export class PromptController {
         // Re-arm idle watchdog: absolute wall-clock timers incorrectly kill
         // healthy browser-control loops that stay active for many minutes.
         this._armGenerationWatchdog(true);
-    }
-
-    /**
-     * True when the UI thinks a run is active but it has been silent long
-     * enough that SW death / dropped GEMINI_REPLY is likely. Used so a
-     * subsequent send click can force-clear and send instead of only cancel.
-     */
-    isGenerationLikelyStuck() {
-        if (!this.app.isGenerating) return false;
-        const now = Date.now();
-        const last = this.lastGenerationActivityAt || this.generationStartedAt || now;
-        return now - last >= STUCK_GENERATION_MS;
     }
 
     /**

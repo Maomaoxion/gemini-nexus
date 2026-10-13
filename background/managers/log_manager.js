@@ -5,10 +5,15 @@ export class LogManager {
         // 10MB local-storage quota; 1000 is enough for debugging without
         // crowding out session history.
         this.MAX_LOGS = 1000;
+        // Entry count alone does not bound the payload: a handful of long
+        // error dumps can still fill the storage area that session history
+        // shares. Cap the retained log text as well.
+        this.MAX_LOG_BYTES = 256 * 1024;
         this.STORAGE_KEY = 'gemini_nexus_logs';
         this.sinks = Array.isArray(sinks) ? sinks : [];
         this._inAdd = false;
         this._saveTimer = null;
+        this._approximateBytes = 0;
         this.init();
     }
 
@@ -17,6 +22,10 @@ export class LogManager {
             const result = await chrome.storage.local.get(this.STORAGE_KEY);
             if (result[this.STORAGE_KEY]) {
                 this.logs = result[this.STORAGE_KEY];
+                this._approximateBytes = this.logs.reduce(
+                    (total, entry) => total + this._estimateEntryBytes(entry),
+                    0
+                );
             }
             // Avoid adding 'initialized' log here to prevent noise on every wake-up if not needed
         } catch (error) {
@@ -33,11 +42,17 @@ export class LogManager {
             if (!entry.timestamp) entry.timestamp = Date.now();
 
             this.logs.push(entry);
+            this._approximateBytes += this._estimateEntryBytes(entry);
 
-            // Prune if too large
-            if (this.logs.length > this.MAX_LOGS) {
-                this.logs = this.logs.slice(-this.MAX_LOGS);
+            // Prune while either budget (entry count / retained text bytes) is exceeded
+            while (
+                this.logs.length > this.MAX_LOGS ||
+                (this._approximateBytes > this.MAX_LOG_BYTES && this.logs.length > 1)
+            ) {
+                const removed = this.logs.shift();
+                this._approximateBytes -= this._estimateEntryBytes(removed);
             }
+            if (this._approximateBytes < 0) this._approximateBytes = 0;
 
             this._save();
 
@@ -51,6 +66,15 @@ export class LogManager {
         } finally {
             this._inAdd = false;
         }
+    }
+
+    _estimateEntryBytes(entry) {
+        if (!entry || typeof entry !== 'object') return 0;
+        const message = typeof entry.message === 'string' ? entry.message : '';
+        const context = typeof entry.context === 'string' ? entry.context : '';
+        const level = typeof entry.level === 'string' ? entry.level : '';
+        // Fixed field overhead (timestamps, JSON punctuation) plus the text payload.
+        return message.length + context.length + level.length + 80;
     }
 
     _save() {
@@ -71,6 +95,7 @@ export class LogManager {
 
     clear() {
         this.logs = [];
+        this._approximateBytes = 0;
         this._save();
         this.add({
             level: 'INFO',

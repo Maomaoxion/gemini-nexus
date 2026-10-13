@@ -190,4 +190,64 @@ describe('SessionManager draft and persistence state', () => {
         expect(manager.getPersistableGroups()).toEqual([]);
         expect(manager.getSessionById('session-1').groupId).toBeNull();
     });
+
+    it('records a finalized AI reply on the session it belongs to', () => {
+        const manager = new SessionManager();
+        manager.setSessions([
+            {
+                id: 'session-1',
+                title: 'Hello',
+                timestamp: 100,
+                messages: [{ role: 'user', text: 'Hello' }],
+            },
+        ]);
+
+        expect(
+            manager.addAiMessage('session-1', {
+                text: 'Answer',
+                thoughts: 'Reasoning',
+                thoughtsDurationSeconds: 4,
+                sources: [{ url: 'https://example.test' }],
+                images: [{ url: 'https://example.test/a.png' }],
+                suppressCopy: true,
+            })
+        ).toBe(true);
+
+        const [message] = manager.getSessionById('session-1').messages.slice(-1);
+        expect(message).toEqual({
+            role: 'ai',
+            text: 'Answer',
+            thoughts: 'Reasoning',
+            thoughtsDurationSeconds: 4,
+            sources: [{ url: 'https://example.test' }],
+            generatedImages: [{ url: 'https://example.test/a.png' }],
+            suppressCopy: true,
+        });
+
+        expect(manager.addAiMessage('missing-session', { text: 'Answer' })).toBe(false);
+    });
+
+    it('keeps empty reply fields out of the recorded AI message', () => {
+        const manager = new SessionManager();
+        manager.setSessions([
+            {
+                id: 'session-1',
+                title: 'Hello',
+                timestamp: 100,
+                messages: [{ role: 'user', text: 'Hello' }],
+            },
+        ]);
+
+        manager.addAiMessage('session-1', {
+            text: 'Answer',
+            thoughts: '',
+            sources: [],
+            images: [],
+        });
+
+        expect(manager.getSessionById('session-1').messages.at(-1)).toEqual({
+            role: 'ai',
+            text: 'Answer',
+        });
+    });
 });

@@ -1,5 +1,6 @@
 import { resizeSelectToSelectedOption } from '../ui/model_select_width.js';
 import { initModelPicker, syncModelPicker } from '../ui/model_picker.js';
+import { t } from '../core/i18n.js';
 
 const IME_PROCESS_KEY_CODE = 229;
 const ACTIVE_MODAL_SELECTOR = [
@@ -178,6 +179,17 @@ function tryCancelGeneration(app, keyEvent) {
     return true;
 }
 
+// Enter never cancels a running reply, so it must not look like it sent
+// anything either: explain the state instead of swallowing the keystroke.
+function showSendWhileGeneratingHint(app, ui) {
+    if (!app?.isGenerating || typeof ui?.updateStatus !== 'function') return;
+
+    ui.updateStatus(t('sendWhileGeneratingHint'));
+    setTimeout(() => {
+        if (!app.isGenerating) ui.updateStatus('');
+    }, 4000);
+}
+
 export function bindInputEvents(app, ui, setResizeRef) {
     const inputFn = ui?.inputFn || document.getElementById('prompt');
     const sendBtn = ui?.sendBtn || document.getElementById('send');
@@ -211,6 +223,7 @@ export function bindInputEvents(app, ui, setResizeRef) {
                 // Generation in progress: Stop is the send button, but Enter must
                 // not cancel — users often press Enter while drafting the next turn.
                 if (app.isGenerating) {
+                    showSendWhileGeneratingHint(app, ui);
                     return;
                 }
                 sendBtn.click();
@@ -232,16 +245,17 @@ export function bindInputEvents(app, ui, setResizeRef) {
 
         const handleSendClick = () => {
             if (app.isGenerating) {
-                // Stop path. If generation is stuck and the draft still has
-                // content, cancel then send instead of only stopping.
-                const stuck = app.prompt?.isGenerationLikelyStuck?.() === true;
+                // Stop path. A draft in the composer means the click is really
+                // "send this instead of the running reply": stop the current run
+                // and continue to the send below. Without a draft it stays a
+                // plain Stop — a swallowed click reads as a broken send button.
                 const text = (ui?.inputFn || inputFn)?.value?.trim?.() || '';
                 const hasFiles =
                     typeof app.imageManager?.getFiles === 'function'
                         ? app.imageManager.getFiles().length > 0
                         : false;
                 app.handleCancel();
-                if (!stuck || (!text && !hasFiles)) return;
+                if (!text && !hasFiles) return;
             }
             app.handleSendMessage();
         };
