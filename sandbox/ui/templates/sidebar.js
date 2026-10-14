@@ -5,19 +5,19 @@ export const SidebarTemplate = `
     <div id="history-sidebar" class="sidebar">
         <div class="sidebar-expanded-pane">
             <div class="sidebar-header">
-                <button id="sidebar-brand-toggle" class="sidebar-brand" type="button" data-i18n-title="toggleHistory" title="Chat History" aria-label="Chat History">
+                <button id="sidebar-brand-toggle" class="sidebar-brand" type="button" data-i18n-title="toggleHistory" title="Chat History (Alt+H)" aria-label="Chat History (Alt+H)">
                     <img class="sidebar-brand-logo" src="../logo.png" alt="" aria-hidden="true">
                     <span class="sidebar-header-title">Gemini Nexus</span>
                 </button>
-                <button id="close-sidebar" class="sidebar-icon-btn sidebar-toggle-btn" data-i18n-title="toggleHistory" title="Chat History">
+                <button id="close-sidebar" class="sidebar-icon-btn sidebar-toggle-btn" data-i18n-title="toggleHistory" title="Chat History (Alt+H)">
                     ${TemplateIcons.SIDEBAR_TOGGLE}
                 </button>
             </div>
 
             <div class="sidebar-actions">
-                <button id="new-chat-sidebar-btn" class="sidebar-action-row" data-i18n-title="newChatTooltip" title="New Chat">
+                <button id="new-chat-sidebar-btn" class="sidebar-action-row" data-i18n-title="newChatTooltip" title="New Chat (Alt+N)">
                     ${TemplateIcons.NEW_CHAT}
-                    <span data-i18n="newChatTooltip">New Chat</span>
+                    <span data-i18n="newChat">New Chat</span>
                 </button>
                 <button id="sidebar-search-toggle" class="sidebar-action-row" data-i18n-title="searchPlaceholder" title="Search for chats">
                     ${TemplateIcons.SEARCH}
@@ -30,7 +30,7 @@ export const SidebarTemplate = `
                 <div class="search-container" hidden>
                     ${TemplateIcons.SEARCH}
                     <input type="text" id="history-search" data-i18n-placeholder="searchPlaceholder" autocomplete="off">
-                    <button id="history-search-clear" class="search-clear-btn" type="button" title="Clear search">
+                    <button id="history-search-clear" class="search-clear-btn" type="button" data-i18n-title="clearSearch" title="Clear search" aria-label="Clear search">
                         ${TemplateIcons.CLOSE}
                     </button>
                 </div>
@@ -49,11 +49,11 @@ export const SidebarTemplate = `
         </div>
 
         <div class="collapsed-sidebar-rail">
-            <button id="collapsed-sidebar-toggle" class="collapsed-sidebar-button sidebar-toggle-btn" data-i18n-title="toggleHistory" title="Chat History">
+            <button id="collapsed-sidebar-toggle" class="collapsed-sidebar-button sidebar-toggle-btn" data-i18n-title="toggleHistory" title="Chat History (Alt+H)">
                 ${TemplateIcons.SIDEBAR_TOGGLE}
             </button>
             <div class="collapsed-sidebar-separator"></div>
-            <button id="collapsed-new-chat-btn" class="collapsed-sidebar-button" data-i18n-title="newChatTooltip" title="New Chat">
+            <button id="collapsed-new-chat-btn" class="collapsed-sidebar-button" data-i18n-title="newChatTooltip" title="New Chat (Alt+N)">
                 ${TemplateIcons.NEW_CHAT}
             </button>
             <button id="collapsed-search-btn" class="collapsed-sidebar-button" data-i18n-title="searchPlaceholder" title="Search for chats">

@@ -220,14 +220,15 @@
             this.sendRuntimeMessage(message);
         }
 
-        async handleImageChat(imageDataUrl, rect) {
+        async handleImageChat(imageDataUrl, rect, title = null) {
             this.lastTranslationRequest = null;
             this.pendingImageChat = {
                 url: imageDataUrl,
             };
 
-            const title = this.toolbarStrings.chatWithImage || this.toolbarStrings.titles.analyze;
-            await this.ui.showAskWindow(rect, null, title);
+            const askTitle =
+                title || this.toolbarStrings.chatWithImage || this.toolbarStrings.titles.analyze;
+            await this.ui.showAskWindow(rect, null, askTitle);
             this.ui.setInputValue('');
         }
 

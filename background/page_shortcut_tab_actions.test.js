@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectContentScriptsIntoTab } from './content_injection.js';
-import { showQuickAskForTab, startAreaOcrForTab } from './page_shortcut_tab_actions.js';
+import {
+    showQuickAskForTab,
+    startAreaOcrForTab,
+    startAreaSnipForTab,
+} from './page_shortcut_tab_actions.js';
 
 vi.mock('./content_injection.js', () => ({
     injectContentScriptsIntoTab: vi.fn(() => Promise.resolve({ status: 'already-injected' })),
@@ -100,6 +104,29 @@ describe('page shortcut tab actions', () => {
         expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(9, {
             action: 'SHOW_EXTENSION_ERROR',
             message: 'Capture denied',
+        });
+    });
+
+    it('starts snip selection with mode snip', async () => {
+        const tab = { id: 9, windowId: 4, url: 'https://example.com/' };
+        const imageManager = {
+            captureScreenshot: vi.fn(() =>
+                Promise.resolve({ base64: 'data:image/png;base64,BBBB' })
+            ),
+        };
+        chrome.tabs.sendMessage
+            .mockResolvedValueOnce({ status: 'hidden' })
+            .mockResolvedValueOnce({ status: 'selection_started' });
+
+        await startAreaSnipForTab(tab, imageManager);
+
+        expect(imageManager.captureScreenshot).toHaveBeenCalledWith(4);
+        expect(chrome.tabs.sendMessage).toHaveBeenLastCalledWith(9, {
+            action: 'START_SELECTION',
+            image: 'data:image/png;base64,BBBB',
+            mode: 'snip',
+            source: 'local',
+            targetSidePanelTabId: null,
         });
     });
 });

@@ -232,6 +232,12 @@ describe('chat message layout styles', () => {
         expect(markdownCss).toMatch(/\.live-artifact-body-error\s*{[^}]*min-height:\s*72px/s);
         expect(markdownCss).toMatch(/\.live-artifact-error\s*{[^}]*overflow-wrap:\s*anywhere/s);
         expect(markdownCss).toMatch(/\.live-artifact-error\s*{[^}]*white-space:\s*pre-wrap/s);
+        expect(markdownCss).toMatch(
+            /\[data-theme=['"]dark['"]\]\s+\.live-artifact-body\s*{[^}]*background:\s*var\(--code-bg\)/s
+        );
+        expect(markdownCss).toMatch(
+            /\[data-theme=['"]dark['"]\]\s+\.live-artifact-body-loading,\s*\[data-theme=['"]dark['"]\]\s+\.live-artifact-error\s*{[^}]*color:\s*var\(--text-secondary\)/s
+        );
     });
 });
 

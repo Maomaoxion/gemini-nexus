@@ -142,7 +142,7 @@
 .setting-shortcut-static-row .shortcut-input {
     color: var(--text-tertiary);
     background: var(--bg-body);
-    cursor: not-allowed;
+    cursor: default;
     box-shadow: none;
 }
 

@@ -115,7 +115,7 @@ async function toggleSidePanel(context, request, sender) {
     return openSidePanel(context, request, sender);
 }
 
-async function toggleSidePanelControl(context, request, sender) {
+export async function toggleSidePanelControl(context, request, sender) {
     if (!sender.tab) {
         return { status: 'error', error: 'No active tab for side panel.' };
     }

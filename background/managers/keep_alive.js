@@ -163,7 +163,7 @@ class KeepAliveManager {
             // Avoid flooding LogManager / console on sustained offline or
             // blocked RotateCookies — backoff already slows retries.
             if (this.consecutiveErrors <= 2) {
-                console.error('[Gemini Nexus] Keep-Alive: Network error', error);
+                console.warn('[Gemini Nexus] Keep-Alive: Network error', error?.message || error);
             } else if (this.consecutiveErrors === 3 || this.consecutiveErrors % 5 === 0) {
                 console.warn(
                     `[Gemini Nexus] Keep-Alive: Network error (x${this.consecutiveErrors})`,

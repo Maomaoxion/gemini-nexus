@@ -296,7 +296,7 @@
                 removeText: isZh ? '文字移除' : 'Remove Text',
                 removeBg: isZh ? '背景移除' : 'Remove Background',
                 removeWatermark: isZh ? '去水印' : 'Remove watermark',
-                snip: isZh ? '截图分析' : 'Snip Analysis',
+                snip: isZh ? '截图提问' : 'Screenshot Ask',
                 explain: isZh ? '解释' : 'Explain',
                 textTranslate: isZh ? '翻译' : 'Translate',
                 summarize: isZh ? '总结' : 'Summarize',

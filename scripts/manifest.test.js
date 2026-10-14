@@ -59,6 +59,15 @@ describe('manifest content scripts', () => {
         });
     });
 
+    it('declares a browser-level shortcut for browser control', async () => {
+        const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
+
+        expect(manifest.commands['browser-control'].suggested_key).toEqual({
+            default: 'Alt+Shift+B',
+            mac: 'Alt+Shift+B',
+        });
+    });
+
     it('uses Chromium-compatible macOS command modifiers', async () => {
         const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
         const macShortcuts = Object.values(manifest.commands).flatMap((command) =>
@@ -67,6 +76,7 @@ describe('manifest content scripts', () => {
 
         expect(macShortcuts).not.toContain('Option+Q');
         expect(macShortcuts).not.toContain('Option+O');
+        expect(macShortcuts).not.toContain('Option+B');
     });
 
     it('uses explicit icon assets for each manifest icon size', async () => {

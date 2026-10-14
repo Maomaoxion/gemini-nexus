@@ -183,8 +183,9 @@ describe('ShortcutManager', () => {
             geminiShortcuts: {
                 quickAsk: 'Alt+Q',
                 openPanel: 'Alt+G',
-                browserControl: 'Ctrl+B',
+                browserControl: 'Alt+Shift+B',
                 ocrCapture: 'Alt+O',
+                snipCapture: 'Alt+S',
             },
         });
     });
@@ -218,8 +219,9 @@ describe('ShortcutManager', () => {
             geminiShortcuts: {
                 quickAsk: 'Alt+Q',
                 openPanel: 'Alt+G',
-                browserControl: 'Ctrl+B',
+                browserControl: 'Alt+Shift+B',
                 ocrCapture: 'Alt+O',
+                snipCapture: 'Alt+S',
             },
         });
     });
@@ -250,6 +252,32 @@ describe('ShortcutManager', () => {
         });
     });
 
+    it('starts local snip capture for the configured shortcut', () => {
+        const event = createKeyboardEvent('S', { altKey: true });
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+            action: 'START_SNIP_FROM_SHORTCUT',
+            mode: 'snip',
+            source: 'local',
+        });
+    });
+
+    it('starts local snip capture for macOS option-modified letter keys', () => {
+        const event = createKeyboardEvent('ß', { altKey: true, code: 'KeyS' });
+
+        document.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+            action: 'START_SNIP_FROM_SHORTCUT',
+            mode: 'snip',
+            source: 'local',
+        });
+    });
+
     it('does not intercept page shortcuts while typing in editable fields', () => {
         const input = document.createElement('input');
         document.body.appendChild(input);
@@ -261,7 +289,7 @@ describe('ShortcutManager', () => {
         expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
-    it('opens quick ask while typing in editable fields', () => {
+    it('does not intercept quick ask while typing in editable fields to protect character entry', () => {
         const controller = {
             showGlobalInput: vi.fn(),
         };
@@ -273,11 +301,11 @@ describe('ShortcutManager', () => {
 
         input.dispatchEvent(event);
 
-        expect(event.defaultPrevented).toBe(true);
-        expect(controller.showGlobalInput).toHaveBeenCalledWith();
+        expect(event.defaultPrevented).toBe(false);
+        expect(controller.showGlobalInput).not.toHaveBeenCalled();
     });
 
-    it('starts OCR capture while typing in editable fields', () => {
+    it('does not intercept OCR capture while typing in editable fields to protect character entry', () => {
         const input = document.createElement('input');
         document.body.appendChild(input);
         input.focus();
@@ -285,12 +313,8 @@ describe('ShortcutManager', () => {
 
         input.dispatchEvent(event);
 
-        expect(event.defaultPrevented).toBe(true);
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-            action: 'START_AREA_OCR_FROM_SHORTCUT',
-            mode: 'ocr',
-            source: 'local',
-        });
+        expect(event.defaultPrevented).toBe(false);
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
     it('routes quick ask through the background shortcut command when no controller is attached', () => {
@@ -326,7 +350,7 @@ describe('ShortcutManager', () => {
         };
         window.GeminiShortcuts.setController(controller);
 
-        document.dispatchEvent(createKeyboardEvent('B', { ctrlKey: true }));
+        document.dispatchEvent(createKeyboardEvent('B', { altKey: true, shiftKey: true }));
         await Promise.resolve();
 
         expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
@@ -371,5 +395,16 @@ describe('ShortcutManager', () => {
         expect(chrome.storage.onChanged.addListener).not.toHaveBeenCalled();
         expect(addEventListenerSpy).not.toHaveBeenCalledWith('keydown', expect.any(Function), true);
         addEventListenerSpy.mockRestore();
+    });
+
+    it('cleans up and self-destructs when keydown fires after extension context is invalidated', () => {
+        const shortcuts = window.GeminiShortcuts;
+        const destroySpy = vi.spyOn(shortcuts, 'destroy');
+        globalThis.chrome.runtime.id = undefined;
+
+        document.dispatchEvent(createKeyboardEvent('G', { altKey: true }));
+
+        expect(destroySpy).toHaveBeenCalled();
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 });

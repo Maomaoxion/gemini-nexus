@@ -135,6 +135,9 @@ export class NativeLoggerSink {
         try {
             const port = this.runtime.connectNative(this.hostName);
             port.onDisconnect?.addListener(() => {
+                // Read lastError / port.error so Chrome marks it as checked and
+                // does not report "Unchecked runtime.lastError" on missing native host.
+                void (this.runtime?.lastError || port.error);
                 this._port = null;
                 this._helloSent = false;
             });

@@ -152,7 +152,7 @@ export const ConnectionSettingsTemplate = `
                             <button id="mcp-add-server" class="mcp-icon-btn" type="button" aria-label="Add server" data-i18n-title="mcpAddServer" title="Add">
                                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" stroke-width="1.6" stroke-linecap="round"/></svg>
                             </button>
-                            <button id="mcp-remove-server" class="mcp-icon-btn mcp-icon-btn--danger" type="button" aria-label="Remove server" data-i18n-title="mcpRemoveServer" title="Del">
+                            <button id="mcp-remove-server" class="mcp-icon-btn mcp-icon-btn--danger" type="button" aria-label="Remove server" data-i18n-title="mcpRemoveServer" title="Remove">
                                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.2h9M6 4.2V3h4v1.2M5 4.2l.4 7.6h5.2L11 4.2" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 7.2v4M9 7.2v4" stroke-width="1.3" stroke-linecap="round"/></svg>
                             </button>
                         </div>

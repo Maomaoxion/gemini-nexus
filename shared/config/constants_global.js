@@ -14,10 +14,23 @@
     const DEFAULT_SHORTCUTS = Object.freeze({
         quickAsk: 'Alt+Q',
         openPanel: 'Alt+G',
-        browserControl: 'Ctrl+B',
+        browserControl: 'Alt+Shift+B',
         ocrCapture: 'Alt+O',
+        snipCapture: 'Alt+S',
     });
     const LEGACY_DEFAULT_SHORTCUTS = Object.freeze([
+        Object.freeze({
+            quickAsk: 'Alt+Q',
+            openPanel: 'Alt+G',
+            browserControl: 'Alt+Shift+B',
+            ocrCapture: 'Alt+O',
+        }),
+        Object.freeze({
+            quickAsk: 'Alt+Q',
+            openPanel: 'Alt+G',
+            browserControl: 'Ctrl+B',
+            ocrCapture: 'Alt+O',
+        }),
         Object.freeze({
             quickAsk: 'Ctrl+Q',
             openPanel: 'Alt+G',

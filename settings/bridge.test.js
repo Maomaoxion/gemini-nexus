@@ -13,8 +13,9 @@ function createController() {
         defaultShortcuts: {
             quickAsk: 'Alt+Q',
             openPanel: 'Alt+G',
-            browserControl: 'Ctrl+B',
+            browserControl: 'Alt+Shift+B',
             ocrCapture: 'Alt+O',
+            snipCapture: 'Alt+S',
         },
         updateShortcuts: vi.fn(),
         updateTheme: vi.fn(),

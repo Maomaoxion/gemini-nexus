@@ -137,4 +137,26 @@ describe('SelectionObserver', () => {
 
         observer.disconnect();
     });
+
+    it('disconnects and suppresses callbacks when context is invalidated on mousedown', () => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = 'invalidated selection';
+        document.body.appendChild(paragraph);
+
+        const onClick = vi.fn();
+        const observer = new window.GeminiSelectionObserver({ onClick });
+        const disconnectSpy = vi.spyOn(observer, 'disconnect');
+
+        globalThis.chrome = { runtime: { id: undefined } };
+        try {
+            paragraph.dispatchEvent(
+                new MouseEvent('mousedown', { bubbles: true, clientX: 20, clientY: 20 })
+            );
+
+            expect(disconnectSpy).toHaveBeenCalled();
+            expect(onClick).not.toHaveBeenCalled();
+        } finally {
+            delete globalThis.chrome;
+        }
+    });
 });

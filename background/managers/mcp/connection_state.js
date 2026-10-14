@@ -78,7 +78,7 @@ export function disconnectMcpConnectionState(conn) {
         try {
             conn.sseAbort.abort();
         } catch {
-            // 靜默降级:AbortController 中止失败时流可能已结束,无需处理
+            // 静默降级:AbortController 中止失败时流可能已结束,无需处理
         }
     }
     conn.sseAbort = null;

@@ -1,5 +1,15 @@
 (function () {
-    const logoUrl = chrome.runtime.getURL('logo.png');
+    let logoUrl = '';
+    try {
+        const pageGuard = window.GeminiNexusPageGuard;
+        if (pageGuard?.safeGetURL) {
+            logoUrl = pageGuard.safeGetURL('logo.png');
+        } else if (typeof chrome !== 'undefined' && typeof chrome.runtime?.getURL === 'function') {
+            logoUrl = chrome.runtime.getURL('logo.png');
+        }
+    } catch {
+        // Context invalidated
+    }
 
     function markup(strings, ...values) {
         return strings

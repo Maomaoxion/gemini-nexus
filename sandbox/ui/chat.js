@@ -55,12 +55,7 @@ export class ChatController {
                 if (browserButton?.getAttribute('aria-pressed') !== 'true') browserButton?.click();
                 setTimeout(() => {
                     if (!this.inputFn || !this.sendBtn) return;
-                    const isEn = (document.documentElement.lang || '')
-                        .toLowerCase()
-                        .startsWith('en');
-                    const prompt = isEn
-                        ? 'Please use browser control to open https://github.com/yeahhe365/Gemini-Nexus and click the Star button to star this project. If already starred, confirm the status.'
-                        : '请使用浏览器控制打开 https://github.com/yeahhe365/Gemini-Nexus 并点击 Star 按钮为本项目点 Star，如果已 Star 请确认状态。';
+                    const prompt = t('githubStarPrompt');
                     this.inputFn.value = prompt;
                     this.inputFn.dispatchEvent(new Event('input', { bubbles: true }));
                     this.inputFn.style.height = 'auto';

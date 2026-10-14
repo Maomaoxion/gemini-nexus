@@ -137,6 +137,17 @@
         }
 
         handleGlobalKeydown(event) {
+            const isContextValid = window.GeminiNexusPageGuard?.isContextValid
+                ? window.GeminiNexusPageGuard.isContextValid()
+                : typeof chrome === 'undefined' ||
+                  !chrome.runtime ||
+                  !('id' in chrome.runtime) ||
+                  Boolean(chrome.runtime.id);
+            if (!isContextValid) {
+                this.disconnect();
+                return;
+            }
+
             if (event.key === 'Escape') {
                 if (this.toolbarUi.isWindowVisible()) {
                     event.preventDefault();

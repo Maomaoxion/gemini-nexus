@@ -193,6 +193,10 @@ html:not([data-theme='dark']) .live-artifact-header {
     background: #ffffff;
 }
 
+[data-theme='dark'] .live-artifact-body {
+    background: var(--code-bg);
+}
+
 .live-artifact-body-html {
     min-height: 0;
     max-height: none;
@@ -232,6 +236,11 @@ html:not([data-theme='dark']) .live-artifact-header {
     max-width: 100%;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
+}
+
+[data-theme='dark'] .live-artifact-body-loading,
+[data-theme='dark'] .live-artifact-error {
+    color: var(--text-secondary);
 }
 
 .live-artifact-frame {

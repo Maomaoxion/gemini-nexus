@@ -26,6 +26,7 @@ export class ShortcutsSection {
             inputOpenPanel: getSettingsElement('shortcut-open-panel'),
             inputBrowserControl: getSettingsElement('shortcut-browser-control'),
             inputOcrCapture: getSettingsElement('shortcut-ocr-capture'),
+            inputSnipCapture: getSettingsElement('shortcut-snip-capture'),
         };
     }
 
@@ -34,6 +35,7 @@ export class ShortcutsSection {
         this.setupShortcutInput(this.elements.inputOpenPanel);
         this.setupShortcutInput(this.elements.inputBrowserControl);
         this.setupShortcutInput(this.elements.inputOcrCapture);
+        this.setupShortcutInput(this.elements.inputSnipCapture);
     }
 
     setupShortcutInput(inputEl) {
@@ -59,21 +61,30 @@ export class ShortcutsSection {
         if (this.elements.inputQuickAsk) this.elements.inputQuickAsk.value = shortcuts.quickAsk;
         if (this.elements.inputOpenPanel) this.elements.inputOpenPanel.value = shortcuts.openPanel;
         if (this.elements.inputBrowserControl) {
-            this.elements.inputBrowserControl.value = shortcuts.browserControl || 'Ctrl+B';
+            this.elements.inputBrowserControl.value = shortcuts.browserControl || 'Alt+Shift+B';
         }
         if (this.elements.inputOcrCapture) {
             this.elements.inputOcrCapture.value = shortcuts.ocrCapture || 'Alt+O';
         }
+        if (this.elements.inputSnipCapture) {
+            this.elements.inputSnipCapture.value = shortcuts.snipCapture || 'Alt+S';
+        }
     }
 
     getData() {
-        const { inputQuickAsk, inputOpenPanel, inputBrowserControl, inputOcrCapture } =
-            this.elements;
+        const {
+            inputQuickAsk,
+            inputOpenPanel,
+            inputBrowserControl,
+            inputOcrCapture,
+            inputSnipCapture,
+        } = this.elements;
         return {
             quickAsk: inputQuickAsk ? inputQuickAsk.value : null,
             openPanel: inputOpenPanel ? inputOpenPanel.value : null,
-            browserControl: inputBrowserControl ? inputBrowserControl.value : 'Ctrl+B',
+            browserControl: inputBrowserControl ? inputBrowserControl.value : 'Alt+Shift+B',
             ocrCapture: inputOcrCapture ? inputOcrCapture.value : 'Alt+O',
+            snipCapture: inputSnipCapture ? inputSnipCapture.value : 'Alt+S',
         };
     }
 }

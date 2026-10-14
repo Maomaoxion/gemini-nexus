@@ -135,6 +135,11 @@
     --border-color: #3c4043;
     --border-focus: #5e5e5e;
 
+    /* Semantic — calibrated for dark surfaces (≥4.5:1 on dark backgrounds) */
+    --danger: #f2b8b5;
+    --success: #81c995;
+    --warning: #fdd663;
+
     /* User Message Bubble — slightly lifted from body */
     --bg-user-msg: #2a2d32;
     --text-user-msg: #e3e3e3;

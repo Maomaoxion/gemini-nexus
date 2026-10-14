@@ -267,14 +267,21 @@ describe('input events', () => {
         expect(app.handleSendMessage).toHaveBeenCalledTimes(1);
     });
 
-    it('cycles models with Tab from the prompt, not from arbitrary UI targets', () => {
+    it('cycles models with Ctrl+M from the prompt, while keeping Tab free for focus navigation', () => {
         const { app, inputFn, modelSelect } = bindHarness();
         inputFn.focus();
 
         const inputTabEvent = createKeyboardEvent('Tab');
         inputFn.dispatchEvent(inputTabEvent);
 
-        expect(inputTabEvent.defaultPrevented).toBe(true);
+        // Native Tab navigation is preserved (not trapped)
+        expect(inputTabEvent.defaultPrevented).toBe(false);
+
+        // Ctrl+M cycles the model
+        const inputCycleEvent = createKeyboardEvent('m', { ctrlKey: true });
+        inputFn.dispatchEvent(inputCycleEvent);
+
+        expect(inputCycleEvent.defaultPrevented).toBe(true);
         expect(modelSelect.value).toBe('b');
         expect(app.handleModelChange).toHaveBeenLastCalledWith('b');
 
@@ -298,6 +305,73 @@ describe('input events', () => {
 
         expect(globalTabEvent.defaultPrevented).toBe(false);
         expect(modelSelect.value).toBe('c');
+
+        const globalCycleEvent = createKeyboardEvent('m', { ctrlKey: true });
+        otherBtn.dispatchEvent(globalCycleEvent);
+        expect(globalCycleEvent.defaultPrevented).toBe(true);
+        expect(modelSelect.value).toBe('a');
+        expect(app.handleModelChange).toHaveBeenLastCalledWith('a');
+
+        const searchInputElement = document.createElement('input');
+        document.body.appendChild(searchInputElement);
+        searchInputElement.focus();
+        const inputCycleEventFromSearch = createKeyboardEvent('m', { ctrlKey: true });
+        searchInputElement.dispatchEvent(inputCycleEventFromSearch);
+        expect(inputCycleEventFromSearch.defaultPrevented).toBe(false);
+        expect(modelSelect.value).toBe('a');
+    });
+
+    it('triggers new chat, thinking toggle, and history drawer shortcuts', () => {
+        bindHarness();
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            `
+            <button id="new-chat-composer-btn"></button>
+            <button id="web-thinking-toggle"></button>
+            <button id="history-toggle"></button>
+            <button id="snip-btn"></button>
+            `
+        );
+
+        const newChatSpy = vi.fn();
+        const thinkingSpy = vi.fn();
+        const historySpy = vi.fn();
+        const snipSpy = vi.fn();
+
+        document.getElementById('new-chat-composer-btn').addEventListener('click', newChatSpy);
+        document.getElementById('web-thinking-toggle').addEventListener('click', thinkingSpy);
+        document.getElementById('history-toggle').addEventListener('click', historySpy);
+        document.getElementById('snip-btn').addEventListener('click', snipSpy);
+
+        // Alt+N
+        const newChatAltEvent = createKeyboardEvent('n', { altKey: true });
+        document.body.dispatchEvent(newChatAltEvent);
+        expect(newChatAltEvent.defaultPrevented).toBe(true);
+        expect(newChatSpy).toHaveBeenCalledTimes(1);
+
+        // Ctrl+Shift+O
+        const newChatCtrlEvent = createKeyboardEvent('o', { ctrlKey: true, shiftKey: true });
+        document.body.dispatchEvent(newChatCtrlEvent);
+        expect(newChatCtrlEvent.defaultPrevented).toBe(true);
+        expect(newChatSpy).toHaveBeenCalledTimes(2);
+
+        // Alt+T
+        const thinkingEvent = createKeyboardEvent('t', { altKey: true });
+        document.body.dispatchEvent(thinkingEvent);
+        expect(thinkingEvent.defaultPrevented).toBe(true);
+        expect(thinkingSpy).toHaveBeenCalledTimes(1);
+
+        // Alt+H
+        const historyEvent = createKeyboardEvent('h', { altKey: true });
+        document.body.dispatchEvent(historyEvent);
+        expect(historyEvent.defaultPrevented).toBe(true);
+        expect(historySpy).toHaveBeenCalledTimes(1);
+
+        // Alt+S
+        const snipEvent = createKeyboardEvent('s', { altKey: true });
+        document.body.dispatchEvent(snipEvent);
+        expect(snipEvent.defaultPrevented).toBe(true);
+        expect(snipSpy).toHaveBeenCalledTimes(1);
     });
 
     it('focuses the chat input at the end with the explicit focus shortcut', () => {

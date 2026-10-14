@@ -21,9 +21,12 @@
 
     function needsShortcutMigration(stored, normalized) {
         if (!isShortcutObject(stored)) return false;
-        return ['quickAsk', 'openPanel'].some(
-            (key) =>
-                Object.prototype.hasOwnProperty.call(stored, key) && stored[key] !== normalized[key]
+        return (
+            Object.keys(normalized).some(
+                (key) =>
+                    Object.prototype.hasOwnProperty.call(stored, key) &&
+                    stored[key] !== normalized[key]
+            ) || !Object.prototype.hasOwnProperty.call(stored, 'snipCapture')
         );
     }
 
@@ -46,7 +49,14 @@
 
     function isEditableShortcutTarget(target) {
         if (!(target instanceof Element)) return false;
-        if (target.closest('[contenteditable=""], [contenteditable="true"]')) return true;
+        if (target.isContentEditable) return true;
+        if (
+            target.closest?.(
+                '[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]'
+            )
+        ) {
+            return true;
+        }
         const tagName = target.tagName.toLowerCase();
         return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
     }
@@ -60,7 +70,23 @@
         return '';
     }
 
+    function isContextValid() {
+        if (window.GeminiNexusPageGuard?.isContextValid) {
+            return window.GeminiNexusPageGuard.isContextValid();
+        }
+        try {
+            if (typeof chrome === 'undefined' || !chrome.runtime) return true;
+            if ('id' in chrome.runtime && !chrome.runtime.id) {
+                return false;
+            }
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     function sendRuntimeMessage(message, onError = null) {
+        if (!isContextValid()) return;
         try {
             const result = chrome.runtime.sendMessage(message);
             result
@@ -130,15 +156,21 @@
 
         async refreshChromeCommandShortcuts() {
             try {
-                if (!chrome.commands?.getAll) return;
+                if (!isContextValid() || !chrome.commands?.getAll) return;
                 const commands = await chrome.commands.getAll();
-                const mapping = { quickAsk: null, openPanel: null, ocrCapture: null };
+                const mapping = {
+                    quickAsk: null,
+                    openPanel: null,
+                    ocrCapture: null,
+                    browserControl: null,
+                };
                 for (const command of commands) {
                     const shortcut = command.shortcut; // e.g. "Alt+Q"
                     if (!shortcut) continue;
                     if (command.name === 'quick-ask') mapping.quickAsk = shortcut;
                     else if (command.name === 'area-ocr') mapping.ocrCapture = shortcut;
                     else if (command.name === '_execute_action') mapping.openPanel = shortcut;
+                    else if (command.name === 'browser-control') mapping.browserControl = shortcut;
                 }
                 this.chromeCommandShortcuts = mapping;
             } catch (error) {
@@ -156,6 +188,10 @@
         }
 
         handleStorageChange(changes, area) {
+            if (!isContextValid()) {
+                this.destroy();
+                return;
+            }
             if (area === 'local' && changes.geminiShortcuts) {
                 this.appShortcuts = normalizeShortcuts(changes.geminiShortcuts.newValue);
                 persistShortcutMigration(changes.geminiShortcuts.newValue, this.appShortcuts);
@@ -170,7 +206,12 @@
         }
 
         handleKeydown(event) {
+            if (!isContextValid()) {
+                this.destroy();
+                return;
+            }
             const isEditableTarget = isEditableShortcutTarget(event.target);
+            if (isEditableTarget) return;
 
             if (this.match(event, this.effectiveShortcut('quickAsk'))) {
                 event.preventDefault();
@@ -200,43 +241,42 @@
                 return;
             }
 
-            if (isEditableTarget) return;
+            if (this.match(event, this.effectiveShortcut('snipCapture'))) {
+                event.preventDefault();
+                event.stopPropagation();
+                sendRuntimeMessage(
+                    {
+                        action: 'START_SNIP_FROM_SHORTCUT',
+                        mode: 'snip',
+                        source: 'local',
+                    },
+                    (message) =>
+                        this.toolbarController?.showExtensionError?.(
+                            message || 'Could not start screenshot capture'
+                        )
+                );
+                return;
+            }
 
             if (this.match(event, this.effectiveShortcut('openPanel'))) {
                 event.preventDefault();
                 event.stopPropagation();
-                Promise.resolve(chrome.runtime.sendMessage({ action: 'TOGGLE_SIDE_PANEL' }))
-                    .then((response) => {
-                        if (response?.status === 'error') {
-                            this.toolbarController?.showExtensionError?.(
-                                response.error || 'Could not open side panel'
-                            );
-                        }
-                    })
-                    .catch((error) => {
-                        this.toolbarController?.showExtensionError?.(
-                            error?.message || 'Could not open side panel'
-                        );
-                    });
+                sendRuntimeMessage({ action: 'TOGGLE_SIDE_PANEL' }, (error) => {
+                    this.toolbarController?.showExtensionError?.(
+                        error || 'Could not open side panel'
+                    );
+                });
                 return;
             }
 
             if (this.match(event, this.effectiveShortcut('browserControl'))) {
                 event.preventDefault();
                 event.stopPropagation();
-                Promise.resolve(chrome.runtime.sendMessage({ action: 'TOGGLE_SIDE_PANEL_CONTROL' }))
-                    .then((response) => {
-                        if (response?.status === 'error') {
-                            this.toolbarController?.showExtensionError?.(
-                                response.error || 'Could not start browser control'
-                            );
-                        }
-                    })
-                    .catch((error) => {
-                        this.toolbarController?.showExtensionError?.(
-                            error?.message || 'Could not start browser control'
-                        );
-                    });
+                sendRuntimeMessage({ action: 'TOGGLE_SIDE_PANEL_CONTROL' }, (error) => {
+                    this.toolbarController?.showExtensionError?.(
+                        error || 'Could not start browser control'
+                    );
+                });
                 return;
             }
         }
