@@ -9,13 +9,18 @@
             { value: '56fdd199312815e2', label: '3.8 Flash' },
             { value: 'cf41b0e0dd7d53e5', label: '3.5 Flash-Lite' },
             { value: 'e6fa609c3fa255c0', label: '3.1 Pro' },
+            { value: '95a4c0abcba24364', label: '4 Argon' },
         ].map((option) => Object.freeze(option))
     );
 
     const LEGACY_WEB_MODEL_ALIASES = Object.freeze({
+        'gemini-4-argon': '95a4c0abcba24364',
+        'gemini-4': '95a4c0abcba24364',
+        '4-argon': '95a4c0abcba24364',
         'gemini-3.8-flash': '56fdd199312815e2',
         'gemini-3.7-flash': '56fdd199312815e2',
         'gemini-3.5-flash-lite': 'cf41b0e0dd7d53e5',
+        '8c46e95b1a07cecc': 'cf41b0e0dd7d53e5',
         'gemini-3.1-pro': 'e6fa609c3fa255c0',
         'gemini-3-pro': 'e6fa609c3fa255c0',
     });
@@ -40,6 +45,12 @@
             hash: 'e6fa609c3fa255c0',
             mode: 3,
             fastThinkingLevel: 'low',
+        }),
+        // Gemini 4 Argon: Complex tasks and deep reasoning.
+        '95a4c0abcba24364': Object.freeze({
+            hash: '95a4c0abcba24364',
+            mode: 8,
+            fastThinkingLevel: 'minimal',
         }),
     });
 

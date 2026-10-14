@@ -41,6 +41,21 @@ describe('web thinking toggle UI', () => {
         expect(button.title).toBe('Thinking: Minimal (Fast Mode)');
     });
 
+    it('shows the fast active state for Gemini 4 Argon', () => {
+        syncWebThinkingToggle(
+            button,
+            { provider: 'web', webThinkingLevel: 'minimal' },
+            '95a4c0abcba24364'
+        );
+
+        expect(button.hidden).toBe(false);
+        expect(button.classList.contains('is-fast')).toBe(true);
+        expect(button.dataset.thinkingLevel).toBe('minimal');
+        expect(button.dataset.fastThinkingLevel).toBe('minimal');
+        expect(button.getAttribute('aria-pressed')).toBe('true');
+        expect(button.title).toBe('Thinking: Minimal (Fast Mode)');
+    });
+
     it('uses low as the fast active state for Gemini Web Pro', () => {
         syncWebThinkingToggle(
             button,

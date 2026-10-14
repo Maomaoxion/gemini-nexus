@@ -1,5 +1,35 @@
 # Changelog
 
+## v5.5.0 - 2026-10-14
+
+### Models
+
+- **Gemini 4 Argon 适配**：全面上线 Google 官方最新首选模型 **Gemini 4 Argon**（`95a4c0abcba24364`，RPC 模式 `mode: 8`），用于处理复杂任务与深度推理，支持快速（低点）与深度（高点）思考等级切换。
+- **Web 逆向渠道别名补齐**：新增 `gemini-4-argon`、`gemini-4`、`4-argon` 等别名映射；将最新 Flash-Lite 探测 hash `8c46e95b1a07cecc` 纳入别名解析保证平滑兼容。
+
+### Fixed
+
+- **图片工具黑名单与水印开关不再丢失**：`view.getFormData()` 漏传这两个字段，导致黑名单输入重载即失效，且每次点击保存都会把「移除生成图水印」静默重置为开启。
+- **独立设置页恢复加载 GitHub 元数据**：原先调用重命名后已不存在的 `fetchGithubData`，被可选链静默吞掉，star 数与更新状态从不刷新。
+- **TTS 失败提示本地化**：错误文案原为硬编码中文，英文界面用户会收到中文报错；现统一走工具栏词典（中/英双语）。
+- **页面快照能力标记重复**：快照格式化器对 `editable/modal/required/readonly/multiselectable` 会输出两遍同一能力 token。
+- **Provider 错误信息统一抽取**：官方 API 渠道此前直接抛出原始响应体，现与 Anthropic、OpenAI 兼容渠道一致解析 `{error:{message}}`。
+
+### Security
+
+- `downloadText` 对来自 sandbox 消息的文件名执行与 `downloadFile` 同级的净化（此前仅后者处理该不可信输入）。
+
+### Removed
+
+- 清理可读性审计遗留死代码：未使用的工具栏图标、孤儿 i18n key、仅供本模块使用的导出、签名相同的纯转发包装（含 `shared/media/youtube.js` 空壳，其测试改为直接覆盖全局实现，覆盖率保留）。
+- 删除与代码不符的注释：payload 索引写错、把 CDP 控制管理器标注为 MCP、承诺但未绑定的 `pointerup` 监听、声称「为测试保留」却无任何测试读取的门面。
+- 移除恒真分支、被包含的正则分支、无调用方传入的参数，以及不可达的兜底抛出。
+- 移除样式表与 CSS-in-JS 中的装饰性分节横幅；原有 hygiene 规则只覆盖 `//` 形式，现已扩展到 `/* */` 并补上测试。
+
+### Chore
+
+- 版本号升级至 `5.5.0`。
+
 ## v5.4.0 - 2026-09-04
 
 ### Models

@@ -1,6 +1,6 @@
 # Gemini Web Reverse Contract
 
-Last verified: 2026-09-03 (Gemini 3.8 Flash GA lineup on Gemini Web; `56fdd199312815e2` model contract verified against live web session; older model hashes cross-checked against public reverse catalogs; protocol tokens last captured with `js-reverse` on 2026-05-26, `https://gemini.google.com/app`, locale `zh-CN`).
+Last verified: 2026-10-14 (Gemini 4 Argon and 3.8 Flash GA lineup on Gemini Web; `95a4c0abcba24364` model contract and mode 8 verified against live web session; `56fdd199312815e2` model contract verified against live web session; older model hashes cross-checked against public reverse catalogs; protocol tokens last captured with `js-reverse` on 2026-05-26, `https://gemini.google.com/app`, locale `zh-CN`).
 
 This document records the Gemini Web assumptions used by the reverse provider. Gemini Web is not a public API, so these details should be treated as a contract that can drift.
 
@@ -16,8 +16,9 @@ Supported:
 - Parse streamed text, thoughts, continuation ids, and hosted generated-image URLs.
 - Expose the current Gemini Web chat modes:
     - `56fdd199312815e2` -> `3.8 Flash` (default)
-    - `cf41b0e0dd7d53e5` -> `3.5 Flash-Lite`
+    - `cf41b0e0dd7d53e5` -> `3.5 Flash-Lite` (live alias: `8c46e95b1a07cecc`)
     - `e6fa609c3fa255c0` -> `3.1 Pro`
+    - `95a4c0abcba24364` -> `4 Argon`
 
 Not claimed as complete:
 
