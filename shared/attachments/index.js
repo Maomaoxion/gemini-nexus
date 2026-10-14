@@ -19,7 +19,7 @@ const IMAGE_SIGNATURES = [
 ];
 
 export const MAX_ATTACHMENTS_COUNT = 10;
-export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 export function estimateDataUrlBytes(dataUrl) {
     if (typeof dataUrl !== 'string') return 0;

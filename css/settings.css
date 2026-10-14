@@ -159,29 +159,11 @@
     gap: 8px;
 }
 
-.settings-inline-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.settings-inline-row span {
-    min-width: 0;
-}
-
 .settings-action-row {
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
-}
-
-.settings-split-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
 }
 
 .settings-flex-fill {
@@ -191,12 +173,6 @@
 
 .settings-section-offset {
     margin-top: 12px;
-}
-
-.settings-panel-fieldset {
-    margin-top: 6px;
-    padding-top: 10px;
-    border-top: none;
 }
 
 .settings-muted-text {

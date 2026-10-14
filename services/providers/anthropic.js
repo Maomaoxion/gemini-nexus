@@ -1,8 +1,4 @@
-import {
-    countUserAttachmentsByType,
-    getDataUrlMime,
-    normalizeUserAttachments,
-} from '../../shared/attachments/index.js';
+import { getDataUrlMime, normalizeUserAttachments } from '../../shared/attachments/index.js';
 import { debugLog } from '../../shared/logging/debug.js';
 import { assertResponseOk } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';

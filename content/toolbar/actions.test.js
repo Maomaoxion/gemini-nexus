@@ -170,7 +170,7 @@ describe('ToolbarActions', () => {
             showLoading: vi.fn(),
             showError: vi.fn(),
             setInputValue: vi.fn(),
-            getSelectedModel: vi.fn(() => 'gemini-3.1-pro-preview'),
+            getSelectedModel: vi.fn(() => 'gemini-3.8-flash'),
         };
         const actions = new window.GeminiToolbarActions(ui);
 
@@ -178,7 +178,7 @@ describe('ToolbarActions', () => {
             'data:image/png;base64,AAA',
             { x: 1, y: 2 },
             'remove_bg',
-            'gemini-3.1-pro-preview'
+            'gemini-3.8-flash'
         );
 
         expect(ui.showAskWindow).toHaveBeenCalledWith({ x: 1, y: 2 }, null, 'Remove background');

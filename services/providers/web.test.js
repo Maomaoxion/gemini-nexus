@@ -207,7 +207,7 @@ describe('sendWebMessage', () => {
         expect(modelHeader[7]).toBe(true);
     });
 
-    it('normalizes Pro minimal thinking to native standard without prompt prefixes', async () => {
+    it('sends native standard thinking for Argon minimal thinking without prompt prefixes', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             body: makeStream(buildGeminiLine()),
@@ -222,7 +222,7 @@ describe('sendWebMessage', () => {
                 locale: 'zh-CN',
                 authUser: '0',
             },
-            'e6fa609c3fa255c0',
+            '95a4c0abcba24364',
             [],
             undefined,
             undefined,
@@ -234,7 +234,7 @@ describe('sendWebMessage', () => {
         expect(fReq).toContain('Solve it.');
         expect(fReq).not.toContain('Gemini Nexus thinking mode');
         const modelHeader = JSON.parse(init.headers['x-goog-ext-525001261-jspb']);
-        expect(modelHeader[14]).toBe(3);
+        expect(modelHeader[14]).toBe(8);
         expect(modelHeader[15]).toBe(1);
     });
 

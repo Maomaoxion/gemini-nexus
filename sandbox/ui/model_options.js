@@ -11,7 +11,7 @@ import {
 import { createWebModelOptions } from '../../shared/models/web_models.js';
 import { t } from '../core/i18n.js';
 
-export function getModelProvider(settings) {
+function getModelProvider(settings) {
     return settings.provider || (settings.useOfficialApi === true ? 'official' : DEFAULT_PROVIDER);
 }
 

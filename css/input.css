@@ -269,7 +269,6 @@ body:not(.has-page-context) .context-aware {
     flex-shrink: 0;
 }
 
-#capture-menu-btn .chevron-down,
 #capture-menu-btn svg:last-of-type {
     width: 12px;
     height: 12px;

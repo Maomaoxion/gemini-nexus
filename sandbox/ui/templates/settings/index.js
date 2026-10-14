@@ -6,7 +6,7 @@ import { DataManagementSettingsTemplate } from './data_management.js';
 import { AboutSettingsTemplate } from './about.js';
 import { TemplateIcons } from '../icons.js';
 
-export const SettingsContentTemplate = `
+const SettingsContentTemplate = `
     <div class="settings-content split-layout">
         <div class="settings-sidebar">
             <div class="settings-sidebar-header">

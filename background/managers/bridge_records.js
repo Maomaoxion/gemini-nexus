@@ -3,8 +3,8 @@
 // without DevTools. Large binary payloads (data URLs / base64) are redacted by
 // default so native-messaging stays under the ~1MB frame limit.
 
-export const DATA_URL_RE = /^data:[^;]+;base64,/i;
-export const LONG_BASE64_MIN = 256;
+const DATA_URL_RE = /^data:[^;]+;base64,/i;
+const LONG_BASE64_MIN = 256;
 
 /**
  * Replace data-URLs / long base64 strings with a length marker.

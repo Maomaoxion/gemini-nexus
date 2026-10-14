@@ -1,6 +1,6 @@
 import { hasDisplayableThoughts, hasDisplayableText } from '../core/displayable_content.js';
 
-export const TOOL_MESSAGE_KINDS = new Set(['tool-output', 'tool-status']);
+const TOOL_MESSAGE_KINDS = new Set(['tool-output', 'tool-status']);
 
 export function isToolMessageKind(kind) {
     return TOOL_MESSAGE_KINDS.has(kind);

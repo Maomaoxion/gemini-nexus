@@ -69,7 +69,7 @@ export async function assertResponseOk(response) {
     throw new Error(`API Error (${response.status}): ${errorText}`);
 }
 
-export async function readErrorMessage(response) {
+async function readErrorMessage(response) {
     let errorText = await response.text();
     try {
         const errJson = JSON.parse(errorText);

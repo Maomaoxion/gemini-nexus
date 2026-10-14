@@ -108,7 +108,7 @@
             storagePrefix: 'Openrouter',
             defaultBaseUrl: 'https://openrouter.ai/api/v1',
             defaultModels:
-                'openai/gpt-5.6-terra, anthropic/claude-sonnet-5, google/gemini-3.1-pro, deepseek/deepseek-v4-flash',
+                'openai/gpt-5.6-terra, anthropic/claude-sonnet-5, deepseek/deepseek-v4-flash',
             defaultModel: 'openai/gpt-5.6-terra',
             modelListUrl: 'https://openrouter.ai/api/v1/models',
             transport: 'openai-chat',
@@ -158,7 +158,7 @@
         DEFAULT_PROVIDER: 'web',
         DEFAULT_STORED_GEMINI_MODEL: '56fdd199312815e2',
         DEFAULT_OFFICIAL_MODEL: 'gemini-3.8-flash',
-        DEFAULT_OFFICIAL_MODELS: 'gemini-3.8-flash, gemini-3.5-flash-lite, gemini-3.1-pro',
+        DEFAULT_OFFICIAL_MODELS: 'gemini-3.8-flash, gemini-3.5-flash-lite',
         DEFAULT_OFFICIAL_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
         DEFAULT_OPENAI_MODEL: 'openai_custom',
         DEFAULT_THINKING_LEVEL: 'low',

@@ -17,7 +17,6 @@ Supported:
 - Expose the current Gemini Web chat modes:
     - `56fdd199312815e2` -> `3.8 Flash` (default)
     - `cf41b0e0dd7d53e5` -> `3.5 Flash-Lite` (live alias: `8c46e95b1a07cecc`)
-    - `e6fa609c3fa255c0` -> `3.1 Pro`
     - `95a4c0abcba24364` -> `4 Argon`
 
 Not claimed as complete:

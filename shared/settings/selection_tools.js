@@ -1,5 +1,5 @@
 export const CUSTOM_SELECTION_TOOLS_STORAGE_KEY = 'geminiCustomSelectionTools';
-export const MAX_CUSTOM_SELECTION_TOOLS = 12;
+const MAX_CUSTOM_SELECTION_TOOLS = 12;
 
 function normalizeToolId(id, index) {
     const cleaned = String(id || '')

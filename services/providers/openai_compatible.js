@@ -12,7 +12,6 @@ import {
     extractSourcesFromAnnotation,
     extractSourcesFromResponseItem,
     extractTextFromCompletedResponse,
-    readErrorMessage,
     assertResponseOk,
 } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';

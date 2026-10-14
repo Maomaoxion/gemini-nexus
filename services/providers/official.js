@@ -1,7 +1,6 @@
 import {
     DEFAULT_OFFICIAL_BASE_URL,
     DEFAULT_OFFICIAL_MODEL,
-    DEFAULT_THINKING_LEVEL,
 } from '../../shared/config/constants.js';
 import {
     attachmentToInlineData,
@@ -149,16 +148,6 @@ function normalizeOfficialModel(model) {
     return normalizeOfficialModelId(model);
 }
 
-function normalizeThinkingLevelForModel(targetModel, thinkingLevel) {
-    if (
-        (targetModel === 'gemini-3.1-pro' || targetModel === 'gemini-3.1-pro-preview') &&
-        thinkingLevel === 'minimal'
-    ) {
-        return DEFAULT_THINKING_LEVEL;
-    }
-    return thinkingLevel;
-}
-
 export function extractOfficialResponseData(candidate) {
     const modelParts = [];
     const functionCalls = [];
@@ -291,7 +280,7 @@ export async function sendOfficialMessage(
     if (thinkingLevel) {
         payload.generationConfig.thinkingConfig = {
             includeThoughts: true, // Ensure thoughts are returned in response
-            thinkingLevel: normalizeThinkingLevelForModel(targetModel, thinkingLevel),
+            thinkingLevel,
         };
     }
 

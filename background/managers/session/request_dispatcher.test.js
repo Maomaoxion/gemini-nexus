@@ -105,7 +105,7 @@ describe('RequestDispatcher response mapping', () => {
                 provider: 'official',
                 apiKey: 'key',
                 officialBaseUrl: 'https://api.example.test',
-                officialModel: 'gemini-3.8-flash, gemini-3.1-pro-preview',
+                officialModel: 'gemini-3.8-flash, gemini-3.5-flash-lite',
             },
             [],
             vi.fn(),
@@ -118,7 +118,7 @@ describe('RequestDispatcher response mapping', () => {
             [],
             expect.objectContaining({
                 model: 'gemini-3.8-flash',
-                configuredModels: 'gemini-3.8-flash, gemini-3.1-pro-preview',
+                configuredModels: 'gemini-3.8-flash, gemini-3.5-flash-lite',
             }),
             undefined,
             [],
@@ -1150,9 +1150,9 @@ describe('RequestDispatcher response mapping', () => {
         await dispatcher.dispatch(
             {
                 text: 'hello',
-                model: 'e6fa609c3fa255c0',
+                model: '56fdd199312815e2',
                 sessionId: 'session-web',
-                webThinkingLevel: 'minimal',
+                webThinkingLevel: 'high',
             },
             { provider: 'web', webThinkingLevel: 'high' },
             [],
@@ -1163,11 +1163,11 @@ describe('RequestDispatcher response mapping', () => {
         expect(sendWebMessage).toHaveBeenCalledWith(
             'hello',
             expect.any(Object),
-            'e6fa609c3fa255c0',
+            '56fdd199312815e2',
             [],
             null,
             expect.any(Function),
-            { thinkingLevel: 'low' }
+            { thinkingLevel: 'high' }
         );
     });
 

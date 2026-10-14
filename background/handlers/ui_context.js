@@ -12,7 +12,7 @@ export function getTargetSidePanelTabId(request, sender) {
     return null;
 }
 
-export function sendToRequestSource(sender, payload) {
+function sendToRequestSource(sender, payload) {
     const result = sender.tab
         ? chrome.tabs.sendMessage(sender.tab.id, payload)
         : chrome.runtime.sendMessage(payload);
