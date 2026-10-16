@@ -227,6 +227,52 @@ describe('SessionManager draft and persistence state', () => {
         expect(manager.addAiMessage('missing-session', { text: 'Answer' })).toBe(false);
     });
 
+    it('removes several sessions at once and moves off the current one', () => {
+        const manager = new SessionManager();
+        manager.setSessions([
+            {
+                id: 'session-1',
+                title: 'One',
+                timestamp: 300,
+                messages: [{ role: 'user', text: 'a' }],
+            },
+            {
+                id: 'session-2',
+                title: 'Two',
+                timestamp: 200,
+                messages: [{ role: 'user', text: 'b' }],
+            },
+            {
+                id: 'session-3',
+                title: 'Three',
+                timestamp: 100,
+                messages: [{ role: 'user', text: 'c' }],
+            },
+        ]);
+        manager.setCurrentId('session-2');
+
+        const result = manager.deleteSessions(['session-2', 'session-3']);
+
+        expect(result).toEqual({ deletedCount: 2, wasCurrent: true });
+        expect(manager.sessions.map((session) => session.id)).toEqual(['session-1']);
+        expect(manager.currentSessionId).toBe('session-1');
+    });
+
+    it('ignores bulk deletions without ids', () => {
+        const manager = new SessionManager();
+        manager.setSessions([
+            {
+                id: 'session-1',
+                title: 'One',
+                timestamp: 100,
+                messages: [{ role: 'user', text: 'a' }],
+            },
+        ]);
+
+        expect(manager.deleteSessions([])).toEqual({ deletedCount: 0, wasCurrent: false });
+        expect(manager.sessions).toHaveLength(1);
+    });
+
     it('keeps empty reply fields out of the recorded AI message', () => {
         const manager = new SessionManager();
         manager.setSessions([

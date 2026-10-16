@@ -393,6 +393,103 @@
     stroke: currentColor;
 }
 
+.data-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.data-management-card-meta {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* Saved-chat storage panel: per-chat sizes and bulk cleanup */
+.session-storage-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    background: var(--bg-setting-panel);
+}
+
+.session-storage-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.session-storage-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.session-storage-toolbar-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.session-storage-status,
+.session-storage-empty {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.session-storage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.session-storage-row-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--settings-transition-speed) var(--settings-transition-easing-bezier);
+}
+
+.session-storage-row-label:hover {
+    background: var(--bg-input);
+}
+
+.session-storage-row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.session-storage-row-title {
+    font-size: 13px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.session-storage-row-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
 .about-version-meta {
     color: var(--text-tertiary);
     font-size: 12px;

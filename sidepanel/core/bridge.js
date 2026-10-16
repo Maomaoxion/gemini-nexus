@@ -281,8 +281,14 @@ export class MessageBridge {
             }
 
             const deletedSessionIds = normalizeDeletedSessionIds(result?.geminiDeletedSessionIds);
-            if (mutation?.type === 'deleteSession' && mutation.sessionId) {
-                deletedSessionIds[mutation.sessionId] = Date.now();
+            const deletedIdList =
+                mutation?.type === 'deleteSession' && mutation.sessionId
+                    ? [mutation.sessionId]
+                    : mutation?.type === 'deleteSessions' && Array.isArray(mutation.sessionIds)
+                      ? mutation.sessionIds.filter(Boolean)
+                      : [];
+            for (const deletedId of deletedIdList) {
+                deletedSessionIds[deletedId] = Date.now();
             }
 
             const merged = mergeSessionSaveWithCurrent(
@@ -291,11 +297,7 @@ export class MessageBridge {
                 mutation,
                 deletedSessionIds
             );
-            if (
-                mutation?.type === 'deleteSession' &&
-                mutation.sessionId &&
-                typeof this.state.saveMany === 'function'
-            ) {
+            if (deletedIdList.length > 0 && typeof this.state.saveMany === 'function') {
                 this.state.saveMany({
                     geminiSessions: merged,
                     geminiDeletedSessionIds: deletedSessionIds,

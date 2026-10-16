@@ -518,4 +518,61 @@ describe('SessionFlowController', () => {
             { type: 'updateSessionGroups' }
         );
     });
+
+    it('deletes several chats at once and keeps the running one', () => {
+        const { app, controller, sessionManager, ui } = createSessionFlowHarness();
+        sessionManager.setSessions([
+            realSession({ id: 'session-1' }),
+            realSession({ id: 'session-2' }),
+            realSession({ id: 'session-3' }),
+        ]);
+        sessionManager.setCurrentId('session-1');
+        app.isGenerating = true;
+        app.generatingSessionId = 'session-2';
+
+        const result = controller.handleDeleteSessions(['session-2', 'session-3']);
+
+        expect(result).toEqual({ deletedCount: 1, skippedGenerating: true });
+        // The chat that is still generating stays in the list, only the
+        // selected idle chat is removed.
+        expect(sessionManager.sessions.map((session) => session.id)).toEqual([
+            'session-1',
+            'session-2',
+        ]);
+        expect(saveSessionsToStorage).toHaveBeenCalledWith(
+            [
+                expect.objectContaining({ id: 'session-1' }),
+                expect.objectContaining({ id: 'session-2' }),
+            ],
+            { type: 'deleteSessions', sessionIds: ['session-3'] }
+        );
+        expect(ui.renderHistoryList).toHaveBeenCalled();
+    });
+
+    it('switches away from the chat that is deleted in bulk', () => {
+        const { controller, sessionManager } = createSessionFlowHarness();
+        sessionManager.setSessions([
+            realSession({ id: 'session-1' }),
+            realSession({ id: 'session-2' }),
+        ]);
+        sessionManager.setCurrentId('session-1');
+
+        controller.handleDeleteSessions(['session-1']);
+
+        expect(sessionManager.currentSessionId).toBe('session-2');
+    });
+
+    it('keeps the running chat when it is the only one selected', () => {
+        const { app, controller, sessionManager } = createSessionFlowHarness();
+        sessionManager.setSessions([realSession({ id: 'session-1' })]);
+        sessionManager.setCurrentId('session-1');
+        app.isGenerating = true;
+        app.generatingSessionId = 'session-1';
+
+        const result = controller.handleDeleteSessions(['session-1']);
+
+        expect(result).toEqual({ deletedCount: 0, skippedGenerating: true });
+        expect(saveSessionsToStorage).not.toHaveBeenCalled();
+        expect(sessionManager.sessions).toHaveLength(1);
+    });
 });

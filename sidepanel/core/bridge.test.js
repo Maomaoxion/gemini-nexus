@@ -868,6 +868,47 @@ describe('MessageBridge model persistence', () => {
         warn.mockRestore();
     });
 
+    it('removes every chat of a bulk delete from storage', async () => {
+        const frame = createFrame();
+        const state = createState();
+        const bridge = new MessageBridge(frame, state);
+        chrome.storage.local.get.mockImplementation((keys, callback) =>
+            callback({
+                geminiSessions: [
+                    { id: 'keep', title: 'Keep', messages: [{ role: 'user', text: 'a' }] },
+                    { id: 'gone-1', title: 'Gone 1', messages: [{ role: 'user', text: 'b' }] },
+                    { id: 'gone-2', title: 'Gone 2', messages: [{ role: 'user', text: 'c' }] },
+                ],
+                geminiDeletedSessionIds: {},
+            })
+        );
+
+        bridge.handleWindowMessage({
+            source: frame.getWindow(),
+            data: {
+                action: 'SAVE_SESSIONS',
+                payload: {
+                    sessions: [
+                        { id: 'keep', title: 'Keep', messages: [{ role: 'user', text: 'a' }] },
+                    ],
+                    mutation: { type: 'deleteSessions', sessionIds: ['gone-1', 'gone-2'] },
+                },
+            },
+        });
+
+        await vi.waitFor(() =>
+            expect(state.saveMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    geminiSessions: [expect.objectContaining({ id: 'keep' })],
+                    geminiDeletedSessionIds: expect.objectContaining({
+                        'gone-1': expect.any(Number),
+                        'gone-2': expect.any(Number),
+                    }),
+                })
+            )
+        );
+    });
+
     it('skips the near-full guard once unlimitedStorage is granted', async () => {
         const frame = createFrame();
         const state = createState();

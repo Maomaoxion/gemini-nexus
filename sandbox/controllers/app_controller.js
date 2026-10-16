@@ -14,6 +14,7 @@ import {
 } from '../../shared/models/web_thinking.js';
 import { isDedicatedApiProvider } from '../../shared/settings/dedicated_providers.js';
 import { formatLiveArtifactFollowupPrompt } from '../core/live_artifacts.js';
+import { buildSessionStorageReport } from '../core/session_storage_report.js';
 
 export class AppController {
     constructor(sessionManager, uiController, imageManager) {
@@ -51,6 +52,14 @@ export class AppController {
             this.ui.setBrowserControlCallbacks({
                 onChoose: () => this.handleTabSwitcher(),
                 onStop: () => this.toggleBrowserControl(false),
+            });
+        }
+
+        if (this.ui.setSessionStorageHooks) {
+            this.ui.setSessionStorageHooks({
+                getSessionStorageReport: () =>
+                    buildSessionStorageReport(sessionManager.getPersistableSessions()),
+                deleteSessions: (sessionIds) => this.sessionFlow.handleDeleteSessions(sessionIds),
             });
         }
     }

@@ -42,6 +42,8 @@ export class SettingsView {
             onImportHistory: (payload) => this.fire('onImportHistory', payload),
             onExportSettings: () => this.fire('onExportSettings'),
             onImportSettings: (payload) => this.fire('onImportSettings', payload),
+            onRequestSessionStorageReport: () => this.fire('onRequestSessionStorageReport'),
+            onDeleteSessions: (sessionIds) => this.fire('onDeleteSessions', sessionIds),
         });
 
         this.about = new AboutSection();
@@ -297,6 +299,7 @@ export class SettingsView {
     }
 
     fire(event, data) {
-        if (this.callbacks[event]) this.callbacks[event](data);
+        if (!this.callbacks[event]) return undefined;
+        return this.callbacks[event](data);
     }
 }

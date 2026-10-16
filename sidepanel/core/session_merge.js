@@ -65,6 +65,12 @@ export function mergeSessionSaveWithCurrent(
         return currentSessions.filter((session) => session?.id !== mutation.sessionId);
     }
 
+    if (mutation?.type === 'deleteSessions' && Array.isArray(mutation.sessionIds)) {
+        const deletedIds = new Set(mutation.sessionIds.filter(Boolean));
+        if (deletedIds.size === 0) return currentSessions;
+        return currentSessions.filter((session) => !session?.id || !deletedIds.has(session.id));
+    }
+
     if (
         (mutation?.type === 'upsertSession' || mutation?.type === 'replaceSession') &&
         mutation.sessionId

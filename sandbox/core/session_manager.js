@@ -115,6 +115,26 @@ export class SessionManager {
         return wasCurrent;
     }
 
+    /**
+     * Removes several sessions at once (bulk cleanup from settings).
+     * @returns {{deletedCount: number, wasCurrent: boolean}}
+     */
+    deleteSessions(ids) {
+        const idSet = new Set((Array.isArray(ids) ? ids : []).filter(Boolean));
+        if (idSet.size === 0) return { deletedCount: 0, wasCurrent: false };
+
+        const previousCount = this.sessions.length;
+        const wasCurrent = Boolean(this.currentSessionId && idSet.has(this.currentSessionId));
+
+        this.sessions = this.sessions.filter((session) => !idSet.has(session.id));
+        if (wasCurrent) {
+            const nextSession = this.getSortedSessions()[0];
+            this.currentSessionId = nextSession ? nextSession.id : null;
+        }
+
+        return { deletedCount: previousCount - this.sessions.length, wasCurrent };
+    }
+
     updateSessionTitle(id, title) {
         const cleanTitle = (title || '').replace(/[\r\n]+/g, ' ').trim();
         if (!cleanTitle) return false;

@@ -156,8 +156,12 @@ describe('settings templates', () => {
             'settingsDataTitle',
             'debugLogs',
         ]);
-        expect(dataSection.querySelectorAll('.data-action-btn')).toHaveLength(5);
+        expect(dataSection.querySelectorAll('.data-action-btn')).toHaveLength(8);
         expect(dataSection.querySelectorAll('.data-action-icon svg').length).toBeGreaterThan(0);
+        // Saved-chat cleanup starts collapsed and cannot delete before a selection.
+        expect(dataSection.querySelector('#manage-sessions')).not.toBeNull();
+        expect(dataSection.querySelector('#session-storage-panel').hidden).toBe(true);
+        expect(dataSection.querySelector('#delete-selected-sessions').disabled).toBe(true);
         // Import overwrites local data — marked as danger actions.
         expect(
             dataSection

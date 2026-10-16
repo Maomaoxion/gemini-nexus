@@ -10,9 +10,14 @@ export const DataManagementSettingsTemplate = `
                 <span class="data-management-card-icon">${TemplateIcons.HISTORY}</span>
                 <div class="data-management-card-copy">
                     <h5 data-i18n="historyDataTitle">Chat History</h5>
+                    <p class="data-management-card-meta" id="session-storage-summary" data-i18n="sessionStorageLoading">Calculating…</p>
                 </div>
             </div>
             <div class="data-management-card-actions">
+                <button id="manage-sessions" type="button" class="data-action-btn data-action-btn-secondary" data-i18n-title="manageSessions" title="Manage sessions" aria-expanded="false" aria-controls="session-storage-panel">
+                    <span class="data-action-icon">${TemplateIcons.SETTINGS}</span>
+                    <span data-i18n="manageSessions">Manage</span>
+                </button>
                 <button id="export-history-data" type="button" class="data-action-btn data-action-btn-primary" data-i18n-title="exportHistoryData" title="Export History">
                     <span class="data-action-icon">${TemplateIcons.DOWNLOAD}</span>
                     <span data-i18n="exportHistoryData">Export History</span>
@@ -22,6 +27,22 @@ export const DataManagementSettingsTemplate = `
                     <span data-i18n="importHistoryData">Import History</span>
                 </button>
             </div>
+        </div>
+
+        <div class="session-storage-panel" id="session-storage-panel" hidden>
+            <div class="session-storage-toolbar">
+                <label class="session-storage-select-all">
+                    <input type="checkbox" id="session-storage-select-all">
+                    <span data-i18n="selectAllSessions">Select all</span>
+                </label>
+                <div class="session-storage-toolbar-actions">
+                    <button id="cleanup-old-sessions" type="button" class="data-action-btn data-action-btn-secondary" data-i18n="cleanupOldSessions">Older than 90 days</button>
+                    <button id="delete-selected-sessions" type="button" class="data-action-btn data-action-btn-danger" data-i18n="deleteSelectedSessions" disabled>Delete selected</button>
+                </div>
+            </div>
+            <p class="session-storage-status" id="session-storage-status" role="status" aria-live="polite" hidden></p>
+            <p class="session-storage-empty" id="session-storage-empty" data-i18n="noSavedSessions" hidden>No saved chats.</p>
+            <ul class="session-storage-list" id="session-storage-list"></ul>
         </div>
 
         <div class="data-management-card">

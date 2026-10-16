@@ -274,6 +274,40 @@ export class SessionFlowController {
         }
     }
 
+    /**
+     * Bulk chat cleanup from the settings panel.
+     * The session that is currently generating is always kept, so a cleanup
+     * never discards a reply that is still streaming in.
+     * @returns {{deletedCount: number, skippedGenerating: boolean}}
+     */
+    handleDeleteSessions(sessionIds) {
+        const requested = (Array.isArray(sessionIds) ? sessionIds : []).filter(Boolean);
+        if (requested.length === 0) return { deletedCount: 0, skippedGenerating: false };
+
+        const generatingSessionId = this.app.generatingSessionId;
+        const deletable = requested.filter((id) => id !== generatingSessionId);
+        const skippedGenerating = deletable.length !== requested.length;
+        if (deletable.length === 0) return { deletedCount: 0, skippedGenerating };
+
+        const { deletedCount, wasCurrent } = this.sessionManager.deleteSessions(deletable);
+        saveSessionsToStorage(this.sessionManager.getPersistableSessions(), {
+            type: 'deleteSessions',
+            sessionIds: deletable,
+        });
+
+        if (wasCurrent) {
+            if (this.sessionManager.sessions.length > 0) {
+                this.switchToSession(this.sessionManager.currentSessionId);
+            } else {
+                this.enterDraft();
+            }
+        } else {
+            this.refreshHistoryUI();
+        }
+
+        return { deletedCount, skippedGenerating };
+    }
+
     handleRenameSession(sessionId, title) {
         if (!this.sessionManager.updateSessionTitle(sessionId, title)) return;
 

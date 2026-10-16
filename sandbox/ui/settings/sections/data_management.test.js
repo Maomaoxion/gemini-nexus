@@ -2,104 +2,176 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataManagementSection } from './data_management.js';
+import { DataManagementSettingsTemplate } from '../../templates/settings/data_management.js';
 
-describe('DataManagementSection', () => {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function createReport(overrides = {}) {
+    const now = Date.now();
+    return {
+        sessions: [
+            {
+                id: 'big-chat',
+                title: 'Big chat',
+                messageCount: 12,
+                bytes: 3 * 1024 * 1024,
+                imageBytes: 1024 * 1024,
+                updatedAt: now,
+            },
+            {
+                id: 'small-chat',
+                title: '',
+                messageCount: 2,
+                bytes: 2048,
+                imageBytes: 0,
+                updatedAt: now,
+            },
+        ],
+        totals: {
+            sessionCount: 2,
+            messageCount: 14,
+            totalBytes: 3 * 1024 * 1024 + 2048,
+            imageBytes: 1024 * 1024,
+        },
+        now,
+        ...overrides,
+    };
+}
+
+function createSection(callbacks = {}) {
+    document.body.innerHTML = `<div id="settings-modal" class="settings-modal visible">${DataManagementSettingsTemplate}</div>`;
+    const section = new DataManagementSection(callbacks);
+    section.setSessionStorageReport(createReport());
+    return section;
+}
+
+function getPanel() {
+    return document.getElementById('session-storage-panel');
+}
+
+describe('DataManagementSection chat storage', () => {
     beforeEach(() => {
-        vi.restoreAllMocks();
-        vi.unstubAllGlobals();
-        document.body.innerHTML = `
-            <button id="download-logs"></button>
-            <button id="export-history-data"></button>
-            <button id="import-history-data"></button>
-            <input id="import-history-file" type="file">
-            <button id="export-settings-data"></button>
-            <button id="import-settings-data"></button>
-            <input id="import-settings-file" type="file">
-        `;
+        vi.stubGlobal(
+            'confirm',
+            vi.fn(() => true)
+        );
+        vi.stubGlobal('alert', vi.fn());
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        document.body.innerHTML = '';
     });
 
-    it('fires data export callbacks and opens import file pickers', () => {
-        const callbacks = {
-            onDownloadLogs: vi.fn(),
-            onExportHistory: vi.fn(),
-            onExportSettings: vi.fn(),
-        };
-        new DataManagementSection(callbacks);
-        const historyInput = document.getElementById('import-history-file');
-        const settingsInput = document.getElementById('import-settings-file');
-        const historyClick = vi.spyOn(historyInput, 'click').mockImplementation(() => {});
-        const settingsClick = vi.spyOn(settingsInput, 'click').mockImplementation(() => {});
+    it('shows totals for the saved chats', () => {
+        createSection();
 
-        document.getElementById('download-logs').click();
-        document.getElementById('export-history-data').click();
-        document.getElementById('export-settings-data').click();
-        document.getElementById('import-history-data').click();
-        document.getElementById('import-settings-data').click();
-
-        expect(callbacks.onDownloadLogs).toHaveBeenCalled();
-        expect(callbacks.onExportHistory).toHaveBeenCalled();
-        expect(callbacks.onExportSettings).toHaveBeenCalled();
-        expect(historyClick).toHaveBeenCalled();
-        expect(settingsClick).toHaveBeenCalled();
+        const summary = document.getElementById('session-storage-summary').textContent;
+        expect(summary).toContain('2');
+        expect(summary).toContain('MB');
     });
 
-    it('reads selected JSON import files before firing import callbacks', () => {
-        const callbacks = {
-            onImportHistory: vi.fn(),
-        };
-        new DataManagementSection(callbacks);
-        const input = document.getElementById('import-history-file');
-        Object.defineProperty(input, 'files', {
-            value: [{ name: 'history.json' }],
-            configurable: true,
-        });
-        vi.stubGlobal(
-            'FileReader',
-            class {
-                readAsText() {
-                    this.result = '{"type":"GeminiNexus-History","history":[]}';
-                    this.onload();
-                }
-            }
+    it('opens the manager, asks for a fresh report and lists chats by size', () => {
+        const onRequestSessionStorageReport = vi.fn();
+        createSection({ onRequestSessionStorageReport });
+
+        document.getElementById('manage-sessions').click();
+
+        expect(onRequestSessionStorageReport).toHaveBeenCalledTimes(1);
+        expect(getPanel().hidden).toBe(false);
+        expect(document.getElementById('manage-sessions').getAttribute('aria-expanded')).toBe(
+            'true'
         );
 
-        input.dispatchEvent(new Event('change'));
-
-        expect(callbacks.onImportHistory).toHaveBeenCalledWith({
-            type: 'GeminiNexus-History',
-            history: [],
-        });
-        expect(input.value).toBe('');
+        const rows = document.querySelectorAll('.session-storage-row');
+        expect(rows).toHaveLength(2);
+        expect(rows[0].textContent).toContain('Big chat');
+        expect(rows[1].textContent).toContain('New Chat');
     });
 
-    it('alerts when an import file cannot be parsed', () => {
-        const callbacks = {
-            onImportSettings: vi.fn(),
-        };
-        const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-        new DataManagementSection(callbacks);
-        const input = document.getElementById('import-settings-file');
-        Object.defineProperty(input, 'files', {
-            value: [{ name: 'settings.json' }],
-            configurable: true,
-        });
-        vi.stubGlobal(
-            'FileReader',
-            class {
-                readAsText() {
-                    this.result = 'not json';
-                    this.onload();
-                }
-            }
+    it('deletes the selected chats after confirmation', async () => {
+        const onDeleteSessions = vi.fn(() => ({ deletedCount: 2, skippedGenerating: false }));
+        const section = createSection({ onDeleteSessions });
+
+        document.getElementById('manage-sessions').click();
+        document.getElementById('session-storage-select-all').checked = true;
+        document.getElementById('session-storage-select-all').dispatchEvent(new Event('change'));
+        expect(document.getElementById('delete-selected-sessions').disabled).toBe(false);
+
+        document.getElementById('delete-selected-sessions').click();
+        await vi.waitFor(() => expect(onDeleteSessions).toHaveBeenCalledTimes(1));
+
+        expect(onDeleteSessions).toHaveBeenCalledWith(['big-chat', 'small-chat']);
+        expect(section.getSelectedSessionIds()).toEqual([]);
+
+        await vi.waitFor(() =>
+            expect(document.getElementById('session-storage-status').textContent).toContain('2')
+        );
+    });
+
+    it('keeps the chats when the confirmation is declined', () => {
+        const onDeleteSessions = vi.fn();
+        globalThis.confirm.mockReturnValue(false);
+        createSection({ onDeleteSessions });
+
+        document.getElementById('manage-sessions').click();
+        document.getElementById('session-storage-select-all').checked = true;
+        document.getElementById('session-storage-select-all').dispatchEvent(new Event('change'));
+        document.getElementById('delete-selected-sessions').click();
+
+        expect(onDeleteSessions).not.toHaveBeenCalled();
+    });
+
+    it('cleans up only chats inactive for more than 90 days', async () => {
+        const onDeleteSessions = vi.fn(() => ({ deletedCount: 1, skippedGenerating: false }));
+        const section = createSection({ onDeleteSessions });
+        section.setSessionStorageReport(
+            createReport({
+                sessions: [
+                    {
+                        id: 'stale-chat',
+                        title: 'Old chat',
+                        messageCount: 4,
+                        bytes: 1024,
+                        imageBytes: 0,
+                        updatedAt: Date.now() - 120 * DAY_MS,
+                    },
+                    {
+                        id: 'recent-chat',
+                        title: 'Recent',
+                        messageCount: 4,
+                        bytes: 1024,
+                        imageBytes: 0,
+                        updatedAt: Date.now() - DAY_MS,
+                    },
+                ],
+                totals: { sessionCount: 2, messageCount: 8, totalBytes: 2048, imageBytes: 0 },
+            })
         );
 
-        input.dispatchEvent(new Event('change'));
+        document.getElementById('manage-sessions').click();
+        document.getElementById('cleanup-old-sessions').click();
 
-        expect(callbacks.onImportSettings).not.toHaveBeenCalled();
-        expect(alertSpy).toHaveBeenCalledWith('Failed to read import file.');
+        await vi.waitFor(() => expect(onDeleteSessions).toHaveBeenCalledTimes(1));
+        expect(onDeleteSessions).toHaveBeenCalledWith(['stale-chat']);
+    });
+
+    it('reports when the running chat was kept', async () => {
+        const onDeleteSessions = vi.fn(() => ({ deletedCount: 1, skippedGenerating: true }));
+        createSection({ onDeleteSessions });
+
+        document.getElementById('manage-sessions').click();
+        const firstRowCheckbox = document.querySelector('.session-storage-row-check');
+        firstRowCheckbox.checked = true;
+        firstRowCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+
+        document.getElementById('delete-selected-sessions').click();
+
+        await vi.waitFor(() => expect(onDeleteSessions).toHaveBeenCalledWith(['big-chat']));
+        await vi.waitFor(() =>
+            expect(document.getElementById('session-storage-status').textContent).toContain(
+                'generating'
+            )
+        );
     });
 });

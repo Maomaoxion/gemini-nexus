@@ -59,6 +59,7 @@ import {
 export class SettingsController {
     constructor(callbacks) {
         this.callbacks = callbacks || {};
+        this.sessionStorageHooks = null;
 
         this.defaultShortcuts = { ...DEFAULT_SHORTCUTS };
         this.shortcuts = { ...this.defaultShortcuts };
@@ -141,6 +142,8 @@ export class SettingsController {
             onImportHistory: (payload) => this.importHistory(payload),
             onExportSettings: () => this.exportSettings(),
             onImportSettings: (payload) => this.importSettings(payload),
+            onRequestSessionStorageReport: () => this.refreshSessionStorage(),
+            onDeleteSessions: (sessionIds) => this.deleteSessions(sessionIds),
         });
 
         window.addEventListener('message', (messageEvent) => {
@@ -164,8 +167,27 @@ export class SettingsController {
         this.view.close();
     }
 
+    setSessionStorageHooks(hooks = {}) {
+        this.sessionStorageHooks = hooks || {};
+    }
+
+    refreshSessionStorage() {
+        const report = this.sessionStorageHooks?.getSessionStorageReport?.() || null;
+        this.view.dataManagement.setSessionStorageReport(report);
+        return report;
+    }
+
+    async deleteSessions(sessionIds) {
+        const result = await Promise.resolve(
+            this.sessionStorageHooks?.deleteSessions?.(sessionIds) || {}
+        );
+        this.refreshSessionStorage();
+        return result;
+    }
+
     handleOpen() {
         this.view.setShortcuts(this.shortcuts);
+        this.refreshSessionStorage();
         this.view.setLanguageValue(getLanguagePreference());
         this.view.setToggles(
             this.textSelectionEnabled,

@@ -47,6 +47,10 @@ export class UIController {
         this.updateWebThinkingToggle(this.settings.connectionData);
     }
 
+    setSessionStorageHooks(hooks = {}) {
+        this.settings.setSessionStorageHooks(hooks);
+    }
+
     checkLayout() {
         // Threshold for Wide Mode (e.g. Full Page Tab or large side panel)
         const isWide = window.innerWidth > 800;
