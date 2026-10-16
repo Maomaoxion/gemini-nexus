@@ -63,12 +63,12 @@ export class UIMessageHandler {
 
         if (request.action === 'SIDE_PANEL_CLOSED') {
             this.sidePanelScopeManager?.markClosedForTab?.(request.tabId);
-            // Abort any in-flight side-panel run so the upstream provider fetch
-            // does not keep streaming into a closed panel (token/quota waste).
-            // pagehide does not fire on browser crash / force-close, but when it
-            // does fire this is the only signal we get — there is no long-lived
-            // Port disconnect because the extension uses broadcast sendMessage.
-            this.sessionHandler?.cancelSidePanelRun?.();
+            // The run keeps going after the panel goes away: the reply is
+            // persisted when it completes, so reopening the panel (or switching
+            // tabs back) shows the answer instead of a lost one. pagehide does
+            // not fire on browser crash / force-close, but when it does fire
+            // this is the only signal we get — there is no long-lived Port
+            // disconnect because the extension uses broadcast sendMessage.
             sendResponse({ status: 'processed' });
             return false;
         }

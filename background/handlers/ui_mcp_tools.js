@@ -150,13 +150,13 @@ export function handleMcpDisconnect(mcpManager, request, sendResponse) {
                     })
                 )
             );
-            return { action: 'MCP_DISCONNECT_RESULT', ok: true, serverIds };
+            // Best-effort ack: the caller does not await this, so the payload is
+            // plain data rather than a message the UI is expected to handle.
+            return { status: 'disconnected', serverIds };
         },
         {
             errorResponse: (error) => ({
-                action: 'MCP_DISCONNECT_RESULT',
-                ok: false,
-                serverIds: request?.serverIds || (request?.serverId ? [request.serverId] : []),
+                status: 'error',
                 error: error.message || String(error),
             }),
         }

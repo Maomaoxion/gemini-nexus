@@ -118,9 +118,15 @@ describe('sidepanel window actions', () => {
             chrome.runtime.lastError = null;
         });
 
-        handleWindowMessageAction('EXPORT_HISTORY_DATA', null, {});
+        const postBackgroundMessage = vi.fn();
+        handleWindowMessageAction('EXPORT_HISTORY_DATA', null, { postBackgroundMessage });
 
         expect(downloadText).not.toHaveBeenCalled();
+        expect(postBackgroundMessage).toHaveBeenCalledWith({
+            action: 'BACKGROUND_REQUEST_ERROR',
+            requestAction: 'EXPORT_HISTORY_DATA',
+            error: 'Storage read failed',
+        });
         expect(warnSpy).toHaveBeenCalledWith(
             '[Gemini Nexus] Failed to export history data:',
             expect.any(Error)
@@ -137,9 +143,15 @@ describe('sidepanel window actions', () => {
             chrome.runtime.lastError = null;
         });
 
-        handleWindowMessageAction('EXPORT_SETTINGS_DATA', null, {});
+        const postBackgroundMessage = vi.fn();
+        handleWindowMessageAction('EXPORT_SETTINGS_DATA', null, { postBackgroundMessage });
 
         expect(downloadText).not.toHaveBeenCalled();
+        expect(postBackgroundMessage).toHaveBeenCalledWith({
+            action: 'BACKGROUND_REQUEST_ERROR',
+            requestAction: 'EXPORT_SETTINGS_DATA',
+            error: 'Storage read failed',
+        });
         expect(warnSpy).toHaveBeenCalledWith(
             '[Gemini Nexus] Failed to export settings data:',
             expect.any(Error)

@@ -188,7 +188,7 @@ function exportStorageData(bridge, storageKeys, kind, buildPayload) {
             console.warn(`[Gemini Nexus] Failed to export ${kind} data:`, readError);
             // The read happens here, but the user clicked in the sandbox panel:
             // report the failure where the export button is.
-            bridge?.postBackgroundMessage({
+            bridge?.postBackgroundMessage?.({
                 action: 'BACKGROUND_REQUEST_ERROR',
                 requestAction: getExportRequestAction(kind),
                 error: readError.message || String(readError),
