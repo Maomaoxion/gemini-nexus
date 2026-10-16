@@ -290,10 +290,12 @@ export class SidePanelScopeManager {
 
     async toggleForTab(tabId, windowId) {
         if (this.isOpenForTab(tabId)) {
+            console.info('[SidePanelScopeManager] Closing side panel for tab', tabId);
             await this.closeForTab(tabId);
             return { status: 'closed' };
         }
 
+        console.info('[SidePanelScopeManager] Opening side panel for tab', tabId);
         await this.openForTab(tabId, windowId);
         return { status: 'opened' };
     }
