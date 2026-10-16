@@ -448,7 +448,7 @@ export class AppController {
                 return;
             }
             if (payload.action === 'BACKGROUND_REQUEST_ERROR') {
-                // Settings-panel requests (MCP test, model list) own their own
+                // Panel-owned requests (MCP test, model list) render their own
                 // progress UI. Clearing the chat's generating state for them
                 // would also drop a reply that is still streaming in.
                 const handledBySettings = this.ui.handleBackgroundRequestFailure?.(
