@@ -175,4 +175,28 @@ describe('SidePanelScopeManager tab-scoped paths', () => {
         );
         warnSpy.mockRestore();
     });
+
+    it('reports the failure when every open attempt is rejected', async () => {
+        vi.useFakeTimers();
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        chrome.sidePanel.open.mockImplementation(() =>
+            Promise.reject(new Error('side panel is not enabled'))
+        );
+
+        const manager = new SidePanelScopeManager();
+        const opening = manager.openForTab(123, 456);
+        const rejection = expect(opening).rejects.toThrow('side panel is not enabled');
+
+        await vi.runAllTimersAsync();
+        await rejection;
+
+        expect(chrome.sidePanel.open).toHaveBeenCalledTimes(3);
+        expect(manager.isOpenForTab(123)).toBe(false);
+        expect(warnSpy).toHaveBeenCalledWith(
+            '[SidePanelScopeManager] Could not open side panel:',
+            expect.any(Error)
+        );
+        warnSpy.mockRestore();
+        vi.useRealTimers();
+    });
 });

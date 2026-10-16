@@ -2,6 +2,11 @@ import { DEFAULT_SIDE_PANEL_SCOPE } from '../../shared/config/constants.js';
 
 const DEFAULT_PANEL_PATH = 'sidepanel/index.html';
 
+// Delays between side-panel open attempts. The first attempt runs immediately
+// (inside the caller's user gesture); the rest wait for the tab's panel
+// options to settle.
+const OPEN_ATTEMPT_DELAYS_MS = [0, 120, 350];
+
 export function getPanelPathForTab(tabId) {
     const normalizedTabId = Number(tabId);
     if (!Number.isInteger(normalizedTabId) || normalizedTabId <= 0) {
@@ -165,20 +170,39 @@ export class SidePanelScopeManager {
     }
 
     async openAfterSetup(openOptions, setupPromises) {
-        let immediateOpenError = null;
-        const immediateOpenPromise = chrome.sidePanel.open(openOptions).catch((error) => {
-            immediateOpenError = error;
-        });
-
-        await Promise.all([...setupPromises, immediateOpenPromise]);
-
-        if (!immediateOpenError) return;
-
-        console.warn(
-            '[SidePanelScopeManager] Retrying side panel open after options settled:',
-            immediateOpenError
+        // The first attempt races the panel options being applied: Chrome can
+        // reject the open while the tab is not yet marked as enabled. Keep the
+        // first attempt in the click's own task (so the user gesture is still
+        // valid), then retry a couple of times after the options settle instead
+        // of leaving the click silently dead.
+        const setupSettled = Promise.all(
+            setupPromises.map((promise) => Promise.resolve(promise).catch(() => {}))
         );
-        await chrome.sidePanel.open(openOptions);
+        let lastError = null;
+
+        for (let attempt = 0; attempt < OPEN_ATTEMPT_DELAYS_MS.length; attempt++) {
+            const delayMs = OPEN_ATTEMPT_DELAYS_MS[attempt];
+            if (delayMs > 0) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            }
+
+            try {
+                await chrome.sidePanel.open(openOptions);
+                return;
+            } catch (error) {
+                lastError = error;
+                if (attempt === 0) {
+                    console.warn(
+                        '[SidePanelScopeManager] Retrying side panel open after options settled:',
+                        error
+                    );
+                }
+                await setupSettled;
+            }
+        }
+
+        console.warn('[SidePanelScopeManager] Could not open side panel:', lastError);
+        throw lastError;
     }
 
     async openForTab(tabId, windowId) {
