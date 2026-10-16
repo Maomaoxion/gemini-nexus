@@ -135,6 +135,24 @@ describe('StandaloneSettingsBridge', () => {
         );
     });
 
+    it('downloads the log file requested from the settings panel', () => {
+        const controller = createController();
+        const bridge = new StandaloneSettingsBridge(controller);
+        bridge.init();
+
+        window.dispatchEvent(
+            new MessageEvent('message', {
+                source: window,
+                data: {
+                    action: 'DOWNLOAD_LOGS',
+                    payload: { text: 'log line', filename: 'gemini-nexus-logs-1.txt' },
+                },
+            })
+        );
+
+        expect(downloadText).toHaveBeenCalledWith('log line', 'gemini-nexus-logs-1.txt');
+    });
+
     it('restores settings directly from extension storage', async () => {
         const controller = createController();
         const bridge = new StandaloneSettingsBridge(controller);

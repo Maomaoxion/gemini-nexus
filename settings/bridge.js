@@ -293,6 +293,11 @@ export class StandaloneSettingsBridge {
             case 'EXPORT_HISTORY_DATA':
                 this.exportHistoryData();
                 return;
+            case 'DOWNLOAD_LOGS':
+                // The settings controller posts downloaded logs back through the
+                // window message channel; on the standalone page that is this page.
+                downloadText(payload?.text || '', payload?.filename || 'gemini-nexus-logs.txt');
+                return;
             case 'IMPORT_HISTORY_DATA':
                 this.importHistoryData(payload);
                 return;
