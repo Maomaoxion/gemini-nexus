@@ -25,6 +25,25 @@ const MAX_SUMMARY_TRANSCRIPT_CHARS = 60000;
 const HIDDEN_COMPRESSED_MESSAGE_ROLE = 'user';
 const HIDDEN_COMPRESSED_MESSAGE_PREFIX = '[Hidden compressed conversation history]\n';
 
+// A summary model that keeps failing (bad model id, quota, refusal) would
+// otherwise be retried before every single turn. Cool down per session instead.
+const COMPRESSION_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
+const compressionRetryBlockedUntil = new Map();
+
+function isCompressionCoolingDown(sessionId, now = Date.now()) {
+    if (!sessionId) return false;
+    return (compressionRetryBlockedUntil.get(sessionId) || 0) > now;
+}
+
+function markCompressionFailure(sessionId, now = Date.now()) {
+    if (!sessionId) return;
+    compressionRetryBlockedUntil.set(sessionId, now + COMPRESSION_RETRY_COOLDOWN_MS);
+}
+
+function clearCompressionFailure(sessionId) {
+    if (sessionId) compressionRetryBlockedUntil.delete(sessionId);
+}
+
 const COMPRESSION_SYSTEM_PROMPT = `You maintain a compact hidden conversation history message for Gemini Nexus.
 
 Rewrite the supplied hidden compressed history message and conversation segment into one updated hidden history message.
@@ -423,6 +442,9 @@ async function resolveCompressedMessage(
             sourceMessageCount,
             updatedAt: Date.now(),
         });
+        // The summary model works again: drop any failure cooldown so the next
+        // turn compresses immediately.
+        clearCompressionFailure(sessionId);
     }
 
     onStatus?.('compressed', {
@@ -487,6 +509,14 @@ export async function prepareManagedContext(request, settings, history, signal, 
             };
         }
 
+        // A summary model that just failed is not retried on every turn.
+        if (isCompressionCoolingDown(request.sessionId)) {
+            return {
+                history: [hiddenHistory, ...tailHistory],
+                systemInstruction: request.systemInstruction || '',
+            };
+        }
+
         try {
             const compressedText = await resolveCompressedMessage(
                 request.sessionId,
@@ -509,6 +539,7 @@ export async function prepareManagedContext(request, settings, history, signal, 
                 '[Gemini Nexus] Failed to compress hidden history and tail, falling back to existing hidden history and unsummarized tail:',
                 error
             );
+            markCompressionFailure(request.sessionId);
             onStatus?.('compression_failed', {
                 recentTurns,
             });
@@ -522,6 +553,22 @@ export async function prepareManagedContext(request, settings, history, signal, 
     if (!hasRecentTurnThreshold(sourceHistory, recentTurns)) {
         return {
             history: sourceHistory,
+            systemInstruction: request.systemInstruction || '',
+        };
+    }
+
+    const recentTurnsFallback = () => {
+        const cutoff = snapCutoffToPreserveToolPairing(
+            sourceHistory,
+            getRecentCutoff(sourceHistory, recentTurns)
+        );
+        return cutoff > 0 ? sourceHistory.slice(cutoff) : sourceHistory;
+    };
+
+    // A summary model that just failed is not retried on every turn.
+    if (isCompressionCoolingDown(request.sessionId)) {
+        return {
+            history: recentTurnsFallback(),
             systemInstruction: request.systemInstruction || '',
         };
     }
@@ -550,16 +597,12 @@ export async function prepareManagedContext(request, settings, history, signal, 
             '[Gemini Nexus] Failed to compress history, falling back to recent turns:',
             error
         );
+        markCompressionFailure(request.sessionId);
         onStatus?.('compression_failed', {
             recentTurns,
         });
-        const cutoff = snapCutoffToPreserveToolPairing(
-            sourceHistory,
-            getRecentCutoff(sourceHistory, recentTurns)
-        );
-        const recentHistory = cutoff > 0 ? sourceHistory.slice(cutoff) : sourceHistory;
         return {
-            history: recentHistory,
+            history: recentTurnsFallback(),
             systemInstruction: request.systemInstruction || '',
         };
     }

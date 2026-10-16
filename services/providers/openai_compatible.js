@@ -16,6 +16,7 @@ import {
 } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
 import { assertNonEmptyResponse, throwIfTruncated } from './shared/finish_reason.js';
+import { fetchWithHeadersTimeout } from './shared/fetch_timeout.js';
 
 function isXAIBaseUrl(baseUrl) {
     try {
@@ -147,7 +148,7 @@ export async function sendOpenAIMessage(
     const webSearchLabel = webSearch ? ' with Chat web search' : '';
     debugLog(`[OpenAI Compatible] Requesting ${model} at ${url}${webSearchLabel}...`);
 
-    const response = await fetch(url, {
+    const response = await fetchWithHeadersTimeout(url, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(payload),
@@ -290,7 +291,7 @@ async function sendOpenAIResponsesMessage(
     const webSearchLabel = config.webSearch === true ? ' with web search' : '';
     debugLog(`[OpenAI Responses] Requesting ${model} at ${url}${webSearchLabel}...`);
 
-    const response = await fetch(url, {
+    const response = await fetchWithHeadersTimeout(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),

@@ -12,6 +12,7 @@ import { readSseJson } from './sse.js';
 import { assertNonEmptyResponse, throwIfTruncated } from './shared/finish_reason.js';
 import { normalizeBaseUrl } from './shared/urls.js';
 import { normalizeOfficialModelId } from '../../shared/models/aliases.js';
+import { fetchWithHeadersTimeout } from './shared/fetch_timeout.js';
 
 function extractGroundingSources(groundingMetadata) {
     if (!groundingMetadata || !Array.isArray(groundingMetadata.groundingChunks)) {
@@ -290,7 +291,7 @@ export async function sendOfficialMessage(
         };
     }
 
-    const response = await fetch(url, {
+    const response = await fetchWithHeadersTimeout(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
