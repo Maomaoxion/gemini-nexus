@@ -33,6 +33,13 @@ describe('TemplateIcons', () => {
         );
     });
 
+    it('keeps the retry icon as a complete two-arrow refresh cycle', () => {
+        expect(TemplateIcons.REFRESH).toContain('M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8');
+        expect(TemplateIcons.REFRESH).toContain('M21 3v5h-5');
+        expect(TemplateIcons.REFRESH).toContain('M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16');
+        expect(TemplateIcons.REFRESH).toContain('M8 16H3v5');
+    });
+
     it('keeps the new group icon aligned with AMC lucide Folders', () => {
         expect(TemplateIcons.NEW_GROUP).toContain(
             'M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z'
