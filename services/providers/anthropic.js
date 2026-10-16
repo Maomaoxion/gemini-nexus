@@ -9,6 +9,7 @@ import {
     textWithUnsupportedFileNotice,
 } from './shared/attachments.js';
 import { normalizeBaseUrl, getDataUrlPayload } from './shared/urls.js';
+import { fetchWithHeadersTimeout } from './shared/fetch_timeout.js';
 
 const DEFAULT_MAX_TOKENS = 8192;
 const THINKING_BUDGET_BY_LEVEL = Object.freeze({
@@ -51,24 +52,36 @@ function buildUserContent(text, attachments) {
 function buildMessages(prompt, history, files) {
     const messages = [];
 
+    // The Messages API needs non-empty, alternating turns. Editing or deleting
+    // history can leave two same-role rows in a row (and rows with nothing to
+    // say), so normalise here instead of sending a payload the API rejects.
+    const pushTurn = (role, content) => {
+        const previous = messages[messages.length - 1];
+        if (previous && previous.role === role) {
+            previous.content = [...previous.content, ...content];
+            return;
+        }
+        messages.push({ role, content });
+    };
+
     if (Array.isArray(history)) {
         history.forEach((historyMessage) => {
             const role = historyMessage.role === 'ai' ? 'assistant' : 'user';
-            const attachments = getMessageAttachments(historyMessage);
-            messages.push({
-                role,
-                content:
-                    role === 'user'
-                        ? buildUserContent(historyMessage.text, attachments)
-                        : [{ type: 'text', text: historyMessage.text || '' }],
-            });
+            if (role === 'user') {
+                pushTurn(
+                    role,
+                    buildUserContent(historyMessage.text, getMessageAttachments(historyMessage))
+                );
+                return;
+            }
+
+            const text = typeof historyMessage.text === 'string' ? historyMessage.text.trim() : '';
+            if (!text) return;
+            pushTurn(role, [{ type: 'text', text }]);
         });
     }
 
-    messages.push({
-        role: 'user',
-        content: buildUserContent(prompt, files),
-    });
+    pushTurn('user', buildUserContent(prompt, files));
 
     return messages;
 }
@@ -165,7 +178,7 @@ export async function sendAnthropicMessage(
     const url = `${baseUrl}/messages`;
     debugLog(`[Anthropic API] Requesting ${model} at ${url}...`);
 
-    const response = await fetch(url, {
+    const response = await fetchWithHeadersTimeout(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

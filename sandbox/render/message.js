@@ -255,8 +255,10 @@ export function appendMessage(
                 const deleteBtn = createDeleteButton();
                 actionsHostEl.appendChild(deleteBtn);
 
-                // Retry for model
-                if (role === 'ai') {
+                // Retry for model. Errors the provider marked as not retryable
+                // (validation/auth) get no affordance — retrying would just
+                // fail the same way.
+                if (role === 'ai' && options.retryable !== false) {
                     retryBtn = createRetryButton();
                     // Insert retry before delete, after copy
                     const copyEl = actionsHostEl.querySelector('.copy-btn');
@@ -312,15 +314,6 @@ export function appendMessage(
                 }
                 if (state.toolDurationMs !== undefined) {
                     options.toolDurationMs = state.toolDurationMs;
-                }
-                if (state.toolStartedAt !== undefined) {
-                    options.toolStartedAt = state.toolStartedAt;
-                }
-                if (state.toolCompletedAt !== undefined) {
-                    options.toolCompletedAt = state.toolCompletedAt;
-                }
-                if (state.toolPhase !== undefined) {
-                    options.toolPhase = state.toolPhase;
                 }
                 if (state.suppressCopy !== undefined) {
                     options.suppressCopy = state.suppressCopy === true;
@@ -407,10 +400,17 @@ export function appendMessage(
         },
         // Mark an already-finalized bubble as an error so CSS can add the error
         // tint. Called by renderGeminiReply when a streaming bubble receives an
-        // error reply. The retry affordance is not decided here: it is created with
-        // the bubble, so this only restyles an existing row.
-        markError: () => {
+        // error reply. A retryable error keeps its regenerate affordance; a
+        // non-retryable one (validation/auth) loses the button.
+        markError: (errorKind, retryable) => {
             options.isError = true;
+            options.errorKind = errorKind;
+            if (retryable === false) {
+                options.retryable = false;
+                options.onRetry = null;
+                retryBtn?.remove();
+                retryBtn = null;
+            }
             if (contentDiv) contentDiv.classList.add('msg-content-error');
             messageElement.classList.add('msg-error');
         },

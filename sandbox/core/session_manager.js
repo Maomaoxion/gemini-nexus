@@ -304,6 +304,26 @@ export class SessionManager {
         return true;
     }
 
+    /**
+     * Removes a single message row (message-level delete in the chat view).
+     * @returns {boolean} whether a message was removed.
+     */
+    removeMessage(id, messageIndex) {
+        const session = this.sessions.find((storedSession) => storedSession.id === id);
+        if (!session || !Array.isArray(session.messages)) return false;
+        if (
+            !Number.isInteger(messageIndex) ||
+            messageIndex < 0 ||
+            messageIndex >= session.messages.length
+        ) {
+            return false;
+        }
+
+        session.messages.splice(messageIndex, 1);
+        session.timestamp = Date.now();
+        return true;
+    }
+
     editUserMessageAndTruncate(id, messageIndex, text) {
         const session = this.sessions.find((storedSession) => storedSession.id === id);
         if (!session || !Array.isArray(session.messages)) return null;

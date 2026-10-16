@@ -88,8 +88,6 @@ export class SessionFlowController {
                         callIndex: this.getRestoredToolCallIndex(message),
                         callCount: this.getRestoredToolCallCount(message),
                         toolDurationMs: this.getRestoredToolDurationMs(message),
-                        toolStartedAt: message.toolStartedAt,
-                        toolCompletedAt: message.toolCompletedAt,
                         suppressCopy: message.suppressCopy === true,
                         isCollapsed: true,
                         thoughtsDurationSeconds: message.thoughtsDurationSeconds,
@@ -103,6 +101,12 @@ export class SessionFlowController {
                             message.role === 'ai' && message.kind !== 'tool-status'
                                 ? this.app.prompt?.getMessageRetryOptions?.(index)?.onRetry || null
                                 : null,
+                        onDelete:
+                            this.getMessageKind(message) === 'tool-output' ||
+                            message.kind === 'tool-status'
+                                ? null
+                                : this.app.prompt?.getMessageDeleteOptions?.(index)?.onDelete ||
+                                  null,
                     }
                 );
             });

@@ -78,8 +78,10 @@ export function renderGeminiReply(handler, session, request) {
 
     // The reply row was just recorded on the session, so its index is the last
     // one; retrying resends the user turn above it.
-    const retryHandler =
-        handler.app?.prompt?.getMessageRetryOptions?.(session.messages.length - 1)?.onRetry || null;
+    const replyIndex = session.messages.length - 1;
+    const retryHandler = handler.app?.prompt?.getMessageRetryOptions?.(replyIndex)?.onRetry || null;
+    const deleteHandler =
+        handler.app?.prompt?.getMessageDeleteOptions?.(replyIndex)?.onDelete || null;
 
     if (handler.streamingBubble) {
         if (handler.hasStorageRenderedAiReply(session, request)) {
@@ -144,6 +146,7 @@ export function renderGeminiReply(handler, session, request) {
             errorKind: request.status === 'error' ? request.errorKind : undefined,
             retryable: request.status === 'error' ? request.retryable : undefined,
             onRetry: retryHandler,
+            onDelete: deleteHandler,
         }
     );
 }

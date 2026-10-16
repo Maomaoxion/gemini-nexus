@@ -258,6 +258,30 @@ describe('SessionManager draft and persistence state', () => {
         expect(manager.currentSessionId).toBe('session-1');
     });
 
+    it('removes a single message row', () => {
+        const manager = new SessionManager();
+        manager.setSessions([
+            {
+                id: 'session-1',
+                title: 'Chat',
+                timestamp: 100,
+                messages: [
+                    { role: 'user', text: 'a' },
+                    { role: 'ai', text: 'b' },
+                    { role: 'user', text: 'c' },
+                ],
+            },
+        ]);
+
+        expect(manager.removeMessage('session-1', 1)).toBe(true);
+        expect(manager.getSessionById('session-1').messages.map((entry) => entry.text)).toEqual([
+            'a',
+            'c',
+        ]);
+        expect(manager.removeMessage('session-1', 9)).toBe(false);
+        expect(manager.removeMessage('missing-session', 0)).toBe(false);
+    });
+
     it('ignores bulk deletions without ids', () => {
         const manager = new SessionManager();
         manager.setSessions([

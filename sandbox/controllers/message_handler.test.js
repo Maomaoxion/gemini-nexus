@@ -58,6 +58,7 @@ function createMessageHandlerHarness() {
         prompt: {
             isCancellationRecent: vi.fn(() => false),
             getMessageRetryOptions: vi.fn(() => ({ onRetry: vi.fn() })),
+            getMessageDeleteOptions: vi.fn(() => ({ onDelete: vi.fn() })),
             forceClearGenerating: vi.fn(() => {
                 app.isGenerating = false;
                 app.generatingSessionId = null;
@@ -114,6 +115,7 @@ describe('MessageHandler.handleGeminiReply', () => {
                 errorKind: undefined,
                 retryable: undefined,
                 onRetry: expect.any(Function),
+                onDelete: expect.any(Function),
             }
         );
     });
@@ -471,7 +473,6 @@ describe('MessageHandler.handleStreamUpdate', () => {
             'Running click...',
             null,
             expect.objectContaining({
-                toolPhase: 'execute',
                 toolStatus: 'running',
             })
         );

@@ -156,6 +156,43 @@ describe('sendAnthropicMessage', () => {
         }
     });
 
+    it('merges consecutive same-role turns and skips empty assistant rows', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeAnthropicSseStream([
+                { type: 'content_block_delta', delta: { type: 'text_delta', text: 'ok' } },
+            ]),
+        });
+
+        await sendAnthropicMessage(
+            'Next question',
+            '',
+            [
+                { role: 'user', text: 'First' },
+                { role: 'ai', text: '   ' },
+                { role: 'user', text: 'Second' },
+            ],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'anthropic-key',
+                model: 'claude-test',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toHaveLength(1);
+        expect(payload.messages[0].role).toBe('user');
+        expect(payload.messages[0].content.map((part) => part.text)).toEqual([
+            'First',
+            'Second',
+            'Next question',
+        ]);
+    });
+
     it('throws a truncation error on max_tokens instead of an empty success', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,

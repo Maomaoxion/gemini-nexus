@@ -112,6 +112,35 @@ describe('PromptController generation recovery', () => {
         );
     });
 
+    it('deletes a single message row and persists the truncated session', async () => {
+        const { controller, sessionManager } = createPromptHarness();
+        const session = sessionManager.createSession();
+        sessionManager.addMessage(session.id, 'user', 'Hello');
+        sessionManager.addMessage(session.id, 'ai', 'Answer');
+
+        await expect(controller.getMessageDeleteOptions(1).onDelete()).resolves.toBe(true);
+
+        expect(sessionManager.getCurrentSession().messages.map((entry) => entry.text)).toEqual([
+            'Hello',
+        ]);
+        expect(saveSessionsToStorage).toHaveBeenCalledWith(
+            [expect.objectContaining({ id: session.id })],
+            { type: 'replaceSession', sessionId: session.id }
+        );
+    });
+
+    it('keeps tool output rows undeletable', async () => {
+        const { controller, sessionManager } = createPromptHarness();
+        const session = sessionManager.createSession();
+        sessionManager.addMessage(session.id, 'user', 'Hello');
+        sessionManager.addMessage(session.id, 'user', '[Tool Output: click]');
+
+        await expect(controller.getMessageDeleteOptions(1).onDelete()).resolves.toBe(false);
+
+        expect(saveSessionsToStorage).not.toHaveBeenCalled();
+        expect(sessionManager.getCurrentSession().messages).toHaveLength(2);
+    });
+
     it('markGenerationActivity re-arms the idle watchdog', () => {
         vi.useFakeTimers();
         try {

@@ -57,6 +57,7 @@ function createSessionFlowHarness() {
         prompt: {
             getMessageEditOptions: vi.fn(() => ({ onEdit: vi.fn() })),
             getMessageRetryOptions: vi.fn(() => ({ onRetry: vi.fn() })),
+            getMessageDeleteOptions: vi.fn(() => ({ onDelete: vi.fn() })),
         },
         saveCurrentTabSessionBinding: vi.fn(),
     };
@@ -382,10 +383,13 @@ describe('SessionFlowController', () => {
         const aiCall = appendMessage.mock.calls.find((call) => call[2] === 'ai');
         expect(aiCall[6].onRetry).toBeTypeOf('function');
         expect(app.prompt.getMessageRetryOptions).toHaveBeenCalledWith(1);
+        expect(aiCall[6].onDelete).toBeTypeOf('function');
+        expect(app.prompt.getMessageDeleteOptions).toHaveBeenCalledWith(1);
 
         const userCall = appendMessage.mock.calls.find((call) => call[2] === 'user');
         expect(userCall[6].onEdit).toBeTypeOf('function');
         expect(userCall[6].onRetry).toBeNull();
+        expect(userCall[6].onDelete).toBeTypeOf('function');
     });
 
     it('renames, pins, and duplicates sessions from sidebar actions', () => {

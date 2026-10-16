@@ -15,6 +15,14 @@ const WATCHDOG_BROWSER_CONTROL_MS = 3 * 60 * 1000;
 // cannot clobber a new run started right after cancelling.
 const CANCELLATION_RECENT_MS = 2000;
 
+// Tool rows share the user role but are observations, not a prompt the user
+// typed: removing one would break the function-call pairing they belong to.
+function isToolHistoryRow(message) {
+    if (!message) return true;
+    if (message.kind === 'tool-output' || message.kind === 'tool-status') return true;
+    return typeof message.text === 'string' && message.text.startsWith('[Tool Output:');
+}
+
 export class PromptController {
     constructor(sessionManager, uiController, imageManager, appController) {
         this.sessionManager = sessionManager;
@@ -127,6 +135,47 @@ export class PromptController {
         return {
             onRetry: () => this.retryFromMessage(messageIndex),
         };
+    }
+
+    /** Delete control for a single message row. */
+    getMessageDeleteOptions(messageIndex) {
+        return {
+            onDelete: () => this.deleteMessageAt(messageIndex),
+        };
+    }
+
+    async deleteMessageAt(messageIndex) {
+        if (this.app.isGenerating) return false;
+
+        if (!this.canEditHistory()) {
+            this.ui.updateStatus(t('editNotSupportedForWeb'));
+            setTimeout(() => {
+                if (!this.app.isGenerating) this.ui.updateStatus('');
+            }, 3000);
+            return false;
+        }
+
+        const currentId = this.sessionManager.currentSessionId;
+        const session = this.sessionManager.getCurrentSession();
+        if (!session || !Array.isArray(session.messages)) return false;
+
+        const target = session.messages[messageIndex];
+        // Tool rows pair with the model's function calls; removing one would
+        // leave the pairing invalid, so they stay undeletable.
+        if (isToolHistoryRow(target)) return false;
+
+        if (!this.sessionManager.removeMessage(currentId, messageIndex)) return false;
+
+        // The removed row may sit inside the compressed summary's range.
+        session.contextSummary = null;
+
+        saveSessionsToStorage(this.sessionManager.getPersistableSessions(), {
+            type: 'replaceSession',
+            sessionId: currentId,
+        });
+        this.app.sessionFlow.refreshHistoryUI();
+        this.app.rerender();
+        return true;
     }
 
     async retryFromMessage(messageIndex) {
