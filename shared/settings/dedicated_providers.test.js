@@ -40,7 +40,7 @@ describe('dedicated API provider settings', () => {
                 'zhipu'
             )
         ).toBe('glm-4.5');
-        expect(getDedicatedApiSelectedModel({}, 'anthropic')).toBe('claude-sonnet-5');
+        expect(getDedicatedApiSelectedModel({}, 'anthropic')).toBe('claude-sonnet-5-5');
     });
 
     it('creates storage updates for all dedicated providers', () => {
