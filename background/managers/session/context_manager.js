@@ -181,10 +181,16 @@ function estimateAttachmentBytes(message) {
 }
 
 function formatMessagesForSummary(messages) {
-    const lines = [];
+    const list = Array.isArray(messages) ? messages : [];
+    const selected = [];
     let total = 0;
+    let omitted = 0;
 
-    for (const message of messages) {
+    // Walk newest → oldest: the transcript budget must keep the messages that
+    // are not yet covered by the previous hidden summary. Older lines were
+    // already folded into it, so dropping those loses nothing.
+    for (let index = list.length - 1; index >= 0; index--) {
+        const message = list[index];
         const role = message?.role === 'ai' ? 'Assistant' : 'User';
         const text = compactText(message?.text);
         const line = `${role}: ${text || '[empty]'}${describeAttachments(message)}`;
@@ -194,15 +200,21 @@ function formatMessagesForSummary(messages) {
         // budget was satisfied while the actual base64 payload was dropped.
         const attachmentBytes = estimateAttachmentBytes(message);
         const cost = line.length + attachmentBytes;
-        if (total + cost > MAX_SUMMARY_TRANSCRIPT_CHARS) {
-            lines.push('[Transcript truncated for summary budget]');
+        // The newest message is always included (even over budget) so a summary
+        // is never produced from an empty transcript.
+        if (total + cost > MAX_SUMMARY_TRANSCRIPT_CHARS && selected.length > 0) {
+            omitted = index + 1;
             break;
         }
-        lines.push(line);
+        selected.unshift(line);
         total += cost;
     }
 
-    return lines.join('\n\n');
+    if (omitted > 0) {
+        selected.unshift(`[${omitted} earlier message(s) omitted for the summary budget]`);
+    }
+
+    return selected.join('\n\n');
 }
 
 function normalizeCompressedMessageText(text) {
