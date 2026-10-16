@@ -39,6 +39,11 @@ export class SessionMessageHandler {
 
         if (request.action === 'CANCEL_PROMPT') {
             const cancelled = this.cancelSidePanelRun();
+            // Page-toolbar quick asks run under their own abort bucket, so a
+            // Stop click in the toolbar must cancel that run as well.
+            if (sender?.tab?.id) {
+                this.cancelQuickAskForTab(sender.tab.id);
+            }
             sendResponse({ status: cancelled ? 'cancelled' : 'no_active_request' });
             return false;
         }
