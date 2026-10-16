@@ -13,45 +13,36 @@ export class SessionMessageHandler {
     }
 
     handle(request, sender, sendResponse) {
-        // --- PROMPT EXECUTION ---
         if (request.action === 'SEND_PROMPT') {
             return this.promptHandler.handle(request, sendResponse);
         }
 
-        // --- QUICK ASK (CONTENT SCRIPT) ---
         if (request.action === 'QUICK_ASK') {
-            this.quickAskHandler.trackActiveTab(sender);
-            this.quickAskHandler.handleQuickAsk(request, sender).finally(() => {
-                this.quickAskHandler.clearActiveTab(sender);
-                sendResponse({ status: 'completed' });
-            });
-            return true;
+            return this.runQuickAsk(
+                () => this.quickAskHandler.handleQuickAsk(request, sender),
+                sender,
+                sendResponse
+            );
         }
 
-        // --- QUICK ASK IMAGE ---
         if (request.action === 'QUICK_ASK_IMAGE') {
-            this.quickAskHandler.trackActiveTab(sender);
-            this.quickAskHandler.handleQuickAskImage(request, sender).finally(() => {
-                this.quickAskHandler.clearActiveTab(sender);
-                sendResponse({ status: 'completed' });
-            });
-            return true;
+            return this.runQuickAsk(
+                () => this.quickAskHandler.handleQuickAskImage(request, sender),
+                sender,
+                sendResponse
+            );
         }
 
         if (this.ttsHandler.handle(request, sendResponse)) {
             return true;
         }
 
-        // --- CONTROL ---
         if (request.action === 'CANCEL_PROMPT') {
-            const cancelled = this.sessionManager.cancelCurrentRequest('prompt');
-            // Ensure the prompt loop logic also stops
-            this.promptHandler.cancel();
+            const cancelled = this.cancelSidePanelRun();
             sendResponse({ status: cancelled ? 'cancelled' : 'no_active_request' });
             return false;
         }
 
-        // --- CONTEXT ---
         if (request.action === 'SET_CONTEXT') {
             return this.contextHandler.handleSetContext(request, sendResponse);
         }
@@ -67,9 +58,23 @@ export class SessionMessageHandler {
     // provider fetch so tokens/quota are not wasted streaming into a closed
     // panel, and stops the prompt loop. (Side-panel SEND_PROMPT runs are not
     // tied to a content-script tab, so tab-close does not cover them.)
+    // Returns whether an in-flight run was actually aborted.
     cancelSidePanelRun() {
-        this.sessionManager.cancelCurrentRequest('prompt');
+        const cancelled = this.sessionManager.cancelCurrentRequest('prompt');
         this.promptHandler.cancel();
+        return cancelled;
+    }
+
+    // Both quick-ask entry points need the same bracketing: claim the requesting
+    // content-script tab as the active run before starting, then release it and
+    // reply exactly once when the run settles.
+    runQuickAsk(startRun, sender, sendResponse) {
+        this.quickAskHandler.trackActiveTab(sender);
+        startRun().finally(() => {
+            this.quickAskHandler.clearActiveTab(sender);
+            sendResponse({ status: 'completed' });
+        });
+        return true;
     }
 
     // Called when a content-script tab is closed mid-quick-ask. Aborts the

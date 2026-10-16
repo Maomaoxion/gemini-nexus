@@ -64,11 +64,11 @@ describe('GeminiToolbarController model persistence', () => {
                     ? String(level).toLowerCase()
                     : 'high',
             normalizeWebThinkingLevelForModel: (model, level) =>
-                model === 'e6fa609c3fa255c0' && level === 'minimal' ? 'low' : level || 'high',
+                model === 'low-thinking-web-model' && level === 'minimal' ? 'low' : level || 'high',
             getNextWebThinkingLevel: (model, level) =>
-                level === (model === 'e6fa609c3fa255c0' ? 'low' : 'minimal')
+                level === (model === 'low-thinking-web-model' ? 'low' : 'minimal')
                     ? 'high'
-                    : model === 'e6fa609c3fa255c0'
+                    : model === 'low-thinking-web-model'
                       ? 'low'
                       : 'minimal',
         };
@@ -266,19 +266,19 @@ describe('GeminiToolbarController model persistence', () => {
         });
     });
 
-    it('normalizes unsupported minimal thinking when switching to a Pro Web model', () => {
+    it('normalizes unsupported minimal thinking when switching to a model requiring low thinking', () => {
         ui.getProvider.mockReturnValue('web');
         ui.getWebThinkingLevel.mockReturnValue('minimal');
         const controller = new window.GeminiToolbarController();
 
-        controller.handleModelChange('e6fa609c3fa255c0');
+        controller.handleModelChange('low-thinking-web-model');
 
         expect(ui.setWebThinkingLevel).toHaveBeenCalledWith('low');
         expect(chrome.storage.local.set).toHaveBeenCalledWith({
             geminiWebThinkingLevel: 'low',
         });
         expect(chrome.storage.local.set).toHaveBeenCalledWith({
-            geminiToolbarModel: 'e6fa609c3fa255c0',
+            geminiToolbarModel: 'low-thinking-web-model',
         });
     });
 

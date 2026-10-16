@@ -1,7 +1,7 @@
 import { sendNotification } from './rpc_messages.js';
 import { isStreamableHttpFallbackError } from './streamable_http.js';
 
-export const DEFAULT_PROTOCOL_VERSIONS = [
+const DEFAULT_PROTOCOL_VERSIONS = [
     '2025-11-25',
     '2025-06-18',
     '2025-03-26',

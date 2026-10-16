@@ -210,10 +210,8 @@ export class SnapshotManager {
             return 'Error: Could not read accessibility tree.';
         }
 
-        // Increment Snapshot ID (Version Control)
         this.snapshotIdCount++;
 
-        // Clear maps
         this.clear();
         const seenBackendNodeIds = new Set();
         nodes.forEach((node) => {

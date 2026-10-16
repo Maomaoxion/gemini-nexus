@@ -4,7 +4,6 @@ export class SnapshotFormatter {
         this.onNode = options.onNode || (() => {});
         this.resolveUid = options.resolveUid || null;
         this.snapshotPrefix = options.snapshotPrefix || '1';
-        this.selectedBackendNodeId = options.selectedBackendNodeId || null;
         this.nodeCounter = 0;
         this.maxNodes = Number.isInteger(options.maxNodes) ? options.maxNodes : 4000;
         this.truncated = false;
@@ -181,30 +180,23 @@ export class SnapshotFormatter {
 
                     if (typeof propertyValue === 'boolean') {
                         // Capability: If property exists (even false), it might imply a capability
-                        // (e.g. 'focused' existing means it is 'focusable')
-                        if (key in this.booleanPropertyMap) {
-                            parts.push(this.booleanPropertyMap[key]);
+                        // (e.g. 'focused' existing means it is 'focusable'). An identity mapping is
+                        // skipped because the `=== true` branch below already emits the same token.
+                        const capabilityLabel = this.booleanPropertyMap[key];
+                        if (capabilityLabel && capabilityLabel !== key) {
+                            parts.push(capabilityLabel);
                         }
 
                         if (propertyValue === true) {
                             parts.push(key);
                         }
                     } else if (propertyValue !== undefined && propertyValue !== '') {
-                        // Optimization: skip value in properties too if redundant
-                        if (key === 'value' && String(propertyValue) === name) continue;
                         parts.push(`${key}=${this._escapeStr(propertyValue)}`);
                     }
                 }
             }
 
-            const isSelected =
-                this.selectedBackendNodeId && node.backendDOMNodeId === this.selectedBackendNodeId;
-
-            line =
-                ' '.repeat(depth * 2) +
-                parts.join(' ') +
-                (isSelected ? ' [selected in the DevTools Elements panel]' : '') +
-                '\n';
+            line = ' '.repeat(depth * 2) + parts.join(' ') + '\n';
         }
 
         // Flatten hierarchy: if node is skipped, children stay at current depth

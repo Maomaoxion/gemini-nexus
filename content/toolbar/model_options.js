@@ -9,7 +9,7 @@
         return catalog.createWebModelOptionMarkup();
     }
 
-    function resolveImagePromptModel({ provider = 'web', mode, model } = {}) {
+    function resolveImagePromptModel(model) {
         return model || catalog.DEFAULT_WEB_MODEL;
     }
 

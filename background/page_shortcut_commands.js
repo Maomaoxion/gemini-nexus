@@ -14,7 +14,11 @@ function respondWithShortcutTask(sendResponse, task, errorMessage) {
         });
 }
 
-export function createPageShortcutCommandHandler({ showQuickAskForTab, startAreaOcrForTab }) {
+export function createPageShortcutCommandHandler({
+    showQuickAskForTab,
+    startAreaOcrForTab,
+    startAreaSnipForTab,
+}) {
     return (request, sender, sendResponse) => {
         if (request.action === 'SHOW_QUICK_ASK_FROM_SHORTCUT') {
             respondWithShortcutTask(
@@ -30,6 +34,18 @@ export function createPageShortcutCommandHandler({ showQuickAskForTab, startArea
                 sendResponse,
                 () => startAreaOcrForTab(sender.tab),
                 'Could not start area OCR from shortcut'
+            );
+            return true;
+        }
+
+        if (request.action === 'START_SNIP_FROM_SHORTCUT') {
+            respondWithShortcutTask(
+                sendResponse,
+                () =>
+                    typeof startAreaSnipForTab === 'function'
+                        ? startAreaSnipForTab(sender.tab)
+                        : Promise.resolve(),
+                'Could not start screenshot capture from shortcut'
             );
             return true;
         }

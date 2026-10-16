@@ -94,7 +94,7 @@ export async function collectUnexpectedSourceFilenames(relativePath = '.') {
         if (!entry.isFile() || !entry.name.match(/\.(js|mjs|ts)$/)) continue;
 
         const normalizedPath = entryPath.split(path.sep).join('/');
-        const basename = path.basename(entry.name).replace(/\.(js|mjs|ts)$/, '');
+        const basename = entry.name.replace(/\.(js|mjs|ts)$/, '');
         const moduleName = basename.replace(/\.test$/, '');
 
         if (rootConfigFiles.has(normalizedPath)) continue;
@@ -110,7 +110,10 @@ export async function collectUnexpectedSourceFilenames(relativePath = '.') {
     return violations.sort();
 }
 
-export async function collectProjectSourceFiles(relativePath = '.') {
+export async function collectProjectSourceFiles(
+    relativePath = '.',
+    filePattern = /\.(js|mjs|ts)$/
+) {
     const entries = await readdir(projectPath(relativePath), { withFileTypes: true });
     const sourceFiles = [];
 
@@ -120,12 +123,12 @@ export async function collectProjectSourceFiles(relativePath = '.') {
 
         if (entry.isDirectory()) {
             if (!isIgnoredProjectPath(normalizedPath)) {
-                sourceFiles.push(...(await collectProjectSourceFiles(entryPath)));
+                sourceFiles.push(...(await collectProjectSourceFiles(entryPath, filePattern)));
             }
             continue;
         }
 
-        if (entry.isFile() && entry.name.match(/\.(js|mjs|ts)$/)) {
+        if (entry.isFile() && entry.name.match(filePattern)) {
             sourceFiles.push(normalizedPath);
         }
     }
@@ -144,13 +147,16 @@ export function collectI18nKeysFromSource(source) {
     const keys = new Set();
     const patterns = [
         /data-i18n(?:-title|-placeholder)?="([^"]+)"/g,
-        /t\(\s*['"]([^'"]+)['"]\s*\)/g,
+        // (?<![\w$.]) keeps plain import(...) from reading as t(...)
+        /(?<![\w$.])t\(\s*['"]([^'"]+)['"]\s*\)/g,
         /formatT\(\s*['"]([^'"]+)['"]\s*,/g,
         /createSettingsHelpButton\(\s*['"]([^'"]+)['"]\s*\)/g,
     ];
 
     for (const pattern of patterns) {
         for (const match of source.matchAll(pattern)) {
+            // Skip dynamic keys such as data-i18n="${key}"; the literal is not a key.
+            if (match[1].includes('${')) continue;
             keys.add(match[1]);
         }
     }

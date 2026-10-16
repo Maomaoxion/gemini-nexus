@@ -117,13 +117,24 @@
             generateImage: isZh ? '生成图片' : 'Generate image',
             readSelection: isZh ? '朗读选中内容' : 'Read selection aloud',
             readPage: isZh ? '朗读当前网页' : 'Read page aloud',
-            stopReading: isZh ? '停止朗读' : 'Stop reading',
             speechUnsupported: isZh
                 ? '当前浏览器不支持语音朗读。'
                 : 'Text-to-speech is not supported in this browser.',
             speechNoText: isZh ? '没有可朗读的文本。' : 'No readable text found.',
+            speechAutoplayBlocked: isZh
+                ? '浏览器拦截了自动播放，请再次点击朗读（已自动回退到系统语音可尝试）。'
+                : 'The browser blocked autoplay. Click read again to start playback (falling back to the system voice may help).',
+            speechTtsLoginRequired: isZh
+                ? 'Gemini TTS 需要先登录 https://gemini.google.com 并刷新页面（扩展依赖网页登录态）。已自动回退到系统语音。'
+                : 'Gemini TTS requires signing in at https://gemini.google.com and reloading the page (the extension relies on the web session). Fell back to the system voice.',
+            speechTtsRateLimited: isZh
+                ? 'Gemini TTS 触发限流（429），已自动回退到系统语音，稍后重试。'
+                : 'Gemini TTS hit the rate limit (429). Fell back to the system voice, please retry shortly.',
+            speechTtsAuthFailed: (detail) =>
+                isZh
+                    ? `Gemini TTS 鉴权失败（${detail}），请到 gemini.google.com 重新登录后重试。已自动回退到系统语音。`
+                    : `Gemini TTS authentication failed (${detail}). Sign in again at gemini.google.com and retry. Fell back to the system voice.`,
             customSelectionMore: isZh ? '更多自定义工具' : 'More custom tools',
-            askImage: isZh ? '询问这张图片' : 'Ask AI about this image',
             close: isZh ? '关闭' : 'Close',
             askPlaceholder: isZh ? '询问 Gemini...' : 'Ask Gemini...',
             toolbarProviderLabel: isZh ? '弹窗模型来源' : 'Popup provider',
@@ -165,7 +176,6 @@
                     : 'Could not read this image. Try opening the original image or choose another one.',
             },
 
-            // AI Tools Menu
             aiTools: isZh ? 'AI 工具' : 'AI Tools',
             chatWithImage: isZh ? '带图片聊天' : 'Chat with image',
             describeImage: isZh ? '描述图片' : 'Describe image',
@@ -178,12 +188,7 @@
             upscale: isZh ? '画质提升' : 'Upscale',
             expand: isZh ? '扩图' : 'Expand',
 
-            // Actions UI
-            browserControl: isZh ? '浏览器控制' : 'Browser Control',
-            pageContext: isZh ? '网页' : 'Page',
-            quote: isZh ? '引用' : 'Quote',
             ocr: isZh ? 'OCR' : 'OCR',
-            translateAction: isZh ? '翻译' : 'Translate',
             snip: isZh ? '截图' : 'Snip',
             translateTargetLabel: isZh ? '翻译为' : 'Translate to',
             translationTargetOptions: getTargetOptions(isZh),
@@ -224,7 +229,6 @@
                     ? '请准确描述这张截图的内容。说明可见文字、界面元素、布局和重要细节；不要编造截图中看不到的信息。'
                     : 'Describe this screenshot accurately. Include visible text, UI elements, layout, and important details; do not invent information that is not visible.',
 
-                // Text Actions
                 textTranslate: (text, targets) => buildTextTranslatePrompt(isZh, text, targets),
 
                 explain: (text) =>
@@ -266,7 +270,6 @@
                 regenerate: isZh ? '正在重新生成...' : 'Regenerating...',
             },
 
-            // Input Placeholders (for quick action UI)
             inputs: {
                 ocr: isZh ? '文字提取' : 'OCR Extract',
                 translate: isZh ? '截图翻译' : 'Image Translate',
@@ -293,7 +296,7 @@
                 removeText: isZh ? '文字移除' : 'Remove Text',
                 removeBg: isZh ? '背景移除' : 'Remove Background',
                 removeWatermark: isZh ? '去水印' : 'Remove watermark',
-                snip: isZh ? '截图分析' : 'Snip Analysis',
+                snip: isZh ? '截图提问' : 'Screenshot Ask',
                 explain: isZh ? '解释' : 'Explain',
                 textTranslate: isZh ? '翻译' : 'Translate',
                 summarize: isZh ? '总结' : 'Summarize',

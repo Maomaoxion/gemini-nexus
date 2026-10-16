@@ -1,22 +1,7 @@
+import { getRequestTab } from '../control/tabs.js';
 import { respondWithUiTask, runUiTask } from './ui_async.js';
 
 const DEFAULT_CAPTURE_ERROR = 'Capture failed';
-
-async function getCaptureTargetTab(context, request, sender) {
-    const targetTabId = context.getTargetSidePanelTabId(request, sender);
-    if (Number.isInteger(targetTabId) && targetTabId > 0) {
-        try {
-            return await chrome.tabs.get(targetTabId);
-        } catch {
-            // 静默降级:目标 tab 已关闭时回退到 sender.tab 或活动 tab
-        }
-    }
-
-    if (sender.tab?.id) return sender.tab;
-
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    return tab || null;
-}
 
 function getCaptureError(result) {
     return result?.error || result?.message || DEFAULT_CAPTURE_ERROR;
@@ -62,7 +47,7 @@ function notifyAreaCaptureFailure(sender, error) {
 
 export function handleInitiateCapture(context, request, sender) {
     runUiTask(async () => {
-        const tab = await getCaptureTargetTab(context, request, sender);
+        const tab = await getRequestTab(context, request, sender);
         if (!tab) return;
 
         // Hide floating toolbar before capturing so it doesn't appear in the screenshot.

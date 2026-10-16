@@ -68,9 +68,7 @@ class CursorMotion {
         const hasCursor = cursor != null;
         const target = cursorPoint(cursor, input.viewportSize);
         const visible = input.isVisible && cursor?.visible !== false;
-        const moveSequence = Number.isInteger(cursor?.moveSequence)
-            ? (cursor?.moveSequence ?? null)
-            : null;
+        const moveSequence = Number.isInteger(cursor?.moveSequence) ? cursor.moveSequence : null;
         const cursorKey = moveSequence == null ? null : `${input.turnKey ?? ''}:${moveSequence}`;
 
         if (!this.state) {
@@ -324,10 +322,6 @@ class CursorOverlay {
     setState(state) {
         this.state = state;
         this.mount();
-        this.render();
-    }
-
-    handleViewportChanged() {
         this.render();
     }
 
@@ -855,55 +849,58 @@ function spring(value, target, response, dampingFraction) {
     };
 }
 
-function stepSpring(item, deltaSeconds) {
-    const response = Math.max(0.001, item.response);
+function stepSpring(springState, deltaSeconds) {
+    const response = Math.max(0.001, springState.response);
     const maxStiffness = 1 / (2 * SPRING_STEP_SECONDS ** 2);
     const stiffness = Math.min((Math.PI * 2) ** 2 / response ** 2, maxStiffness);
-    const damping = Math.sqrt(stiffness) * 2 * item.dampingFraction;
+    const damping = Math.sqrt(stiffness) * 2 * springState.dampingFraction;
 
-    item.scriptTime += Math.max(0, deltaSeconds);
-    if (item.scriptTime - item.simulationTime > MAX_SPRING_CATCHUP_SECONDS) {
-        item.simulationTime = item.scriptTime - FRAME_SECONDS;
+    springState.scriptTime += Math.max(0, deltaSeconds);
+    if (springState.scriptTime - springState.simulationTime > MAX_SPRING_CATCHUP_SECONDS) {
+        springState.simulationTime = springState.scriptTime - FRAME_SECONDS;
     }
-    while (item.simulationTime < item.scriptTime) {
-        integrateSpring(item, stiffness, damping);
-        item.simulationTime += SPRING_STEP_SECONDS;
+    while (springState.simulationTime < springState.scriptTime) {
+        integrateSpring(springState, stiffness, damping);
+        springState.simulationTime += SPRING_STEP_SECONDS;
     }
 
-    if (springSettled(item)) item.value = item.target;
+    if (springSettled(springState)) springState.value = springState.target;
 }
 
-function springSettled(item) {
+function springSettled(springState) {
     if (
-        Math.max(item.velocity * item.velocity, item.force * item.force) >
+        Math.max(
+            springState.velocity * springState.velocity,
+            springState.force * springState.force
+        ) >
         SPRING_SETTLE_THRESHOLD ** 2
     ) {
         return false;
     }
-    const tolerance = item.target * 0.01;
-    const delta = item.target - item.value;
+    const tolerance = springState.target * 0.01;
+    const delta = springState.target - springState.value;
     return tolerance === 0 || delta * delta <= tolerance * tolerance;
 }
 
-function integrateSpring(item, stiffness, damping) {
+function integrateSpring(springState, stiffness, damping) {
     const halfStep = SPRING_STEP_SECONDS / 2;
-    const velocity = item.velocity + item.force * halfStep;
-    item.value += velocity * SPRING_STEP_SECONDS;
-    item.force = velocity * -damping + (item.target - item.value) * stiffness;
-    item.velocity = velocity + item.force * halfStep;
+    const velocity = springState.velocity + springState.force * halfStep;
+    springState.value += velocity * SPRING_STEP_SECONDS;
+    springState.force = velocity * -damping + (springState.target - springState.value) * stiffness;
+    springState.velocity = velocity + springState.force * halfStep;
 }
 
-function resetSpring(item, value) {
-    item.force = 0;
-    item.simulationTime = 0;
-    item.scriptTime = 0;
-    item.target = value;
-    item.value = value;
-    item.velocity = 0;
+function resetSpring(springState, value) {
+    springState.force = 0;
+    springState.simulationTime = 0;
+    springState.scriptTime = 0;
+    springState.target = value;
+    springState.value = value;
+    springState.velocity = 0;
 }
 
-function setRotationalTarget(item, target) {
-    item.target = item.value + shortestAngle(item.value, target);
+function setRotationalTarget(springState, target) {
+    springState.target = springState.value + shortestAngle(springState.value, target);
 }
 
 function cursorPoint(cursor, viewportSize) {
@@ -1118,8 +1115,8 @@ function cssText() {
         }
     });
 
-    window.addEventListener('resize', () => overlay.handleViewportChanged());
+    window.addEventListener('resize', () => overlay.render());
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => overlay.handleViewportChanged());
+        window.visualViewport.addEventListener('resize', () => overlay.render());
     }
 })();

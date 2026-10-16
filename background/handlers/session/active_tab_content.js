@@ -1,4 +1,5 @@
 import { debugLog } from '../../../shared/logging/debug.js';
+import { getTabControlAvailability } from '../../control/tabs.js';
 
 export async function getActiveTabContent(specificTabId = null) {
     try {
@@ -16,18 +17,9 @@ export async function getActiveTabContent(specificTabId = null) {
 
         if (!tab || !tab.id) return null;
 
-        if (
-            tab.url &&
-            (tab.url.startsWith('chrome://') ||
-                tab.url.startsWith('edge://') ||
-                tab.url.startsWith('chrome-extension://') ||
-                tab.url.startsWith('about:') ||
-                tab.url.startsWith('view-source:') ||
-                tab.url.startsWith('https://chrome.google.com/webstore') ||
-                tab.url.startsWith('https://chromewebstore.google.com'))
-        ) {
-            return null;
-        }
+        // Same restricted-URL table the browser-control path already owns; the
+        // hand-maintained copy here had drifted from it.
+        if (!getTabControlAvailability(tab).controllable) return null;
 
         try {
             const response = await chrome.tabs.sendMessage(tab.id, { action: 'GET_PAGE_CONTENT' });

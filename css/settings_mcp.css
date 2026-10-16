@@ -1,6 +1,6 @@
 /* MCP settings — two-layer card + restrained controls */
 
-/* --- Server picker row --- */
+/* Server picker row */
 .mcp-server-row {
     gap: 8px;
 }
@@ -175,7 +175,7 @@
     line-height: 1.45;
 }
 
-/* --- Tool List: single bordered container --- */
+/* Tool List: single bordered container */
 .mcp-tool-list {
     max-height: 280px;
     overflow-y: auto;

@@ -1,5 +1,5 @@
 :root {
-    /* --- Radius scale (sm / md / lg / xl / pill) --- */
+    /* Radius scale (sm / md / lg / xl / bubble / pill) */
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 20px;
@@ -7,7 +7,7 @@
     --radius-bubble: 16px;
     --radius-pill: 999px;
 
-    /* --- Layout (sidepanel / composer) --- */
+    /* Layout (sidepanel / composer) */
     --sidebar-width: 16.2rem;
     --sidebar-collapsed-width: 52.2px;
     --composer-max-width: 40.32rem;
@@ -16,7 +16,7 @@
     --header-offset: 80px;
     --browser-control-header-offset: 126px;
 
-    /* --- Z-layers (global stack, low → high; local component layering stays inline) --- */
+    /* Z-layers (global stack, low → high; local component layering stays inline) */
     --z-browser-bar: 9;
     --z-header: 10;
     --z-header-flyout: 80;
@@ -30,14 +30,14 @@
     --z-settings-popover: 2200;
     --z-collapsed-popover: 9999;
 
-    /* --- Motion --- */
+    /* Motion */
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --duration-fast: 0.15s;
     --duration-normal: 0.2s;
 
-    /* --- Elevation --- */
+    /* Elevation */
     --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.12);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.14);
@@ -55,7 +55,7 @@
     /* Starred / favorite accent (only gold in the palette — keep tokenized) */
     --accent-gold: #f59e0b;
 
-    /* --- Light Theme (Default) --- */
+    /* Light Theme (Default) */
     --bg-body: #ffffff;
     --bg-sidebar: #f0f4f9;
     --bg-modal: #ffffff;
@@ -68,7 +68,6 @@
     --text-primary: #1f1f1f;
     --text-secondary: #444746;
     --text-tertiary: #5e5e5e;
-    --text-inverse: #ffffff;
 
     --border-color: #e1e3e1;
     --border-focus: #d3e3fd;
@@ -80,7 +79,6 @@
     /* Interactive Elements */
     --btn-hover: #e0e4e9;
     --btn-active-bg: #dce8ff;
-    --btn-active-text: #001d35;
 
     /* Primary actions (send, links) — Material blue for clarity */
     --primary: #0b57d0;
@@ -120,7 +118,7 @@
 }
 
 [data-theme='dark'] {
-    /* --- Dark Theme --- */
+    /* Dark Theme */
     --bg-body: #131314;
     --bg-sidebar: #1e1f20;
     --bg-modal: #2d2e2f;
@@ -133,10 +131,14 @@
     --text-primary: #e3e3e3;
     --text-secondary: #c4c7c5;
     --text-tertiary: #8e918f;
-    --text-inverse: #1f1f1f;
 
     --border-color: #3c4043;
     --border-focus: #5e5e5e;
+
+    /* Semantic — calibrated for dark surfaces (≥4.5:1 on dark backgrounds) */
+    --danger: #f2b8b5;
+    --success: #81c995;
+    --warning: #fdd663;
 
     /* User Message Bubble — slightly lifted from body */
     --bg-user-msg: #2a2d32;
@@ -150,7 +152,6 @@
     --on-primary: #0b1220;
     /* Active toggles track primary (not brand violet) for consistent on-state */
     --btn-active-bg: color-mix(in srgb, var(--primary) 22%, #1e1f20);
-    --btn-active-text: #dce8ff;
 
     --brand: #a78bfa;
     --brand-soft: color-mix(in srgb, var(--brand) 18%, transparent);
@@ -221,7 +222,7 @@ body {
     box-sizing: border-box;
 }
 
-/* --- Unified app scrollbars (chat / settings / sidebar history) --- */
+/* Unified app scrollbars (chat / settings / sidebar history) */
 #chat-history,
 .settings-body,
 .history-list {

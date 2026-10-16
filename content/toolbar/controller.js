@@ -362,7 +362,11 @@
             } else if (this.currentMode === 'screenshot_translate') {
                 this.actions.handleImagePrompt(finalImage, rect, 'translate', model);
             } else if (this.currentMode === 'snip') {
-                this.actions.handleImagePrompt(finalImage, rect, 'snip', model);
+                this.actions.handleImageChat(
+                    finalImage,
+                    rect,
+                    this.strings?.titles?.snip || this.strings?.chatWithImage
+                );
             }
 
             this.currentMode = 'ask';

@@ -2,11 +2,7 @@ import {
     CONNECTION_STORAGE_KEYS,
     createConnectionSettingsPayload,
 } from '../../shared/settings/connection.js';
-
-export function getRuntimeLastError() {
-    const message = chrome.runtime?.lastError?.message;
-    return message ? new Error(message) : null;
-}
+import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
 
 function logSessionBindingWriteError(error) {
     console.warn('Unable to save side panel session binding after storage write failed:', error);

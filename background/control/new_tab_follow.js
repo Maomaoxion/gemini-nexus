@@ -8,7 +8,7 @@ export const NEW_TAB_FOLLOW_TOOL_NAMES = new Set(['click', 'press_key', 'run_ste
 const POLL_MS = 300;
 const MAX_POLLS = 7; // ~2.1s after the action settles
 
-const SNAPSHOT_MARKER = '## Latest page snapshot';
+import { SNAPSHOT_MARKER, formatInlinePageSnapshot } from './snapshot/marker.js';
 
 /**
  * @param {number|null|undefined} windowId
@@ -185,14 +185,10 @@ export function formatPossibleNewTabHint() {
  */
 export function replaceInlinePageSnapshot(text, snapshot) {
     if (typeof text !== 'string' || typeof snapshot !== 'string' || !snapshot) return text;
-    const block = `\n\n${SNAPSHOT_MARKER}\n${snapshot}`;
+    const block = formatInlinePageSnapshot(snapshot);
     const idx = text.indexOf(SNAPSHOT_MARKER);
     if (idx < 0) {
         return `${text.trimEnd()}${block}`;
     }
     return `${text.slice(0, idx).trimEnd()}${block}`;
-}
-
-export function hasInlinePageSnapshot(text) {
-    return typeof text === 'string' && text.includes(SNAPSHOT_MARKER);
 }

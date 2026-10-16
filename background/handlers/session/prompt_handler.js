@@ -21,13 +21,8 @@ import {
 import { toControlTabSummary } from '../../control/tabs.js';
 import { classifyProviderError } from '../../managers/session/error_classifier.js';
 
-export { hasInlinePageSnapshot } from './prompt/tool_loop.js';
-
 // One free retry when the model narrates a browser step without tool JSON.
 const MAX_NARRATION_NUDGES = 1;
-
-// Spaces out looped requests to avoid rate-limit bursts.
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function cancellableDelay(ms, run, handler) {
     return new Promise((resolve) => {
@@ -103,12 +98,6 @@ export class PromptHandler {
         if (this.sessionManager?.cancelCurrentRequest) {
             try {
                 this.sessionManager.cancelCurrentRequest('prompt');
-            } catch {}
-            // Fallback: if manager expects no arg, try default
-            try {
-                if (this.sessionManager.abortControllers?.size === 0) {
-                    this.sessionManager.cancelCurrentRequest();
-                }
             } catch {}
         }
         if (notify) {
@@ -226,20 +215,15 @@ export class PromptHandler {
 
                 let loopCount = 0;
                 let narrationNudges = 0;
-                // maxLoops == 0 historically meant "unlimited" (Infinity). That is
-                // dangerous: a model stuck in a tool-calling loop (repeatedly
-                // retrying a failing action, or oscillating between take_snapshot
-                // and click) would run forever, consuming API quota and holding the
-                // debugger attached. We now cap the default at a generous bound so
-                // well-behaved agentic tasks still complete, but runaway loops stop.
-                // Callers can still request a higher explicit cap via request.maxLoops.
-                const DEFAULT_MAX_LOOPS = 30;
-                const reqLoops = request.maxLoops !== undefined ? request.maxLoops : 0;
-                const MAX_LOOPS = reqLoops === 0 ? DEFAULT_MAX_LOOPS : reqLoops;
+                // A model stuck in a tool-calling loop (repeatedly retrying a failing
+                // action, or oscillating between take_snapshot and click) would run
+                // forever, consuming API quota and holding the debugger attached.
+                // maxLoops == 0 historically meant "unlimited"; 30 is generous enough for
+                // well-behaved agentic tasks while still stopping runaways.
+                const MAX_LOOPS = 30;
 
                 let keepLooping = true;
 
-                // --- AUTOMATED FEEDBACK LOOP ---
                 while (keepLooping && loopCount < MAX_LOOPS) {
                     if (this.isRunCancelled(run)) break;
 
@@ -281,7 +265,6 @@ export class PromptHandler {
                     if (this.isRunCancelled(run)) break;
 
                     if (toolResult) {
-                        if (this.isRunCancelled(run)) break;
                         // Feed tool output back to the model and continue the loop.
                         loopCount++;
                         const allToolFiles = getToolResultsFiles(
@@ -342,7 +325,6 @@ export class PromptHandler {
                             mutableBatchId = null;
                         }
 
-                        // === RATE LIMIT MITIGATION ===
                         // Wait 2-4 seconds before sending the next request.
                         // This prevents "No valid response" errors caused by rapid-fire requests.
                         await cancellableDelay(2000 + Math.random() * 2000, run, this);

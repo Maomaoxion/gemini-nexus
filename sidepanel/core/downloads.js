@@ -50,7 +50,7 @@ export function downloadText(text, filename, contentType = 'text/plain') {
     const url = URL.createObjectURL(blob);
 
     try {
-        triggerDownload(url, filename || 'download.txt');
+        triggerDownload(url, sanitizeDownloadFilename(filename || 'download.txt'));
     } finally {
         URL.revokeObjectURL(url);
     }

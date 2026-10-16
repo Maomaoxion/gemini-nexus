@@ -9,16 +9,16 @@ import {
 } from '../../shared/settings/connection.js';
 import { CUSTOM_SELECTION_TOOLS_STORAGE_KEY } from '../../shared/settings/selection_tools.js';
 
-export const CONNECTION_STORAGE_KEY_SET = new Set(CONNECTION_STORAGE_KEYS);
+const CONNECTION_STORAGE_KEY_SET = new Set(CONNECTION_STORAGE_KEYS);
 
-export function createConnectionRestoreMessage(localStorageData) {
+function createConnectionRestoreMessage(localStorageData) {
     return {
         action: 'RESTORE_CONNECTION_SETTINGS',
         payload: createConnectionSettingsPayload(localStorageData),
     };
 }
 
-export function createContextRestorePayload(localStorageData) {
+function createContextRestorePayload(localStorageData) {
     return {
         mode: localStorageData.geminiContextMode || DEFAULT_CONTEXT_MODE,
         recentTurns: localStorageData.geminiContextRecentTurns || DEFAULT_CONTEXT_RECENT_TURNS,

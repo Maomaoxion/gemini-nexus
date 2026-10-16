@@ -13,8 +13,9 @@ function createController() {
         defaultShortcuts: {
             quickAsk: 'Alt+Q',
             openPanel: 'Alt+G',
-            browserControl: 'Ctrl+B',
+            browserControl: 'Alt+Shift+B',
             ocrCapture: 'Alt+O',
+            snipCapture: 'Alt+S',
         },
         updateShortcuts: vi.fn(),
         updateTheme: vi.fn(),
@@ -31,6 +32,7 @@ function createController() {
         updateContextSettings: vi.fn(),
         updateConnectionSettings: vi.fn(),
         updateAppVersion: vi.fn(),
+        refreshGithubMetadata: vi.fn(),
         updateMcpTestResult: vi.fn(),
         updateMcpToolsResult: vi.fn(),
         updateProviderModelsResult: vi.fn(),
@@ -122,6 +124,7 @@ describe('StandaloneSettingsBridge', () => {
                 webTemporaryChat: true,
             })
         );
+        expect(controller.refreshGithubMetadata).toHaveBeenCalled();
     });
 
     it('restores default settings when extension storage cannot be read on startup', async () => {

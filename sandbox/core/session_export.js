@@ -5,11 +5,6 @@ function cloneJsonSafe(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
-function translate(t, key, fallback) {
-    const value = typeof t === 'function' ? t(key) : key;
-    return value && value !== key ? value : fallback;
-}
-
 export function sanitizeExportFilename(value) {
     const clean = String(value || '')
         .trim()
@@ -76,19 +71,18 @@ function formatSources(message) {
 
 export function buildSessionTextExport(
     session,
-    { t, labels = {}, exportedAt = new Date().toISOString() } = {}
+    { labels = {}, exportedAt = new Date().toISOString() } = {}
 ) {
     const lines = [];
-    const userRole = labels.userRole || translate(t, 'exportRoleUser', 'User');
-    const assistantRole = labels.assistantRole || translate(t, 'exportRoleAssistant', 'Assistant');
-    const titleLabel = labels.title || translate(t, 'exportTitle', 'Title');
-    const exportedAtLabel = labels.exportedAt || translate(t, 'exportedAt', 'Exported at');
-    const messagesLabel = labels.messages || translate(t, 'exportMessages', 'Messages');
-    const attachmentsLabel = labels.attachments || translate(t, 'exportAttachments', 'Attachments');
-    const generatedImagesLabel =
-        labels.generatedImages || translate(t, 'exportGeneratedImages', 'Generated images');
-    const sourcesLabel = labels.sources || translate(t, 'exportSources', 'Sources');
-    const thoughtsLabel = labels.thoughts || translate(t, 'exportThoughts', 'Thoughts');
+    const userRole = labels.userRole || 'User';
+    const assistantRole = labels.assistantRole || 'Assistant';
+    const titleLabel = labels.title || 'Title';
+    const exportedAtLabel = labels.exportedAt || 'Exported at';
+    const messagesLabel = labels.messages || 'Messages';
+    const attachmentsLabel = labels.attachments || 'Attachments';
+    const generatedImagesLabel = labels.generatedImages || 'Generated images';
+    const sourcesLabel = labels.sources || 'Sources';
+    const thoughtsLabel = labels.thoughts || 'Thoughts';
 
     lines.push(`${titleLabel}: ${session?.title || 'Untitled'}`);
     lines.push(`${exportedAtLabel}: ${exportedAt}`);

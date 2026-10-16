@@ -112,8 +112,8 @@
         hideAskWindow() {
             this.windowView.hide();
         }
-        showLoading(msg) {
-            this.windowView.showLoading(msg);
+        showLoading(loadingMessage) {
+            this.windowView.showLoading(loadingMessage);
         }
 
         showResult(text, title, isStreaming) {

@@ -120,7 +120,7 @@ export function getDedicatedApiSelectedModel(storageData = {}, provider) {
     return models[0] || getDedicatedApiDefaultModel(provider);
 }
 
-export function createDedicatedApiProviderSettings(storageData = {}, provider) {
+function createDedicatedApiProviderSettings(storageData = {}, provider) {
     const config = getProviderConfig(provider);
     const keys = getDedicatedApiStorageKeys(provider);
     if (!config || !keys) return null;

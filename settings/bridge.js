@@ -5,6 +5,7 @@ import {
     normalizeShortcutDefaults,
     normalizeContextRecentTurns,
 } from '../shared/config/constants.js';
+import { getRuntimeLastError } from '../shared/logging/runtime_error.js';
 import {
     createConnectionSettingsPayload,
     createConnectionStorageUpdate,
@@ -59,11 +60,6 @@ function setLocalStorageData(storageUpdate) {
     } catch (error) {
         console.warn('Unable to save standalone settings:', error);
     }
-}
-
-function getRuntimeLastError() {
-    const message = chrome.runtime?.lastError?.message;
-    return message ? new Error(message) : null;
 }
 
 function setLocalStorageDataAsync(storageUpdate) {
@@ -155,7 +151,7 @@ export class StandaloneSettingsBridge {
         if (chrome.runtime?.getManifest) {
             this.controller.updateAppVersion(`v${chrome.runtime.getManifest().version}`);
         }
-        this.controller.fetchGithubData?.();
+        this.controller.refreshGithubMetadata();
     }
 
     handleWindowMessage(event) {

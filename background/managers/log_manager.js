@@ -106,8 +106,6 @@ export class LogManager {
     }
 }
 
-// --- Console Interception Helper ---
-
 function safeStringify(valueToStringify) {
     const cache = new Set();
     return JSON.stringify(valueToStringify, (key, value) => {
@@ -170,13 +168,11 @@ export function setupConsoleInterception(logManager) {
         console[level] = (...args) => {
             originalConsole[level](...args); // Keep original behavior in DevTools
 
-            // Map console level to LogManager level
             let mgrLevel = 'INFO';
             if (level === 'warn') mgrLevel = 'WARN';
             if (level === 'error') mgrLevel = 'ERROR';
             if (level === 'debug') mgrLevel = 'DEBUG';
 
-            // Filter out overly verbose logs if needed, but for now capture everything
             logManager.add({
                 level: mgrLevel,
                 context: 'System',

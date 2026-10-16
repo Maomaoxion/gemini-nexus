@@ -24,7 +24,26 @@
             document.addEventListener('selectionchange', this.onSelectionChange);
         }
 
+        _isContextValid() {
+            if (window.GeminiNexusPageGuard?.isContextValid) {
+                return window.GeminiNexusPageGuard.isContextValid();
+            }
+            try {
+                if (typeof chrome === 'undefined' || !chrome.runtime) return true;
+                if ('id' in chrome.runtime && !chrome.runtime.id) {
+                    return false;
+                }
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
         onMouseDown(pointerEvent) {
+            if (!this._isContextValid()) {
+                this.disconnect();
+                return;
+            }
             this.isPointerDown = true;
             const point = this.getEventPoint(pointerEvent);
             if (point) {
@@ -36,6 +55,10 @@
         }
 
         onSelectionEnd(pointerEvent) {
+            if (!this._isContextValid()) {
+                this.disconnect();
+                return;
+            }
             this.isPointerDown = false;
             const pointerUpPoint = this.getEventPoint(pointerEvent);
             const isDrag = Boolean(
@@ -56,6 +79,10 @@
         }
 
         onSelectionChange() {
+            if (!this._isContextValid()) {
+                this.disconnect();
+                return;
+            }
             if (this.isPointerDown) return;
             this.scheduleSelectionCheck(null, false);
         }

@@ -113,7 +113,6 @@ export async function withProviderRetry(fn, options = {}) {
     const canRefreshAuth = options.canRefreshAuth === true;
 
     let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
         attempt++;
         try {

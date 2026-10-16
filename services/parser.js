@@ -72,9 +72,10 @@ export function parseGeminiLine(line) {
             try {
                 const payload = JSON.parse(payloadStr);
 
-                // Payload structure typically:
-                // [ [conv_id, resp_id], ..., null, null, [ [candidates] ] ]
-                // The candidates bucket contains the first response candidate.
+                // Payload shape (indexes named as constants above):
+                // [ , [conv_id, resp_id], payload_string, , [ [candidate, ...] ] ]
+                //      ^ PAYLOAD_IDS_INDEX          ^ PAYLOAD_CANDIDATES_INDEX
+                // The candidates bucket holds the first response candidate at index 0.
                 if (!Array.isArray(payload) || payload.length <= PAYLOAD_CANDIDATES_INDEX) {
                     return null;
                 }

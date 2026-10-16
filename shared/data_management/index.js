@@ -2,9 +2,9 @@ import { CONNECTION_STORAGE_KEYS } from '../settings/connection.js';
 import { DEDICATED_API_SECRET_STORAGE_KEYS } from '../settings/dedicated_providers.js';
 import { CUSTOM_SELECTION_TOOLS_STORAGE_KEY } from '../settings/selection_tools.js';
 
-export const HISTORY_EXPORT_TYPE = 'GeminiNexus-History';
-export const SETTINGS_EXPORT_TYPE = 'GeminiNexus-Settings';
-export const DATA_EXPORT_VERSION = 1;
+const HISTORY_EXPORT_TYPE = 'GeminiNexus-History';
+const SETTINGS_EXPORT_TYPE = 'GeminiNexus-Settings';
+const DATA_EXPORT_VERSION = 1;
 
 export const HISTORY_STORAGE_KEYS = ['geminiSessions', 'geminiGroups'];
 
@@ -44,7 +44,7 @@ function cloneJsonSafe(value) {
     return JSON.parse(JSON.stringify(value));
 }
 
-export function isSensitiveDataKey(name) {
+function isSensitiveDataKey(name) {
     const normalized = String(name || '')
         .trim()
         .toLowerCase();

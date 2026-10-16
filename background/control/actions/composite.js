@@ -1,6 +1,7 @@
 import { BaseActionHandler } from './base.js';
 import { ToolDispatcher } from '../dispatcher.js';
 import { debugLog } from '../../../shared/logging/debug.js';
+import { formatInlinePageSnapshot, hasInlinePageSnapshot } from '../snapshot/marker.js';
 
 const MAX_STEPS = 8;
 
@@ -67,7 +68,7 @@ export class CompositeActions extends BaseActionHandler {
                 ? null
                 : await this._takeSnapshotSafely();
             if (snapshotText) {
-                summary += `\n\n## Latest page snapshot\n${snapshotText}`;
+                summary += formatInlinePageSnapshot(snapshotText);
             }
         }
 
@@ -172,14 +173,10 @@ export class CompositeActions extends BaseActionHandler {
             ? null
             : await this._takeSnapshotSafely();
         if (snapshotText) {
-            summary += `\n\n## Latest page snapshot\n${snapshotText}`;
+            summary += formatInlinePageSnapshot(snapshotText);
         }
         return summary;
     }
-}
-
-function hasInlinePageSnapshot(text) {
-    return typeof text === 'string' && text.includes('## Latest page snapshot');
 }
 
 function isFailedOutput(text) {

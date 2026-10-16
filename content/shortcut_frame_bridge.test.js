@@ -101,6 +101,25 @@ describe('shortcut frame bridge', () => {
         });
     });
 
+    it('routes macOS option-modified snip shortcuts from iframes by physical key code', async () => {
+        const frame = document.createElement('iframe');
+        document.body.appendChild(frame);
+        await installBridge(frame.contentWindow);
+
+        const event = createKeyboardEvent(frame.contentWindow, 'ß', {
+            altKey: true,
+            code: 'KeyS',
+        });
+        frame.contentDocument.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+            action: 'START_SNIP_FROM_SHORTCUT',
+            mode: 'snip',
+            source: 'local',
+        });
+    });
+
     it('updates iframe shortcuts from storage changes', async () => {
         const frame = document.createElement('iframe');
         document.body.appendChild(frame);
@@ -123,6 +142,35 @@ describe('shortcut frame bridge', () => {
 
         expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
             action: 'SHOW_QUICK_ASK_FROM_SHORTCUT',
+        });
+    });
+
+    it('routes openPanel and browserControl shortcuts from iframes', async () => {
+        const frame = document.createElement('iframe');
+        document.body.appendChild(frame);
+        await installBridge(frame.contentWindow);
+
+        const openPanelEvent = createKeyboardEvent(frame.contentWindow, 'g', {
+            altKey: true,
+            code: 'KeyG',
+        });
+        frame.contentDocument.dispatchEvent(openPanelEvent);
+
+        expect(openPanelEvent.defaultPrevented).toBe(true);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+            action: 'TOGGLE_SIDE_PANEL',
+        });
+
+        const browserControlEvent = createKeyboardEvent(frame.contentWindow, 'B', {
+            altKey: true,
+            shiftKey: true,
+            code: 'KeyB',
+        });
+        frame.contentDocument.dispatchEvent(browserControlEvent);
+
+        expect(browserControlEvent.defaultPrevented).toBe(true);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+            action: 'TOGGLE_SIDE_PANEL_CONTROL',
         });
     });
 });

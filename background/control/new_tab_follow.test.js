@@ -4,12 +4,12 @@ import {
     detectNewTabsFromWatch,
     formatNewTabFollowNote,
     formatPossibleNewTabHint,
-    hasInlinePageSnapshot,
     pickMostRecentTab,
     pickPreferredNewTab,
     queryTabsInWindow,
     replaceInlinePageSnapshot,
 } from './new_tab_follow.js';
+import { hasInlinePageSnapshot } from './snapshot/marker.js';
 
 describe('new_tab_follow helpers', () => {
     beforeEach(() => {

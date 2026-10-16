@@ -111,4 +111,22 @@ describe('GeminiSpeechReader', () => {
             revokeObjectURL.mockRestore();
         }
     });
+
+    it('localizes Gemini TTS failure hints from the toolbar dictionary', () => {
+        const humanize = (raw) =>
+            window.GeminiSpeechReader.prototype._humanizeTtsError.call({}, raw);
+
+        window.GeminiToolbarStrings = {
+            speechTtsLoginRequired: 'EN login required',
+            speechTtsRateLimited: 'EN rate limited',
+            speechTtsAuthFailed: (detail) => `EN auth failed: ${detail}`,
+        };
+
+        expect(humanize('Session expired')).toBe('EN login required');
+        expect(humanize('HTTP 429 RESOURCE_EXHAUSTED')).toBe('EN rate limited');
+        expect(humanize('401 Unauthorized')).toBe('EN auth failed: 401 Unauthorized');
+
+        delete window.GeminiToolbarStrings;
+        expect(humanize('401 Unauthorized')).toBe('401 Unauthorized');
+    });
 });

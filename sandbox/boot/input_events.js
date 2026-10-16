@@ -61,7 +61,7 @@ function hasDismissibleOverlay() {
     return Boolean(document.querySelector(DISMISSIBLE_OVERLAY_SELECTOR));
 }
 
-/** Tab cycles models only while focus is in the prompt or model picker. */
+/** Model cycling focus target helper (prompt or model picker wrapper). */
 function isModelCycleFocusTarget(target) {
     if (!target || target.nodeType !== Node.ELEMENT_NODE) return false;
     if (target.id === 'prompt') return true;
@@ -207,7 +207,7 @@ export function bindInputEvents(app, ui, setResizeRef) {
                 return;
             }
 
-            if (keyEvent.key === 'Tab') {
+            if ((keyEvent.ctrlKey || keyEvent.metaKey) && keyEvent.key.toLowerCase() === 'm') {
                 keyEvent.preventDefault();
                 cycleModelSelect(modelSelect, keyEvent, inputFn);
                 return;
@@ -261,9 +261,6 @@ export function bindInputEvents(app, ui, setResizeRef) {
         };
 
         inputFn.addEventListener('keydown', handleInputKeyDown);
-        // Use pointerup as well so a visually-enabled but still-disabled button
-        // (race during IME composition) can be recovered via direct call path
-        // when we stop relying solely on the disabled attribute for empty state.
         sendBtn.addEventListener('click', handleSendClick);
         cleanupHandlers.push(() => inputFn.removeEventListener('keydown', handleInputKeyDown));
         cleanupHandlers.push(() => sendBtn.removeEventListener('click', handleSendClick));
@@ -325,16 +322,87 @@ export function bindInputEvents(app, ui, setResizeRef) {
             return;
         }
 
+        if (
+            (keyEvent.altKey &&
+                !keyEvent.ctrlKey &&
+                !keyEvent.metaKey &&
+                keyEvent.key.toLowerCase() === 'n') ||
+            ((keyEvent.ctrlKey || keyEvent.metaKey) &&
+                keyEvent.shiftKey &&
+                keyEvent.key.toLowerCase() === 'o')
+        ) {
+            keyEvent.preventDefault();
+            const newChatBtn =
+                document.getElementById('new-chat-composer-btn') ||
+                document.getElementById('new-chat-sidebar-btn') ||
+                document.getElementById('collapsed-new-chat-btn');
+            newChatBtn?.click?.();
+            return;
+        }
+
+        if (
+            keyEvent.altKey &&
+            !keyEvent.ctrlKey &&
+            !keyEvent.metaKey &&
+            keyEvent.key.toLowerCase() === 't'
+        ) {
+            const thinkingToggle = document.getElementById('web-thinking-toggle');
+            if (thinkingToggle && !thinkingToggle.hidden) {
+                keyEvent.preventDefault();
+                thinkingToggle.click();
+                return;
+            }
+        }
+
+        if (
+            keyEvent.altKey &&
+            !keyEvent.ctrlKey &&
+            !keyEvent.metaKey &&
+            keyEvent.key.toLowerCase() === 'h'
+        ) {
+            keyEvent.preventDefault();
+            const historyToggle = document.getElementById('history-toggle');
+            historyToggle?.click?.();
+            return;
+        }
+
+        if (
+            keyEvent.altKey &&
+            !keyEvent.ctrlKey &&
+            !keyEvent.metaKey &&
+            !keyEvent.shiftKey &&
+            keyEvent.key.toLowerCase() === 's'
+        ) {
+            keyEvent.preventDefault();
+            const snipBtn = document.getElementById('snip-btn');
+            snipBtn?.click?.();
+            return;
+        }
+
+        if (
+            (keyEvent.ctrlKey || keyEvent.metaKey) &&
+            !keyEvent.altKey &&
+            !keyEvent.shiftKey &&
+            keyEvent.key.toLowerCase() === 'm'
+        ) {
+            if (!isEditableTarget(keyEvent.target) || keyEvent.target?.id === 'prompt') {
+                keyEvent.preventDefault();
+                cycleModelSelect(modelSelect, keyEvent, inputFn);
+                return;
+            }
+        }
+
         if (keyEvent.key === 'Escape') {
             tryCancelGeneration(app, keyEvent);
             return;
         }
 
-        // Tab cycles models only in the prompt / model picker — elsewhere keep
-        // native focus order for toolbar, sidebar, and settings controls.
-        if (keyEvent.key === 'Tab' && isModelCycleFocusTarget(keyEvent.target)) {
-            // Prompt has its own handler; model-picker-area Tab still cycles here.
-            if (keyEvent.target?.id === 'prompt') return;
+        // Tab cycles models only when focused directly on the model picker trigger/native select
+        if (
+            keyEvent.key === 'Tab' &&
+            isModelCycleFocusTarget(keyEvent.target) &&
+            keyEvent.target?.id !== 'prompt'
+        ) {
             keyEvent.preventDefault();
             cycleModelSelect(modelSelect, keyEvent, inputFn);
             return;

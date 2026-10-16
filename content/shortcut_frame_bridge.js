@@ -2,13 +2,32 @@
     window.GeminiNexusShortcutFrameBridgeReady = true;
     window.GeminiNexusShortcutFrameBridge?.destroy?.();
 
+    // This bridge runs as its own `all_frames: true` / `document_start`
+    // content_scripts entry, while shared/config/constants_global.js is loaded
+    // by the main bundle (`all_frames: false`, `document_end`). So
+    // globalThis.GeminiNexusConfig is not reliably available here and these
+    // defaults must stay self-contained. Keep them in sync with
+    // shared/config/constants_global.js when changing a shortcut default.
     const DEFAULT_SHORTCUTS = Object.freeze({
         quickAsk: 'Alt+Q',
         openPanel: 'Alt+G',
-        browserControl: 'Ctrl+B',
+        browserControl: 'Alt+Shift+B',
         ocrCapture: 'Alt+O',
+        snipCapture: 'Alt+S',
     });
     const LEGACY_DEFAULT_SHORTCUTS = Object.freeze([
+        Object.freeze({
+            quickAsk: 'Alt+Q',
+            openPanel: 'Alt+G',
+            browserControl: 'Alt+Shift+B',
+            ocrCapture: 'Alt+O',
+        }),
+        Object.freeze({
+            quickAsk: 'Alt+Q',
+            openPanel: 'Alt+G',
+            browserControl: 'Ctrl+B',
+            ocrCapture: 'Alt+O',
+        }),
         Object.freeze({
             quickAsk: 'Ctrl+Q',
             openPanel: 'Alt+G',
@@ -91,6 +110,20 @@
         return key === mainKey || getCodeKey(event) === mainKey;
     }
 
+    function isEditableShortcutTarget(target) {
+        if (!(target instanceof Element)) return false;
+        if (target.isContentEditable) return true;
+        if (
+            target.closest?.(
+                '[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]'
+            )
+        ) {
+            return true;
+        }
+        const tagName = target.tagName.toLowerCase();
+        return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+    }
+
     function sendRuntimeMessage(message) {
         try {
             const result = chrome.runtime.sendMessage(message);
@@ -103,8 +136,10 @@
     class ShortcutFrameBridge {
         constructor() {
             this.appShortcuts = {};
+            this.chromeCommandShortcuts = {};
             this.handleStorageChange = this.handleStorageChange.bind(this);
             this.handleDocumentKeydown = (event) => this.handleKeydown(event);
+            this.boundRefreshChromeCommandShortcuts = this.refreshChromeCommandShortcuts.bind(this);
             this.init();
         }
 
@@ -117,16 +152,49 @@
                 }
 
                 this.appShortcuts = normalizeShortcutDefaults(result?.geminiShortcuts);
+                this.refreshChromeCommandShortcuts();
             });
 
             chrome.storage.onChanged.addListener(this.handleStorageChange);
+            window.addEventListener('focus', this.boundRefreshChromeCommandShortcuts);
             window.addEventListener('keydown', this.handleDocumentKeydown, true);
             document.addEventListener('keydown', this.handleDocumentKeydown, true);
+        }
+
+        async refreshChromeCommandShortcuts() {
+            try {
+                if (!chrome.commands?.getAll) return;
+                const commands = await chrome.commands.getAll();
+                const mapping = {
+                    quickAsk: null,
+                    openPanel: null,
+                    ocrCapture: null,
+                    browserControl: null,
+                };
+                for (const command of commands) {
+                    const shortcut = command.shortcut;
+                    if (!shortcut) continue;
+                    if (command.name === 'quick-ask') mapping.quickAsk = shortcut;
+                    else if (command.name === 'area-ocr') mapping.ocrCapture = shortcut;
+                    else if (command.name === '_execute_action') mapping.openPanel = shortcut;
+                    else if (command.name === 'browser-control') mapping.browserControl = shortcut;
+                }
+                this.chromeCommandShortcuts = mapping;
+            } catch {
+                // 静默降级
+            }
+        }
+
+        effectiveShortcut(action) {
+            const chromeManaged = this.chromeCommandShortcuts?.[action];
+            if (chromeManaged) return chromeManaged;
+            return this.appShortcuts[action];
         }
 
         destroy() {
             window.removeEventListener('keydown', this.handleDocumentKeydown, true);
             document.removeEventListener('keydown', this.handleDocumentKeydown, true);
+            window.removeEventListener('focus', this.boundRefreshChromeCommandShortcuts);
             chrome.storage?.onChanged?.removeListener?.(this.handleStorageChange);
         }
 
@@ -137,7 +205,9 @@
         }
 
         handleKeydown(event) {
-            if (matchShortcut(event, this.appShortcuts.quickAsk)) {
+            if (isEditableShortcutTarget(event.target)) return;
+
+            if (matchShortcut(event, this.effectiveShortcut('quickAsk'))) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -145,7 +215,7 @@
                 return;
             }
 
-            if (matchShortcut(event, this.appShortcuts.ocrCapture)) {
+            if (matchShortcut(event, this.effectiveShortcut('ocrCapture'))) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -154,6 +224,35 @@
                     mode: 'ocr',
                     source: 'local',
                 });
+                return;
+            }
+
+            if (matchShortcut(event, this.effectiveShortcut('snipCapture'))) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+                sendRuntimeMessage({
+                    action: 'START_SNIP_FROM_SHORTCUT',
+                    mode: 'snip',
+                    source: 'local',
+                });
+                return;
+            }
+
+            if (matchShortcut(event, this.effectiveShortcut('openPanel'))) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+                sendRuntimeMessage({ action: 'TOGGLE_SIDE_PANEL' });
+                return;
+            }
+
+            if (matchShortcut(event, this.effectiveShortcut('browserControl'))) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+                sendRuntimeMessage({ action: 'TOGGLE_SIDE_PANEL_CONTROL' });
+                return;
             }
         }
     }

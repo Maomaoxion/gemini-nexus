@@ -14,7 +14,9 @@ import { setupPageShortcutCommands } from './page_shortcut_commands.js';
 import {
     showQuickAskForTab,
     startAreaOcrForTab as startAreaOcrForTabWithManager,
+    startAreaSnipForTab as startAreaSnipForTabWithManager,
 } from './page_shortcut_tab_actions.js';
+import { toggleSidePanelControl } from './handlers/ui_sidepanel.js';
 
 // Unpacked (dev) loads default native logging ON so local agents can tail
 // ~/Library/Logs/gemini-nexus.log without a settings UI. Store-built packages
@@ -148,6 +150,20 @@ async function startAreaOcrForTab(tab) {
     await startAreaOcrForTabWithManager(tab, imageManager);
 }
 
+async function startAreaSnipForTab(tab) {
+    await startAreaSnipForTabWithManager(tab, imageManager);
+}
+
+async function toggleBrowserControlForTab(tab) {
+    if (!tab?.id || !tab.windowId) return;
+    const context = {
+        controlManager,
+        sidePanelScopeManager,
+        getTargetSidePanelTabId: () => tab.id,
+    };
+    await toggleSidePanelControl(context, { action: 'TOGGLE_SIDE_PANEL_CONTROL' }, { tab });
+}
+
 chrome.commands?.onCommand?.addListener((command, tab) => {
     if (command === 'quick-ask') {
         showQuickAskForTab(tab).catch((error) => {
@@ -160,12 +176,20 @@ chrome.commands?.onCommand?.addListener((command, tab) => {
         startAreaOcrForTab(tab).catch((error) => {
             console.error('Could not start area OCR from command:', error);
         });
+        return;
+    }
+
+    if (command === 'browser-control') {
+        toggleBrowserControlForTab(tab).catch((error) => {
+            console.error('Could not toggle browser control from command:', error);
+        });
     }
 });
 
 setupPageShortcutCommands({
     showQuickAskForTab,
     startAreaOcrForTab,
+    startAreaSnipForTab,
 });
 
 setupContextMenus();

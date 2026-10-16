@@ -57,7 +57,19 @@
             }
 
             this.iframe = document.createElement('iframe');
-            this.iframe.src = chrome.runtime.getURL('sandbox/index.html?mode=renderer');
+            try {
+                const pageGuard = window.GeminiNexusPageGuard;
+                if (pageGuard?.safeGetURL) {
+                    this.iframe.src = pageGuard.safeGetURL('sandbox/index.html?mode=renderer');
+                } else if (
+                    typeof chrome !== 'undefined' &&
+                    typeof chrome.runtime?.getURL === 'function'
+                ) {
+                    this.iframe.src = chrome.runtime.getURL('sandbox/index.html?mode=renderer');
+                }
+            } catch {
+                // Extension context invalidated
+            }
             this.iframe.style.display = 'none';
             this.iframeLoaded = false;
             this.iframeReady = new Promise((resolve) => {

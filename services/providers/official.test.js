@@ -130,7 +130,7 @@ describe('extractOfficialResponseData', () => {
         });
     });
 
-    it('maps the Gemini Pro UI alias to the current official Gemini 3.1 Pro model id', async () => {
+    it('sends requests to the configured official model id', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             body: makeSseStream('done'),
@@ -143,7 +143,7 @@ describe('extractOfficialResponseData', () => {
             {
                 baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
                 apiKey: 'key',
-                model: 'gemini-3-pro',
+                model: 'gemini-3.8-flash',
             },
             'low',
             [],
@@ -153,10 +153,10 @@ describe('extractOfficialResponseData', () => {
         );
 
         const [url] = global.fetch.mock.calls[0];
-        expect(url).toContain('/models/gemini-3.1-pro:streamGenerateContent');
+        expect(url).toContain('/models/gemini-3.8-flash:streamGenerateContent');
     });
 
-    it('does not send unsupported minimal thinking level to Gemini Pro models', async () => {
+    it('sends the requested thinking level to official models', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             body: makeSseStream('done'),
@@ -169,7 +169,7 @@ describe('extractOfficialResponseData', () => {
             {
                 baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
                 apiKey: 'key',
-                model: 'gemini-3-pro',
+                model: 'gemini-3.8-flash',
             },
             'minimal',
             [],
@@ -180,7 +180,7 @@ describe('extractOfficialResponseData', () => {
 
         const [, init] = global.fetch.mock.calls[0];
         const payload = JSON.parse(init.body);
-        expect(payload.generationConfig.thinkingConfig.thinkingLevel).toBe('low');
+        expect(payload.generationConfig.thinkingConfig.thinkingLevel).toBe('minimal');
     });
 
     it('throws a blocked error on SAFETY finish instead of an empty success', async () => {
@@ -221,5 +221,32 @@ describe('extractOfficialResponseData', () => {
                 vi.fn()
             )
         ).rejects.toThrow(/blocked/);
+    });
+
+    it('surfaces the Gemini API error message instead of the raw JSON body', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 400,
+            text: async () =>
+                '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT"}}',
+        });
+
+        await expect(
+            sendOfficialMessage(
+                'Hello',
+                '',
+                [],
+                {
+                    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+                    apiKey: 'bad-key',
+                    model: 'gemini-3-pro',
+                },
+                'low',
+                [],
+                false,
+                null,
+                vi.fn()
+            )
+        ).rejects.toThrow('API Error (400): API key not valid. Please pass a valid API key.');
     });
 });

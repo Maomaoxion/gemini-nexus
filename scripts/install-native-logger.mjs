@@ -65,12 +65,6 @@ function readManifestKey(manifestPath) {
     return manifest.key;
 }
 
-/**
- * Chrome native-messaging hosts inherit a minimal PATH on macOS
- * (/usr/bin:/bin:/usr/sbin:/sbin). `#!/usr/bin/env node` therefore fails when
- * Node lives only under Homebrew. Rewrite the shebang to an absolute node path
- * so Chrome can exec the host.
- */
 export function resolveNodeBinary() {
     const candidates = [
         process.execPath,
@@ -79,15 +73,14 @@ export function resolveNodeBinary() {
         '/usr/bin/node',
     ];
     for (const candidate of candidates) {
-        try {
-            if (candidate && existsSync(candidate)) return candidate;
-        } catch {
-            // ignore
-        }
+        if (candidate && existsSync(candidate)) return candidate;
     }
     return process.execPath || '/usr/bin/env node';
 }
 
+// Chrome native-messaging hosts inherit a minimal PATH on macOS
+// (/usr/bin:/bin:/usr/sbin:/sbin), so `#!/usr/bin/env node` fails when Node lives
+// only under Homebrew. Rewrite the shebang to an absolute node path.
 function writeHostScript(sourceHost, hostScriptPath, nodeBinary = resolveNodeBinary()) {
     const source = readFileSync(sourceHost, 'utf8');
     const rewritten = source.replace(/^#!.*\n/, `#!${nodeBinary}\n`);

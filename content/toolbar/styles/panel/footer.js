@@ -1,8 +1,6 @@
 (function () {
     window.GeminiStyles = window.GeminiStyles || {};
     window.GeminiStyles.PanelFooter = `
-        /* --- Footer Styles --- */
-
         .window-footer {
             flex-shrink: 0;
             background: var(--gnx-bg);

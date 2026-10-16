@@ -184,4 +184,29 @@ describe('sendAnthropicMessage', () => {
             )
         ).rejects.toThrow(/truncated/);
     });
+
+    it('surfaces the Anthropic API error message instead of the raw JSON body', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 401,
+            text: async () =>
+                '{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}',
+        });
+
+        await expect(
+            sendAnthropicMessage(
+                'Hello',
+                '',
+                [],
+                {
+                    baseUrl: 'https://api.anthropic.com/v1',
+                    apiKey: 'bad',
+                    model: 'claude-test',
+                },
+                [],
+                null,
+                vi.fn()
+            )
+        ).rejects.toThrow('API Error (401): invalid x-api-key');
+    });
 });

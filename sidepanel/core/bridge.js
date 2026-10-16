@@ -20,11 +20,11 @@ import {
     importSettingsData as importSettingsDataPayload,
 } from './data_import.js';
 import {
-    getRuntimeLastError,
     restoreConnectionSettings,
     restoreSidebarExpanded,
     saveSidePanelSessionBinding,
 } from './bridge_storage.js';
+import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
 
 function getModelSaveKey(payload) {
     if (payload && typeof payload === 'object') {

@@ -107,9 +107,7 @@ export class PromptController {
     }
 
     getConnectionProvider() {
-        const conn = this.getConnectionData();
-        if (conn.provider) return conn.provider;
-        return conn.useOfficialApi === true ? 'official' : 'web';
+        return this.app.getConnectionProvider();
     }
 
     canEditHistory() {

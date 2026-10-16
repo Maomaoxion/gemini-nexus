@@ -3,7 +3,6 @@
     --settings-transition-speed-slow: 0.3s;
     --settings-transition-easing: var(--ease-standard);
     --settings-transition-easing-bezier: var(--ease-emphasized);
-    --settings-shadow-depth-1: var(--shadow-sm);
     --settings-shadow-depth-2: var(--shadow-md);
     --settings-shadow-depth-3: var(--shadow-lg);
     --bg-active-tab: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -14,7 +13,6 @@
 [data-theme='dark'] {
     --settings-shadow-depth-3: 0 24px 64px rgba(0, 0, 0, 0.45);
     --bg-active-tab: color-mix(in srgb, var(--primary) 16%, transparent);
-    --text-active-tab: var(--primary);
     --border-card-hover: color-mix(in srgb, var(--primary) 36%, transparent);
 }
 
@@ -147,16 +145,6 @@
     overscroll-behavior: contain;
 }
 
-.settings-field-label {
-    display: block;
-    margin-bottom: 2px;
-    font-weight: 500;
-}
-
-.settings-field-label.spacious {
-    margin-bottom: 6px;
-}
-
 .settings-stack {
     display: flex;
     flex-direction: column;
@@ -171,29 +159,11 @@
     gap: 8px;
 }
 
-.settings-inline-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.settings-inline-row span {
-    min-width: 0;
-}
-
 .settings-action-row {
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
-}
-
-.settings-split-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
 }
 
 .settings-flex-fill {
@@ -203,12 +173,6 @@
 
 .settings-section-offset {
     margin-top: 12px;
-}
-
-.settings-panel-fieldset {
-    margin-top: 6px;
-    padding-top: 10px;
-    border-top: none;
 }
 
 .settings-muted-text {

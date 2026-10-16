@@ -3,8 +3,8 @@
 // without DevTools. Large binary payloads (data URLs / base64) are redacted by
 // default so native-messaging stays under the ~1MB frame limit.
 
-export const DATA_URL_RE = /^data:[^;]+;base64,/i;
-export const LONG_BASE64_MIN = 256;
+const DATA_URL_RE = /^data:[^;]+;base64,/i;
+const LONG_BASE64_MIN = 256;
 
 /**
  * Replace data-URLs / long base64 strings with a length marker.
@@ -34,11 +34,11 @@ export function redactLargeBlobs(value, opts = {}) {
     return value;
 }
 
-function isMostlyBase64(s) {
+function isMostlyBase64(value) {
     // Avoid treating normal long text as base64; require high base64 alphabet ratio.
-    const sample = s.slice(0, 512);
-    const ok = (sample.match(/[A-Za-z0-9+/=]/g) || []).join('').length;
-    return ok / sample.length > 0.95;
+    const sample = value.slice(0, 512);
+    const base64CharCount = (sample.match(/[A-Za-z0-9+/=]/g) || []).join('').length;
+    return base64CharCount / sample.length > 0.95;
 }
 
 /**

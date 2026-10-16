@@ -264,7 +264,6 @@ export class ActionWaiter {
                                 resolve(true);
                             }
 
-                            // Start observing
                             observer.observe(document.body, {
                                 attributes: true,
                                 childList: true,

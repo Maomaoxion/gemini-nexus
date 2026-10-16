@@ -133,13 +133,13 @@
             this.selectionBox.className = 'gemini-nexus-capture-selection';
 
             if (screenshotBase64) {
-                const innerImg = document.createElement('div');
-                innerImg.className = 'gemini-nexus-capture-selection-image';
-                innerImg.style.backgroundImage = `url(${screenshotBase64})`;
-                this.selectionBox.appendChild(innerImg);
+                const selectionBackdrop = document.createElement('div');
+                selectionBackdrop.className = 'gemini-nexus-capture-selection-image';
+                selectionBackdrop.style.backgroundImage = `url(${screenshotBase64})`;
+                this.selectionBox.appendChild(selectionBackdrop);
                 this.selectionBox.classList.add('has-background');
 
-                this.innerImgRef = innerImg;
+                this.backdropRef = selectionBackdrop;
             }
 
             this.hint = document.createElement('div');
@@ -192,7 +192,7 @@
             this.overlay = null;
             this.selectionBox = null;
             this.backgroundImg = null;
-            this.innerImgRef = null;
+            this.backdropRef = null;
         }
 
         cancel() {
@@ -218,9 +218,9 @@
             this.selectionBox.style.width = '0px';
             this.selectionBox.style.height = '0px';
 
-            if (this.innerImgRef) {
-                this.innerImgRef.style.marginLeft = `-${this.startX}px`;
-                this.innerImgRef.style.marginTop = `-${this.startY}px`;
+            if (this.backdropRef) {
+                this.backdropRef.style.marginLeft = `-${this.startX}px`;
+                this.backdropRef.style.marginTop = `-${this.startY}px`;
             }
 
             this.hint.style.display = 'none';
@@ -244,9 +244,9 @@
             this.selectionBox.style.left = left + 'px';
             this.selectionBox.style.top = top + 'px';
 
-            if (this.innerImgRef) {
-                this.innerImgRef.style.marginLeft = `-${left}px`;
-                this.innerImgRef.style.marginTop = `-${top}px`;
+            if (this.backdropRef) {
+                this.backdropRef.style.marginLeft = `-${left}px`;
+                this.backdropRef.style.marginTop = `-${top}px`;
             }
         }
 

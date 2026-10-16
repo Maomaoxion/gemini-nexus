@@ -66,8 +66,8 @@ describe('i18n translations', () => {
         applyTranslations();
 
         const [newChat, close] = document.querySelectorAll('button');
-        expect(newChat.title).toBe('新对话');
-        expect(newChat.getAttribute('aria-label')).toBe('新对话');
+        expect(newChat.title).toBe('新对话 (Alt+N)');
+        expect(newChat.getAttribute('aria-label')).toBe('新对话 (Alt+N)');
         expect(close.title).toBe('关闭');
         expect(close.getAttribute('aria-label')).toBe('关闭');
     });

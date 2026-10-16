@@ -102,13 +102,12 @@ export function renderGeminiReply(handler, session, request) {
                 }
             }
 
-            // For error replies, mark the bubble as an error so the render
-            // layer can style it differently (error color, retry button).
+            // Error replies get the error tint on the already-rendered bubble.
             if (
                 request.status === 'error' &&
                 typeof handler.streamingBubble.markError === 'function'
             ) {
-                handler.streamingBubble.markError(request.errorKind, request.retryable);
+                handler.streamingBubble.markError();
             }
 
             handler.streamingBubble = null;

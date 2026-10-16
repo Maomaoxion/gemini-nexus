@@ -48,6 +48,30 @@ describe('page shortcut command relay', () => {
         });
     });
 
+    it('starts area snip (screenshot ask) in the sender tab', async () => {
+        const handlers = {
+            showQuickAskForTab: vi.fn(),
+            startAreaOcrForTab: vi.fn(),
+            startAreaSnipForTab: vi.fn(() => Promise.resolve()),
+        };
+        const sendResponse = vi.fn();
+        const handler = createPageShortcutCommandHandler(handlers);
+
+        const handled = handler(
+            { action: 'START_SNIP_FROM_SHORTCUT' },
+            { tab: { id: 9, windowId: 4, url: 'https://example.com/' } },
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ status: 'ok' }));
+        expect(handlers.startAreaSnipForTab).toHaveBeenCalledWith({
+            id: 9,
+            windowId: 4,
+            url: 'https://example.com/',
+        });
+    });
+
     it('reports shortcut relay failures to the sender', async () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         const handlers = {

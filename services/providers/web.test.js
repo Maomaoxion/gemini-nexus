@@ -114,6 +114,37 @@ describe('sendWebMessage', () => {
         expect(modelHeader[15]).toBe(2);
     });
 
+    it('uses the captured Gemini 4 Argon Web model contract', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeStream(buildGeminiLine()),
+        });
+
+        await sendWebMessage(
+            'hello',
+            {
+                atValue: 'at-token',
+                blValue: 'bl-token',
+                fSid: 'sid-token',
+                locale: 'en-US',
+                authUser: '0',
+            },
+            '95a4c0abcba24364',
+            [],
+            undefined,
+            undefined,
+            { thinkingLevel: 'minimal' }
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const modelHeader = JSON.parse(init.headers['x-goog-ext-525001261-jspb']);
+        expect(modelHeader[4]).toBe('95a4c0abcba24364');
+        expect(modelHeader[8]).toEqual([4, 5, 6, 8]);
+        expect(modelHeader[11]).toBe(8);
+        expect(modelHeader[14]).toBe(8);
+        expect(modelHeader[15]).toBe(1);
+    });
+
     it('sends the selected Gemini Web thinking mode as native side-channel metadata', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
@@ -176,7 +207,7 @@ describe('sendWebMessage', () => {
         expect(modelHeader[7]).toBe(true);
     });
 
-    it('normalizes Pro minimal thinking to native standard without prompt prefixes', async () => {
+    it('sends native standard thinking for Argon minimal thinking without prompt prefixes', async () => {
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             body: makeStream(buildGeminiLine()),
@@ -191,7 +222,7 @@ describe('sendWebMessage', () => {
                 locale: 'zh-CN',
                 authUser: '0',
             },
-            'e6fa609c3fa255c0',
+            '95a4c0abcba24364',
             [],
             undefined,
             undefined,
@@ -203,7 +234,7 @@ describe('sendWebMessage', () => {
         expect(fReq).toContain('Solve it.');
         expect(fReq).not.toContain('Gemini Nexus thinking mode');
         const modelHeader = JSON.parse(init.headers['x-goog-ext-525001261-jspb']);
-        expect(modelHeader[14]).toBe(3);
+        expect(modelHeader[14]).toBe(8);
         expect(modelHeader[15]).toBe(1);
     });
 

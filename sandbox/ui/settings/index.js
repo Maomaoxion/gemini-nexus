@@ -118,6 +118,10 @@ export class SettingsController {
                 this.imageToolsEnabled = value === 'on' || value === true;
                 saveImageToolsToStorage(this.imageToolsEnabled);
             },
+            onImageToolsBlacklistChange: (value) => {
+                this.imageToolsBlacklist = value || '';
+                saveImageToolsBlacklistToStorage(this.imageToolsBlacklist);
+            },
             onGeneratedImageWatermarkRemovalChange: (value) => {
                 this.generatedImageWatermarkRemovalEnabled = value === 'on' || value === true;
                 saveGeneratedImageWatermarkRemovalToStorage(
@@ -212,6 +216,9 @@ export class SettingsController {
         this.imageToolsEnabled = generalSettings.imageToolsEnabled;
         saveImageToolsToStorage(this.imageToolsEnabled);
 
+        this.imageToolsBlacklist = generalSettings.imageToolsBlacklist;
+        saveImageToolsBlacklistToStorage(this.imageToolsBlacklist);
+
         this.generatedImageWatermarkRemovalEnabled =
             generalSettings.generatedImageWatermarkRemovalEnabled;
         saveGeneratedImageWatermarkRemovalToStorage(this.generatedImageWatermarkRemovalEnabled);
@@ -304,8 +311,6 @@ export class SettingsController {
             '*'
         );
     }
-
-    // --- State Updates (From View or Storage) ---
 
     setTheme(theme) {
         this.view.applyVisualTheme(theme);

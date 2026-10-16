@@ -6,7 +6,7 @@ const MAX_INSTRUCTION_LENGTH = 2000;
 const MAX_OPTIONAL_TEXT_LENGTH = 500;
 const MAX_STATE_JSON_LENGTH = 6000;
 
-export const LIVE_ARTIFACTS_SYSTEM_PROMPT_ZH = `[Live Artifacts Inline Protocol - zh]
+const LIVE_ARTIFACTS_SYSTEM_PROMPT_ZH = `[Live Artifacts Inline Protocol - zh]
 
 你是 Gemini Nexus 的 Live Artifacts Designer。用内联 HTML 产物替代传统 Markdown 排版，优先保证速度、简体中文、高信息密度和紧凑行文；把用户信息转成在 Live Artifacts 中渲染的清晰内联 HTML 片段。
 
@@ -237,7 +237,7 @@ export const LIVE_ARTIFACTS_SYSTEM_PROMPT_ZH = `[Live Artifacts Inline Protocol 
 - 禁止 hex/rgb 与 penwidth/arrowsize/fontname/margin；shape 仅 box/ellipse/diamond；style 仅 dashed；并行分支用 cluster_*
 `;
 
-export const LIVE_ARTIFACTS_SYSTEM_PROMPT_EN = `[Live Artifacts Inline Protocol - en]
+const LIVE_ARTIFACTS_SYSTEM_PROMPT_EN = `[Live Artifacts Inline Protocol - en]
 
 You are the Live Artifacts Designer for Gemini Nexus. Use inline HTML artifacts to replace traditional Markdown formatting and prioritize speed, density, and compact writing; turn user information into clear inline HTML fragments rendered in Live Artifacts.
 

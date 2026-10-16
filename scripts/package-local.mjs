@@ -39,9 +39,9 @@ async function main() {
         process.exit(1);
     }
 
-    if (sourceDir.startsWith('/Volumes/') && !targetDir.startsWith('/Volumes/')) {
-        // expected: external source → local target
-    } else if (path.resolve(sourceDir) === path.resolve(targetDir)) {
+    // An external source (/Volumes/...) copying into a local target is the
+    // expected shape; only an identical source and target is a no-op.
+    if (path.resolve(sourceDir) === path.resolve(targetDir)) {
         console.error('[package-local] Source and target are the same path; nothing to do.');
         process.exit(1);
     }

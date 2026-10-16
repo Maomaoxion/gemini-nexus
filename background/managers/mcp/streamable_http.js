@@ -1,7 +1,7 @@
 import { mergeHttpTransportHeaders } from './transport.js';
 
 export const STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream';
-export const STREAMABLE_SESSION_HEADER = 'MCP-Session-Id';
+const STREAMABLE_SESSION_HEADER = 'MCP-Session-Id';
 const MAX_STREAMABLE_RESUME_ATTEMPTS = 3;
 
 function extractJsonRpcResult(message) {
@@ -48,7 +48,7 @@ function createStreamEndedError(lastEventId) {
     return error;
 }
 
-export function getStreamableSessionId(response) {
+function getStreamableSessionId(response) {
     return response.headers.get(STREAMABLE_SESSION_HEADER) || '';
 }
 
@@ -59,7 +59,7 @@ export function isStreamableHttpFallbackError(error) {
     return error && [404, 405].includes(error.status);
 }
 
-export async function readStreamableHttpError(response) {
+async function readStreamableHttpError(response) {
     try {
         return await response.text();
     } catch {
@@ -67,7 +67,7 @@ export async function readStreamableHttpError(response) {
     }
 }
 
-export async function parseStreamableHttpResponse(response, requestId, onMessage = () => {}) {
+async function parseStreamableHttpResponse(response, requestId, onMessage = () => {}) {
     const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
     if (!contentType.includes('text/event-stream')) {
         return parseJsonText(await response.text());

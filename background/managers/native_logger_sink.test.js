@@ -213,4 +213,23 @@ describe('NativeLoggerSink', () => {
         expect(sent).not.toContain('b'); // b never attempted — re-queued after the failing entry
         expect(sink._buffer.map((e) => e.message)).toEqual(['fail', 'b']); // both re-queued in order
     });
+
+    it('handles port onDisconnect and consumes runtime.lastError without uncaught errors', () => {
+        const { runtime, port, listeners } = makeMockRuntime();
+        let lastErrorRead = false;
+        Object.defineProperty(runtime, 'lastError', {
+            get() {
+                lastErrorRead = true;
+                return { message: 'Specified native messaging host not found.' };
+            },
+        });
+        const sink = new NativeLoggerSink({ runtime, enabled: true });
+        sink.connect();
+        expect(sink._port).toBe(port);
+
+        // Simulate host disconnect
+        listeners.disconnect(port);
+        expect(lastErrorRead).toBe(true);
+        expect(sink._port).toBeNull();
+    });
 });

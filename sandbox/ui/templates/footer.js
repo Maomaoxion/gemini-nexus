@@ -15,7 +15,7 @@ export const FooterTemplate = `
 
             <div class="composer-actions">
                 <div class="composer-actions-left">
-                    <button id="new-chat-composer-btn" type="button" data-i18n-title="newChatTooltip" title="New Chat" aria-label="New Chat">
+                    <button id="new-chat-composer-btn" type="button" data-i18n-title="newChatTooltip" title="New Chat (Alt+N)" aria-label="New Chat">
                         ${TemplateIcons.NEW_CHAT}
                     </button>
 
@@ -74,7 +74,7 @@ export const FooterTemplate = `
                                     ${TemplateIcons.TRANSLATE}
                                     <span data-i18n="screenshotTranslateLabel">Translate screenshot</span>
                                 </button>
-                                <button id="snip-btn" class="tools-menu-item" role="menuitem" data-i18n-title="snipTooltip" title="Capture area to input">
+                                <button id="snip-btn" class="tools-menu-item" role="menuitem" data-i18n-title="snipTooltip" title="Capture area to input (Alt+S)">
                                     ${TemplateIcons.CAPTURE_IMAGE}
                                     <span data-i18n="snipLabel">Capture as image</span>
                                 </button>
@@ -84,7 +84,7 @@ export const FooterTemplate = `
                 </div>
 
                 <div class="composer-actions-right">
-                    <button id="send" type="button" data-i18n-title="sendMessageTooltip" title="Send message" class="is-empty" aria-disabled="true">
+                    <button id="send" type="button" data-i18n-title="sendMessageTooltip" title="Send message (Enter)" class="is-empty" aria-disabled="true">
                         ${TemplateIcons.SEND}
                     </button>
                 </div>

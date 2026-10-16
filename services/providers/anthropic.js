@@ -1,10 +1,6 @@
-import {
-    countUserAttachmentsByType,
-    getDataUrlMime,
-    normalizeUserAttachments,
-} from '../../shared/attachments/index.js';
+import { getDataUrlMime, normalizeUserAttachments } from '../../shared/attachments/index.js';
 import { debugLog } from '../../shared/logging/debug.js';
-import { readErrorMessage } from './openai_response_extractors.js';
+import { assertResponseOk } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
 import { throwIfTruncated } from './shared/finish_reason.js';
 import {
@@ -180,10 +176,7 @@ export async function sendAnthropicMessage(
         signal,
     });
 
-    if (!response.ok) {
-        const errorText = await readErrorMessage(response);
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await assertResponseOk(response);
 
     const state = {
         text: '',

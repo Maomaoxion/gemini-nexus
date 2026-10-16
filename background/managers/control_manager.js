@@ -11,16 +11,17 @@ import {
     detectNewTabsFromWatch,
     formatNewTabFollowNote,
     formatPossibleNewTabHint,
-    hasInlinePageSnapshot,
     pickMostRecentTab,
     replaceInlinePageSnapshot,
 } from '../control/new_tab_follow.js';
+import { hasInlinePageSnapshot } from '../control/snapshot/marker.js';
 
 export const DEFAULT_BROWSER_CONTROL_START_URL = 'https://www.google.com/search?q=';
 
 /**
- * Main Controller handling Chrome DevTools MCP functionalities.
- * Orchestrates connection, snapshots, and action execution.
+ * Main entry point for Chrome DevTools Protocol based browser control.
+ * Orchestrates debugger connection, snapshots, and action execution.
+ * The external MCP tool server lives in `mcp_remote_manager.js`.
  */
 export class BrowserControlManager {
     constructor() {
@@ -359,8 +360,6 @@ export class BrowserControlManager {
         return null;
     }
 
-    // --- Control Lifecycle ---
-
     async enableControl(options = {}) {
         // If already connected, do nothing (or verify tab)
         if (this.connection.attached && this.lockedTabId === this.connection.currentTabId) {
@@ -378,7 +377,6 @@ export class BrowserControlManager {
     }
 
     async disableControl() {
-        // Clear lock
         this.setTargetTab(null);
         this.ownerSidePanelTabId = null;
         // Detach debugger which hides the bar
@@ -386,8 +384,6 @@ export class BrowserControlManager {
             await this.connection.detach();
         }
     }
-
-    // --- Internal Helpers ---
 
     async ensureConnection() {
         const targetTab = await this._ensureControllableTarget();
@@ -438,8 +434,6 @@ export class BrowserControlManager {
         }
         return await this.snapshotManager.takeSnapshot();
     }
-
-    // --- New-tab follow (click / press_key / run_steps) ---
 
     async _beforeToolAction(name) {
         if (!NEW_TAB_FOLLOW_TOOL_NAMES.has(name)) return null;
@@ -632,8 +626,6 @@ export class BrowserControlManager {
         return result;
     }
 
-    // --- Execution Entry Point ---
-
     _runExclusive(task) {
         const previous = this.executionQueue.catch(() => {});
         let release;
@@ -694,11 +686,10 @@ export class BrowserControlManager {
                 return `Error: ${this._getConnectionErrorMessage()}`;
             }
 
-            debugLog(`[MCP] Running tool: ${name}`, args);
+            debugLog(`[BrowserControl] Running tool: ${name}`, args);
 
             this._notifyProgress(onProgress, `Running ${name}...`, 'execute');
 
-            // Delegate to dispatcher
             const result = await this.dispatcher.dispatch(name, args);
 
             let finalOutput = result;
@@ -741,12 +732,10 @@ export class BrowserControlManager {
 
             return finalOutput;
         } catch (error) {
-            console.error(`[MCP] Tool execution error:`, error);
+            console.error(`[BrowserControl] Tool execution error:`, error);
             return `Error executing ${toolCall.name}: ${error.message}`;
         }
     }
-
-    // --- SW Lifecycle Persistence ---
 
     _persistControlState() {
         if (typeof chrome?.storage?.session?.set !== 'function') return;

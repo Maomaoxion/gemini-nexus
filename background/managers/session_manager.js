@@ -16,8 +16,6 @@ export class GeminiSessionManager {
         this.auth = new AuthManager();
         this.dispatcher = new RequestDispatcher(this.auth);
         this.abortControllers = new Map();
-        // legacy single field kept for direct property access in tests
-        this._legacyAbortController = null;
     }
 
     _abortByKey(key) {
@@ -27,9 +25,6 @@ export class GeminiSessionManager {
                 controller.abort();
             } catch {}
             this.abortControllers.delete(key);
-            if (key === 'default' || key === 'prompt') {
-                this._legacyAbortController = null;
-            }
             return true;
         }
         return false;
@@ -47,9 +42,6 @@ export class GeminiSessionManager {
 
         const abortController = new AbortController();
         this.abortControllers.set(key, abortController);
-        if (key === 'default' || key === 'prompt') {
-            this._legacyAbortController = abortController;
-        }
         const signal = abortController.signal;
         let thoughtsStartedAt = null;
         let thoughtsDurationSeconds = null;
@@ -73,7 +65,6 @@ export class GeminiSessionManager {
         try {
             const settings = await getConnectionSettings({ provider: request.provider });
 
-            // Normalize files
             let files = [];
             if (request.files && Array.isArray(request.files)) {
                 files = request.files;
@@ -120,7 +111,6 @@ export class GeminiSessionManager {
             let errorMessage = error.message || 'Unknown error';
             const isZh = chrome.i18n.getUILanguage().startsWith('zh');
 
-            // Handle common user-facing errors
             if (isUnavailableWebAuthError(errorMessage)) {
                 this.auth.forceContextRefresh();
                 try {
@@ -158,9 +148,6 @@ export class GeminiSessionManager {
         } finally {
             if (this.abortControllers.get(key) === abortController) {
                 this.abortControllers.delete(key);
-                if (key === 'default' || key === 'prompt') {
-                    this._legacyAbortController = null;
-                }
             }
             // Always disarm the heartbeat, whether the stream completed, was
             // cancelled, or errored. Without this the alarm fires forever.
@@ -179,12 +166,11 @@ export class GeminiSessionManager {
             } catch {}
         }
         this.abortControllers.clear();
-        this._legacyAbortController = null;
         return true;
     }
 
-    async setContext(context, model) {
-        await this.auth.updateContext(context, model);
+    async setContext(context) {
+        await this.auth.updateContext(context);
     }
 
     async resetContext() {
@@ -192,25 +178,6 @@ export class GeminiSessionManager {
     }
 
     async clearContext() {
-        if (typeof this.auth.clearContext === 'function') {
-            await this.auth.clearContext();
-            return;
-        }
-        // Fallback: clear memory only (older AuthManager without clearContext).
-        this.auth.forceContextRefresh?.();
-    }
-
-    // Legacy getter/setter for tests that directly read/write .abortController
-    get abortController() {
-        return this._legacyAbortController;
-    }
-
-    set abortController(value) {
-        this._legacyAbortController = value;
-        if (value) {
-            this.abortControllers.set('default', value);
-        } else {
-            this.abortControllers.delete('default');
-        }
+        await this.auth.clearContext();
     }
 }

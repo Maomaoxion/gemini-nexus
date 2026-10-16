@@ -10,6 +10,7 @@ import {
     hasNativeFunctionCalls,
 } from '../official_function_response.js';
 import { parseToolCommand, splitToolCallFromText } from '../../../../shared/text/tool_call_text.js';
+import { hasInlinePageSnapshot } from '../../../control/snapshot/marker.js';
 import { SnapshotManager } from '../../../control/snapshot/index.js';
 
 function createIntermediateAiResult(result) {
@@ -85,7 +86,7 @@ const TOOL_USAGE_PATTERN = new RegExp(
 const TASK_COMPLETE_PATTERN =
     /(?:任务(?:已)?完成|已(?:全部)?完成|下载(?:已)?开始|没有需要(?:再)?做|无需再|successfully completed|task (?:is )?complete|download (?:has )?started|nothing (?:else|more) to do|no further action)/i;
 
-const UID_PATTERN = /(?:\buid\s*=\s*[\w.-]+|`uid\s*=\s*[\w.-]+`|uid=\s*[\w.-]+)/i;
+const UID_PATTERN = /\buid\s*=\s*[\w.-]+/i;
 
 /**
  * Detects browser-control replies that describe the next tool action but did
@@ -142,14 +143,6 @@ export function buildNarrationNudgePrompt(language) {
 /** Intermediate AI row for a narration-only step (no tool JSON yet). */
 export function createNarrationIntermediateAiResult(result) {
     return createCopySuppressedIntermediateAiResult(result);
-}
-
-export function hasInlinePageSnapshot(output) {
-    return typeof output === 'string' && output.includes('## Latest page snapshot');
-}
-
-export function isUidResolutionFailure(output) {
-    return SnapshotManager.isUidResolutionError(output);
 }
 
 export function getToolResultsFiles(toolResults) {
@@ -253,7 +246,7 @@ export async function injectBrowserControlSnapshot({
     // output does not already embed a recovery snapshot (e.g. from
     // getObjectIdFromUid / run_steps). Generic failures stay as-is.
     const failedUidRecovery =
-        toolResult.status === 'failed' && isUidResolutionFailure(outputForModel);
+        toolResult.status === 'failed' && SnapshotManager.isUidResolutionError(outputForModel);
     if (
         toolResult.source !== 'browser_control' ||
         (toolResult.status === 'failed' && !failedUidRecovery) ||

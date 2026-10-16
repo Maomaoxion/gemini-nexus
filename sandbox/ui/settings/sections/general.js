@@ -250,6 +250,7 @@ export class GeneralSection {
             textSelectionToggle,
             textSelectionBlacklistInput,
             imageToolsToggle,
+            imageToolsBlacklistInput,
             generatedImageWatermarkToggle,
             customSelectionToolsList,
             accountIndicesInput,
@@ -269,6 +270,7 @@ export class GeneralSection {
                 ? textSelectionBlacklistInput.value
                 : '',
             imageTools: imageToolsToggle ? imageToolsToggle.checked : true,
+            imageToolsBlacklist: imageToolsBlacklistInput ? imageToolsBlacklistInput.value : '',
             generatedImageWatermarkRemoval: generatedImageWatermarkToggle
                 ? generatedImageWatermarkToggle.checked
                 : true,

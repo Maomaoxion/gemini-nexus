@@ -37,11 +37,10 @@ function attachCurrentTabContext(state, payload) {
         return payload;
     }
 
-    const tabId = shouldRequirePageContextRoute(payload)
-        ? state.getCurrentTabId()
-        : shouldRouteToHostTab(payload)
-          ? getMessageTargetTabId(state)
-          : state.getCurrentTabId();
+    const tabId =
+        shouldRouteToHostTab(payload) && !shouldRequirePageContextRoute(payload)
+            ? getMessageTargetTabId(state)
+            : state.getCurrentTabId();
     if (!Number.isInteger(tabId) || tabId <= 0) {
         return payload;
     }

@@ -4,23 +4,18 @@ import './web_thinking_global.js';
 const webThinking = globalThis.GeminiNexusWebThinking;
 
 export const DEFAULT_WEB_THINKING_LEVEL = webThinking.DEFAULT_WEB_THINKING_LEVEL;
-export const WEB_THINKING_LEVELS = webThinking.WEB_THINKING_LEVELS;
 export const WEB_NATIVE_THINKING_LEVELS = webThinking.WEB_NATIVE_THINKING_LEVELS;
-const DEEP_WEB_THINKING_LEVEL = 'high';
-
 export function normalizeWebThinkingLevel(level, fallback = DEFAULT_WEB_THINKING_LEVEL) {
-    const normalized = String(level || '')
-        .trim()
-        .toLowerCase();
-    return WEB_THINKING_LEVELS.includes(normalized) ? normalized : fallback;
+    return webThinking.normalizeWebThinkingLevel(level, fallback);
 }
 
 export function supportsWebThinking(model) {
     return webThinking.supportsWebThinking(model);
 }
 
+// The global already normalises the model's fast level with a 'low' fallback.
 export function getWebThinkingFastLevel(model) {
-    return normalizeWebThinkingLevel(webThinking.getWebThinkingFastLevel(model), 'low');
+    return webThinking.getWebThinkingFastLevel(model);
 }
 
 export function normalizeWebThinkingLevelForModel(
@@ -28,23 +23,13 @@ export function normalizeWebThinkingLevelForModel(
     level,
     fallback = DEFAULT_WEB_THINKING_LEVEL
 ) {
-    const normalized = normalizeWebThinkingLevel(level, fallback);
-    if (normalized === 'minimal' && getWebThinkingFastLevel(model) !== 'minimal') {
-        return 'low';
-    }
-    return normalized;
+    return webThinking.normalizeWebThinkingLevelForModel(model, level, fallback);
 }
 
 export function getNextWebThinkingLevel(model, currentLevel) {
-    const normalized = normalizeWebThinkingLevelForModel(model, currentLevel);
-    const fastLevel = getWebThinkingFastLevel(model);
-    return normalized === fastLevel ? DEEP_WEB_THINKING_LEVEL : fastLevel;
+    return webThinking.getNextWebThinkingLevel(model, currentLevel);
 }
 
 export function getWebNativeThinkingLevel(model, level) {
-    const normalized = normalizeWebThinkingLevelForModel(model, level);
-    if (normalized === 'minimal' || normalized === 'low') {
-        return WEB_NATIVE_THINKING_LEVELS.STANDARD;
-    }
-    return WEB_NATIVE_THINKING_LEVELS.EXTENDED;
+    return webThinking.getWebNativeThinkingLevel(model, level);
 }

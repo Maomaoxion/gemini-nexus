@@ -47,7 +47,7 @@ export async function showQuickAskForTab(tab) {
     await sendMessageWithContentRefresh(tab, { action: 'SHOW_QUICK_ASK' }, 'ok');
 }
 
-export async function startAreaOcrForTab(tab, imageManager) {
+export async function startAreaCaptureForTab(tab, imageManager, mode = 'ocr') {
     if (!isValidTab(tab)) return;
 
     // Hide floating toolbar before capturing so it doesn't appear in the screenshot.
@@ -76,7 +76,7 @@ export async function startAreaOcrForTab(tab, imageManager) {
             {
                 action: 'START_SELECTION',
                 image: capture.base64,
-                mode: 'ocr',
+                mode,
                 source: 'local',
                 targetSidePanelTabId: null,
             },
@@ -85,4 +85,12 @@ export async function startAreaOcrForTab(tab, imageManager) {
     } catch (error) {
         await notifyTabError(tab, error?.message || CAPTURE_ERROR);
     }
+}
+
+export async function startAreaOcrForTab(tab, imageManager) {
+    return startAreaCaptureForTab(tab, imageManager, 'ocr');
+}
+
+export async function startAreaSnipForTab(tab, imageManager) {
+    return startAreaCaptureForTab(tab, imageManager, 'snip');
 }

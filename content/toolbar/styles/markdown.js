@@ -21,8 +21,6 @@
         .result-area::-webkit-scrollbar-thumb { background: var(--gnx-border); border-radius: 3px; }
         .result-area::-webkit-scrollbar-thumb:hover { background: var(--gnx-fg-subtle); }
 
-        /* --- Markdown Styles --- */
-
         .markdown-body {
             width: 100%;
             min-width: 0;

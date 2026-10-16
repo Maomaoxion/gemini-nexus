@@ -50,6 +50,30 @@ describe('base theme tokens', () => {
         expect(placeholderLight).not.toBe(tokenIn(rootBlock, 'text-primary'));
         expect(placeholderDark).not.toBe(tokenIn(darkBlock, 'text-primary'));
     });
+
+    it('keeps semantic colors readable against their theme surfaces', async () => {
+        const baseCss = await readCss('base.css');
+
+        const rootBlock = baseCss.match(/:root\s*{([^}]*)}/s)?.[1] || '';
+        const darkBlock = baseCss.match(/\[data-theme='dark'\]\s*{([^}]*)}/s)?.[1] || '';
+
+        const bgBodyLight = tokenIn(rootBlock, 'bg-body');
+        const bgBodyDark = tokenIn(darkBlock, 'bg-body');
+
+        const dangerLight = tokenIn(rootBlock, 'danger');
+        const dangerDark = tokenIn(darkBlock, 'danger');
+        const successLight = tokenIn(rootBlock, 'success');
+        const successDark = tokenIn(darkBlock, 'success');
+        const warningLight = tokenIn(rootBlock, 'warning');
+        const warningDark = tokenIn(darkBlock, 'warning');
+
+        expect(contrast(dangerLight, bgBodyLight)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(dangerDark, bgBodyDark)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(successLight, bgBodyLight)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(successDark, bgBodyDark)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(warningLight, bgBodyLight)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(warningDark, bgBodyDark)).toBeGreaterThanOrEqual(4.5);
+    });
 });
 
 describe('code block header tokens', () => {

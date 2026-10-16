@@ -1,4 +1,4 @@
-export const DEFAULT_SSE_IDLE_TIMEOUT_MS = 120000;
+const DEFAULT_SSE_IDLE_TIMEOUT_MS = 120000;
 
 async function readWithIdleTimeout(reader, idleTimeoutMs, onIdleTimeout) {
     const readPromise = reader.read();

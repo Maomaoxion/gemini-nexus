@@ -25,7 +25,7 @@
             this.shadow = this.host.attachShadow({ mode: 'closed' });
 
             this._render();
-            this._loadMathLibs();
+            this._loadVendorAssets();
 
             return { host: this.host, shadow: this.shadow };
         }
@@ -40,19 +40,24 @@
             if (!this.shadow) return;
             this.shadow.innerHTML = '';
             this._render();
-            this._loadMathLibs();
+            this._loadVendorAssets();
         }
 
-        _loadMathLibs() {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = chrome.runtime.getURL('vendor/katex/katex.min.css');
-            this.shadow.appendChild(link);
+        _loadVendorAssets() {
+            try {
+                if (typeof chrome === 'undefined' || !chrome.runtime?.id) return;
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = chrome.runtime.getURL('vendor/katex/katex.min.css');
+                this.shadow.appendChild(link);
 
-            const hljsLink = document.createElement('link');
-            hljsLink.rel = 'stylesheet';
-            hljsLink.href = chrome.runtime.getURL('vendor/highlight.js/atom-one-dark.min.css');
-            this.shadow.appendChild(hljsLink);
+                const hljsLink = document.createElement('link');
+                hljsLink.rel = 'stylesheet';
+                hljsLink.href = chrome.runtime.getURL('vendor/highlight.js/atom-one-dark.min.css');
+                this.shadow.appendChild(hljsLink);
+            } catch {
+                // Extension context invalidated — ignore safely
+            }
         }
     }
 

@@ -1,8 +1,6 @@
 (function () {
     window.GeminiStyles = window.GeminiStyles || {};
     window.GeminiStyles.PanelHeader = `
-        /* --- Standard Header Styles --- */
-
         .ask-header {
             display: flex;
             justify-content: space-between;
@@ -240,11 +238,7 @@
         .ask-provider-select {
             max-width: 88px;
         }
-        .ask-model-select:hover {
-            background: var(--gnx-surface-hover);
-            color: var(--gnx-fg);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
+        .ask-model-select:hover,
         .ask-provider-select:hover {
             background: var(--gnx-surface-hover);
             color: var(--gnx-fg);

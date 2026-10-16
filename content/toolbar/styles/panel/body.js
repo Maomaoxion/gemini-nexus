@@ -1,8 +1,6 @@
 (function () {
     window.GeminiStyles = window.GeminiStyles || {};
     window.GeminiStyles.PanelBody = `
-        /* --- Window Body --- */
-
         .window-body {
             flex: 1;
             display: flex;
@@ -130,13 +128,18 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border: none;
+            border: 1px solid var(--gnx-border);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.92);
+            background: var(--gnx-bg);
             color: var(--gnx-fg);
             cursor: pointer;
             pointer-events: auto;
             box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+            transition: background 0.2s, color 0.2s, transform 0.15s;
+        }
+        .gemini-image-preview-close:hover {
+            background: var(--gnx-surface-hover);
+            transform: scale(1.05);
         }
     `;
 })();
