@@ -99,6 +99,10 @@ export class SessionFlowController {
                             this.getMessageKind(message) !== 'tool-output'
                                 ? this.app.prompt.getMessageEditOptions(index).onEdit
                                 : null,
+                        onRetry:
+                            message.role === 'ai' && message.kind !== 'tool-status'
+                                ? this.app.prompt?.getMessageRetryOptions?.(index)?.onRetry || null
+                                : null,
                     }
                 );
             });

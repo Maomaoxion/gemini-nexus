@@ -122,6 +122,41 @@ export class PromptController {
         };
     }
 
+    /** Regenerate control for an AI row: resend the user turn that produced it. */
+    getMessageRetryOptions(messageIndex) {
+        return {
+            onRetry: () => this.retryFromMessage(messageIndex),
+        };
+    }
+
+    async retryFromMessage(messageIndex) {
+        const session = this.sessionManager.getCurrentSession();
+        if (!session || !Array.isArray(session.messages)) return false;
+
+        const userMessageIndex = this.findRetryUserMessageIndex(session.messages, messageIndex);
+        if (userMessageIndex === -1) return false;
+
+        return this.resendFromMessage(
+            userMessageIndex,
+            session.messages[userMessageIndex].text || ''
+        );
+    }
+
+    // The user turn above an AI row, skipping tool output rows (they carry the
+    // user role but are not the prompt a user typed).
+    findRetryUserMessageIndex(messages, messageIndex) {
+        for (let index = messageIndex - 1; index >= 0; index--) {
+            const message = messages[index];
+            if (!message || message.role !== 'user') continue;
+            if (message.kind === 'tool-output') continue;
+            if (typeof message.text === 'string' && message.text.startsWith('[Tool Output:'))
+                continue;
+            return index;
+        }
+
+        return -1;
+    }
+
     setGeneratingState(isGenerating, sessionId = null) {
         this.app.isGenerating = isGenerating;
         this.app.generatingSessionId = isGenerating ? sessionId : null;

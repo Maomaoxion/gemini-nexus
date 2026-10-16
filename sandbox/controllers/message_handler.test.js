@@ -56,6 +56,7 @@ function createMessageHandlerHarness() {
         generatingSessionId: 'session-1',
         prompt: {
             isCancellationRecent: vi.fn(() => false),
+            getMessageRetryOptions: vi.fn(() => ({ onRetry: vi.fn() })),
             forceClearGenerating: vi.fn(() => {
                 app.isGenerating = false;
                 app.generatingSessionId = null;
@@ -111,6 +112,7 @@ describe('MessageHandler.handleGeminiReply', () => {
                 isError: false,
                 errorKind: undefined,
                 retryable: undefined,
+                onRetry: expect.any(Function),
             }
         );
     });

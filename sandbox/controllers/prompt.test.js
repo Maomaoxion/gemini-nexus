@@ -53,6 +53,7 @@ function createPromptHarness({ text = 'Hello', files = [], liveArtifactsEnabled 
             refreshHistoryUI: vi.fn(),
             switchToSession: vi.fn(),
         },
+        rerender: vi.fn(),
     };
 
     const controller = new PromptController(sessionManager, ui, imageManager, app);
@@ -74,6 +75,41 @@ describe('PromptController generation recovery', () => {
         expect(app.generatingSessionId).toBeNull();
         expect(ui.setLoading).toHaveBeenCalledWith(false);
         expect(ui.updateStatus).toHaveBeenCalledWith('cleared');
+    });
+
+    it('regenerates a reply by resending the user turn above it', async () => {
+        const { controller, sessionManager } = createPromptHarness();
+        const session = sessionManager.createSession();
+        sessionManager.addMessage(session.id, 'user', 'Hello');
+        sessionManager.addMessage(session.id, 'ai', 'Answer');
+
+        const retryOptions = controller.getMessageRetryOptions(1);
+        expect(retryOptions.onRetry).toBeTypeOf('function');
+
+        await retryOptions.onRetry();
+
+        expect(sendToBackground).toHaveBeenCalledWith(
+            expect.objectContaining({ action: 'SEND_PROMPT', text: 'Hello', sessionId: session.id })
+        );
+        // The reply is dropped and only the user turn is kept for the resend.
+        expect(sessionManager.getCurrentSession().messages).toHaveLength(1);
+        expect(sessionManager.getCurrentSession().messages[0]).toMatchObject({
+            role: 'user',
+            text: 'Hello',
+        });
+    });
+
+    it('does not regenerate when there is no user turn above the reply', async () => {
+        const { controller, sessionManager } = createPromptHarness();
+        const session = sessionManager.createSession();
+        sessionManager.addMessage(session.id, 'ai', 'Answer');
+
+        const result = await controller.getMessageRetryOptions(0).onRetry();
+
+        expect(result).toBe(false);
+        expect(sendToBackground).not.toHaveBeenCalledWith(
+            expect.objectContaining({ action: 'SEND_PROMPT' })
+        );
     });
 
     it('markGenerationActivity re-arms the idle watchdog', () => {

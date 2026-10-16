@@ -56,6 +56,7 @@ function createSessionFlowHarness() {
         },
         prompt: {
             getMessageEditOptions: vi.fn(() => ({ onEdit: vi.fn() })),
+            getMessageRetryOptions: vi.fn(() => ({ onRetry: vi.fn() })),
         },
         saveCurrentTabSessionBinding: vi.fn(),
     };
@@ -358,6 +359,33 @@ describe('SessionFlowController', () => {
         expect(app.saveCurrentTabSessionBinding).toHaveBeenCalledWith(null);
         expect(sendToBackground).toHaveBeenCalledWith({ action: 'RESET_CONTEXT' });
         expect(ui.clearChatHistory).toHaveBeenCalled();
+    });
+
+    it('offers regenerate on restored AI replies and edit on user rows', () => {
+        const { app, controller, sessionManager } = createSessionFlowHarness();
+        sessionManager.setSessions([
+            {
+                id: 'session-1',
+                title: 'Chat',
+                timestamp: 100,
+                messages: [
+                    { role: 'user', text: 'Hello' },
+                    { role: 'ai', text: 'Answer' },
+                ],
+                context: null,
+            },
+        ]);
+        sessionManager.setCurrentId('session-1');
+
+        controller.switchToSession('session-1');
+
+        const aiCall = appendMessage.mock.calls.find((call) => call[2] === 'ai');
+        expect(aiCall[6].onRetry).toBeTypeOf('function');
+        expect(app.prompt.getMessageRetryOptions).toHaveBeenCalledWith(1);
+
+        const userCall = appendMessage.mock.calls.find((call) => call[2] === 'user');
+        expect(userCall[6].onEdit).toBeTypeOf('function');
+        expect(userCall[6].onRetry).toBeNull();
     });
 
     it('renames, pins, and duplicates sessions from sidebar actions', () => {

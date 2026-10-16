@@ -137,6 +137,11 @@ export function renderGeminiReply(handler, session, request) {
             isError: request.status === 'error',
             errorKind: request.status === 'error' ? request.errorKind : undefined,
             retryable: request.status === 'error' ? request.retryable : undefined,
+            // The reply row was just recorded on the session, so its index is the
+            // last one; retrying resends the user turn above it.
+            onRetry:
+                handler.app?.prompt?.getMessageRetryOptions?.(session.messages.length - 1)
+                    ?.onRetry || null,
         }
     );
 }
