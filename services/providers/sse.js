@@ -126,6 +126,10 @@ export async function readSseJson(response, onEvent, signal, options = {}) {
                 }
             }
         }
+        // A cancelled stream must not deliver further events.
+        if (cancelled) return;
+        // Flush a trailing multi-byte character that was split across chunks.
+        buffer += decoder.decode();
         // A final event without a trailing blank line awaits dispatch.
         await dispatch();
         // Flush remaining buffer if it contains a final data: without trailing newline

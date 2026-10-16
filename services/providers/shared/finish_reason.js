@@ -40,3 +40,19 @@ export function throwIfTruncated(reason) {
     const message = describeFinishReason(reason);
     if (message) throw new Error(message);
 }
+
+/**
+ * Throws when a provider reported success without producing any content.
+ * An empty reply written into history poisons every later turn (some providers
+ * reject empty assistant turns outright), so it must surface as an error.
+ *
+ * @param {unknown} text
+ * @param {unknown} thoughts
+ */
+export function assertNonEmptyResponse(text, thoughts) {
+    const hasText = typeof text === 'string' && text.trim().length > 0;
+    const hasThoughts = typeof thoughts === 'string' && thoughts.trim().length > 0;
+    if (hasText || hasThoughts) return;
+
+    throw new Error('Response was empty: the provider returned no content. Please retry.');
+}

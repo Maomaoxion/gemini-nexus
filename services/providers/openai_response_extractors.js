@@ -69,6 +69,10 @@ export async function assertResponseOk(response) {
     throw new Error(`API Error (${response.status}): ${errorText}`);
 }
 
+// Provider error bodies are shown to the user and written into history, so a
+// gateway HTML error page must not arrive as a full page of markup.
+const MAX_ERROR_MESSAGE_CHARS = 2000;
+
 async function readErrorMessage(response) {
     let errorText = await response.text();
     try {
@@ -77,5 +81,8 @@ async function readErrorMessage(response) {
     } catch {
         // 静默降级:错误响应非 JSON 时直接返回原始文本
     }
-    return errorText;
+
+    const trimmed = String(errorText || '').trim();
+    if (trimmed.length <= MAX_ERROR_MESSAGE_CHARS) return trimmed;
+    return `${trimmed.slice(0, MAX_ERROR_MESSAGE_CHARS)}...`;
 }

@@ -19,6 +19,25 @@ function makeChatSseStream(text = 'ok') {
     };
 }
 
+function makeResponsesSseStream(text = 'ok') {
+    const encoder = new TextEncoder();
+    const payload = `data: ${JSON.stringify({
+        type: 'response.output_text.delta',
+        delta: text,
+    })}\n\ndata: [DONE]\n\n`;
+
+    return {
+        getReader() {
+            return {
+                read: vi
+                    .fn()
+                    .mockResolvedValueOnce({ done: false, value: encoder.encode(payload) })
+                    .mockResolvedValueOnce({ done: true }),
+            };
+        },
+    };
+}
+
 function makeOpenRouterReasoningStream() {
     const encoder = new TextEncoder();
     const payload = [
@@ -249,6 +268,8 @@ describe('sendOpenAIMessage', () => {
     });
 
     it('keeps image data URLs in Responses API payloads with high detail', async () => {
+        global.fetch.mockResolvedValue({ ok: true, body: makeResponsesSseStream('done') });
+
         await sendOpenAIMessage(
             'Describe this image',
             '',
@@ -287,6 +308,8 @@ describe('sendOpenAIMessage', () => {
     });
 
     it('does not disable storage for non-xAI Responses API image payloads', async () => {
+        global.fetch.mockResolvedValue({ ok: true, body: makeResponsesSseStream('done') });
+
         await sendOpenAIMessage(
             'Describe this image',
             '',
@@ -318,6 +341,8 @@ describe('sendOpenAIMessage', () => {
     });
 
     it('disables xAI Responses storage when replayed history contains image attachments', async () => {
+        global.fetch.mockResolvedValue({ ok: true, body: makeResponsesSseStream('done') });
+
         await sendOpenAIMessage(
             'Continue',
             '',

@@ -9,7 +9,7 @@ import {
 import { debugLog } from '../../shared/logging/debug.js';
 import { assertResponseOk } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
-import { throwIfTruncated } from './shared/finish_reason.js';
+import { assertNonEmptyResponse, throwIfTruncated } from './shared/finish_reason.js';
 import { normalizeBaseUrl } from './shared/urls.js';
 import { normalizeOfficialModelId } from '../../shared/models/aliases.js';
 
@@ -303,6 +303,7 @@ export async function sendOfficialMessage(
     let fullThoughts = '';
     let finalThoughtSignature = null;
     let finishReason = null;
+    let blockReason = null;
     const modelParts = [];
     const functionCalls = [];
     const sources = [];
@@ -311,6 +312,11 @@ export async function sendOfficialMessage(
     await readSseJson(
         response,
         (streamEvent) => {
+            // A blocked prompt comes back as a 200 body without candidates.
+            if (streamEvent.promptFeedback?.blockReason) {
+                blockReason = streamEvent.promptFeedback.blockReason;
+            }
+
             const candidate =
                 streamEvent.candidates && streamEvent.candidates[0]
                     ? streamEvent.candidates[0]
@@ -357,6 +363,14 @@ export async function sendOfficialMessage(
     });
 
     throwIfTruncated(finishReason);
+
+    if (blockReason) {
+        throw new Error(`Response blocked: the request was rejected (${blockReason}).`);
+    }
+    // Native function calls are a valid reply without text (browser control).
+    if (dedupedFunctionCalls.length === 0) {
+        assertNonEmptyResponse(fullText, fullThoughts);
+    }
 
     return {
         text: fullText,

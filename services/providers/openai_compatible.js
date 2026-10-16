@@ -15,7 +15,7 @@ import {
     assertResponseOk,
 } from './openai_response_extractors.js';
 import { readSseJson } from './sse.js';
-import { throwIfTruncated } from './shared/finish_reason.js';
+import { assertNonEmptyResponse, throwIfTruncated } from './shared/finish_reason.js';
 
 function isXAIBaseUrl(baseUrl) {
     try {
@@ -68,6 +68,19 @@ function extractReasoningText(container = {}) {
 
     return container.reasoning_details
         .map((detail) => detail?.text || detail?.summary || '')
+        .filter(Boolean)
+        .join('');
+}
+
+// Compatible servers send content either as a plain string or as an array of
+// parts (the array form also shows up in non-streamed bodies, which arrive as
+// `choice.message` instead of `choice.delta`).
+function extractContentText(container = {}) {
+    if (typeof container.content === 'string') return container.content;
+    if (!Array.isArray(container.content)) return '';
+
+    return container.content
+        .map((part) => (typeof part === 'string' ? part : part?.text || ''))
         .filter(Boolean)
         .join('');
 }
@@ -150,24 +163,41 @@ export async function sendOpenAIMessage(
     // reasoning_details), not the OpenAI `content` field.
     let fullThoughts = '';
     let finishReason = null;
+    let streamError = null;
 
     await readSseJson(
         response,
         (streamEvent) => {
+            // Gateways report upstream failures inside the stream while the HTTP
+            // response itself is already a 200.
+            if (streamEvent.error?.message) {
+                streamError = streamEvent.error.message;
+                return;
+            }
+
             if (streamEvent.choices && streamEvent.choices.length > 0) {
                 const choice = streamEvent.choices[0];
                 finishReason = finishReason || choice.finish_reason || null;
                 const delta = choice.delta || {};
 
                 // Standard Content
-                if (delta.content) {
-                    fullText += delta.content;
+                const deltaText = extractContentText(delta);
+                if (deltaText) {
+                    fullText += deltaText;
                     onUpdate(fullText, fullThoughts);
                 }
 
                 const reasoningText = extractReasoningText(delta);
                 if (reasoningText) {
                     fullThoughts += reasoningText;
+                    onUpdate(fullText, fullThoughts);
+                }
+
+                // Servers that ignore `stream: true` send the whole answer on
+                // `choice.message` instead of deltas.
+                const completedText = extractContentText(choice.message);
+                if (completedText && !fullText) {
+                    fullText = completedText;
                     onUpdate(fullText, fullThoughts);
                 }
 
@@ -193,7 +223,12 @@ export async function sendOpenAIMessage(
         signal
     );
 
+    if (streamError) {
+        throw new Error(streamError);
+    }
+
     throwIfTruncated(finishReason);
+    assertNonEmptyResponse(fullText, fullThoughts);
 
     return {
         text: fullText,
@@ -352,6 +387,7 @@ async function sendOpenAIResponsesMessage(
     }
 
     throwIfTruncated(incompleteReason);
+    assertNonEmptyResponse(fullText, fullThoughts);
 
     return {
         text: fullText,
