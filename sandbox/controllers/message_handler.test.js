@@ -12,6 +12,7 @@ vi.mock('../render/message.js', () => ({
         div: document.createElement('div'),
         dispose: vi.fn(),
         finalize: vi.fn(),
+        setRetryHandler: vi.fn(),
         update: vi.fn(),
     })),
 }));
@@ -261,6 +262,39 @@ describe('MessageHandler.handleGeminiReply', () => {
         });
 
         expect(appendMessage).not.toHaveBeenCalled();
+    });
+
+    it('hands the regenerate handler to a finalized streaming reply', () => {
+        const { app, handler, sessionManager } = createMessageHandlerHarness();
+        const session = sessionManager.getCurrentSession();
+        session.messages.pop();
+        session.messages.push({ role: 'user', text: 'Hello again' });
+
+        const finalize = vi.fn();
+        const setRetryHandler = vi.fn();
+        handler.streamingBubble = {
+            div: document.createElement('div'),
+            dispose: vi.fn(),
+            finalize,
+            setRetryHandler,
+        };
+        handler.streamingBubbleSessionId = 'session-1';
+
+        handler.handleGeminiReply({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'Streamed answer',
+        });
+
+        expect(finalize).toHaveBeenCalledWith('Streamed answer', undefined, {
+            thoughtsDurationSeconds: undefined,
+        });
+        expect(setRetryHandler).toHaveBeenCalledWith(expect.any(Function));
+
+        // The handler regenerates by resending the user turn above the reply.
+        const [retry] = setRetryHandler.mock.calls[0];
+        expect(retry).toBeTypeOf('function');
     });
 
     it('does not remove a newer streaming bubble when a late reply arrives for an old session', () => {

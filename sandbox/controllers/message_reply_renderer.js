@@ -76,6 +76,11 @@ export function renderGeminiReply(handler, session, request) {
         request.status === 'error' ||
         request.status === 'cancelled';
 
+    // The reply row was just recorded on the session, so its index is the last
+    // one; retrying resends the user turn above it.
+    const retryHandler =
+        handler.app?.prompt?.getMessageRetryOptions?.(session.messages.length - 1)?.onRetry || null;
+
     if (handler.streamingBubble) {
         if (handler.hasStorageRenderedAiReply(session, request)) {
             handler.resetStream({ remove: true });
@@ -91,6 +96,7 @@ export function renderGeminiReply(handler, session, request) {
             handler.streamingBubble.finalize(request.text, request.thoughts, {
                 thoughtsDurationSeconds: request.thoughtsDurationSeconds,
             });
+            handler.streamingBubble.setRetryHandler?.(retryHandler);
 
             if (request.status === 'success') {
                 if (request.images && request.images.length > 0) {
@@ -137,11 +143,7 @@ export function renderGeminiReply(handler, session, request) {
             isError: request.status === 'error',
             errorKind: request.status === 'error' ? request.errorKind : undefined,
             retryable: request.status === 'error' ? request.retryable : undefined,
-            // The reply row was just recorded on the session, so its index is the
-            // last one; retrying resends the user turn above it.
-            onRetry:
-                handler.app?.prompt?.getMessageRetryOptions?.(session.messages.length - 1)
-                    ?.onRetry || null,
+            onRetry: retryHandler,
         }
     );
 }

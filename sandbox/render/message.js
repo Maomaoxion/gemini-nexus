@@ -77,6 +77,7 @@ export function appendMessage(
     let sourcesDiv = null;
     let editController = null;
     let copyBtn = null;
+    let retryBtn = null;
     let currentSources = Array.isArray(sources) ? sources : [];
 
     const renderMessageContent = () => {
@@ -256,7 +257,7 @@ export function appendMessage(
 
                 // Retry for model
                 if (role === 'ai') {
-                    const retryBtn = createRetryButton();
+                    retryBtn = createRetryButton();
                     // Insert retry before delete, after copy
                     const copyEl = actionsHostEl.querySelector('.copy-btn');
                     if (copyEl && copyEl.nextSibling) {
@@ -361,6 +362,19 @@ export function appendMessage(
         },
         syncCompactSpacing,
         getThoughtsDurationSeconds: () => thoughtsController?.getDurationSeconds() ?? null,
+        // Streaming bubbles are created before the reply row exists, so the
+        // regenerate handler is attached when the reply is finalized. The button
+        // reads options.onRetry on click, so setting it later is enough.
+        setRetryHandler: (handler) => {
+            options.onRetry =
+                typeof handler === 'function'
+                    ? () => {
+                          if (retryBtn?.disabled) return;
+                          handler();
+                      }
+                    : null;
+            if (retryBtn) retryBtn.disabled = typeof handler !== 'function';
+        },
         dispose: () => {
             thoughtsController?.dispose();
             editController?.cancel();
