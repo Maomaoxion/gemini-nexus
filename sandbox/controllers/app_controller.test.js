@@ -59,6 +59,7 @@ function createUi() {
         updateModelList: vi.fn(),
         openTabSelector: vi.fn(),
         updateStatus: vi.fn(),
+        setSessionStorageHooks: vi.fn(),
     };
 }
 
@@ -406,6 +407,18 @@ describe('AppController session restore behavior', () => {
         });
 
         expect(ui.updateStatus).toHaveBeenCalledWith('Side panel unavailable');
+    });
+
+    it('registers chat storage hooks for the settings panel', () => {
+        const { sessionManager, ui } = createAppHarness();
+        sessionManager.setSessions([realSession()]);
+
+        expect(ui.setSessionStorageHooks).toHaveBeenCalledTimes(1);
+        const hooks = ui.setSessionStorageHooks.mock.calls[0][0];
+        const report = hooks.getSessionStorageReport();
+
+        expect(report.totals.sessionCount).toBe(1);
+        expect(report.sessions[0]).toMatchObject({ id: 'real', messageCount: 1 });
     });
 
     it('shows a blocked history save instead of failing silently', async () => {

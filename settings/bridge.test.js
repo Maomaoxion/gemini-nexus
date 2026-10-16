@@ -37,6 +37,7 @@ function createController() {
         updateMcpToolsResult: vi.fn(),
         updateProviderModelsResult: vi.fn(),
         saveLogFile: vi.fn(),
+        setSessionStorageHooks: vi.fn(),
     };
 }
 
@@ -88,6 +89,50 @@ describe('StandaloneSettingsBridge', () => {
                 },
             },
         };
+    });
+
+    it('hands the saved chats to the settings panel and deletes the selected ones', async () => {
+        const controller = createController();
+        const bridge = new StandaloneSettingsBridge(controller);
+        chrome.storage.local.get = vi.fn((keys, callback) =>
+            callback({
+                geminiSessions: [
+                    {
+                        id: 'keep',
+                        title: 'Keep',
+                        timestamp: 10,
+                        messages: [{ role: 'user', text: 'a' }],
+                    },
+                    {
+                        id: 'gone',
+                        title: 'Gone',
+                        timestamp: 20,
+                        messages: [{ role: 'user', text: 'b' }],
+                    },
+                ],
+                geminiDeletedSessionIds: {},
+            })
+        );
+        chrome.storage.local.set = vi.fn();
+
+        bridge.init();
+
+        expect(controller.setSessionStorageHooks).toHaveBeenCalledTimes(1);
+        const hooks = controller.setSessionStorageHooks.mock.calls[0][0];
+
+        const report = await hooks.getSessionStorageReport();
+        expect(report.totals.sessionCount).toBe(2);
+
+        const result = await hooks.deleteSessions(['gone']);
+
+        expect(result).toEqual({ deletedCount: 1, skippedGenerating: false });
+        expect(chrome.storage.local.set).toHaveBeenCalledWith(
+            expect.objectContaining({
+                geminiSessions: [expect.objectContaining({ id: 'keep' })],
+                geminiDeletedSessionIds: expect.objectContaining({ gone: expect.any(Number) }),
+            }),
+            expect.any(Function)
+        );
     });
 
     it('restores settings directly from extension storage', async () => {

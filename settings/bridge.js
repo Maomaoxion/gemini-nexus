@@ -33,6 +33,9 @@ import {
     buildSettingsImportStorageUpdate,
 } from '../shared/data_management/index.js';
 import { downloadText } from '../sidepanel/core/downloads.js';
+import { buildSessionStorageReport } from '../sandbox/core/session_storage_report.js';
+
+const SESSION_STORAGE_KEYS = ['geminiSessions', 'geminiDeletedSessionIds'];
 
 function getLocalStorageData(keys) {
     return new Promise((resolve, reject) => {
@@ -104,6 +107,53 @@ export class StandaloneSettingsBridge {
 
     init() {
         window.addEventListener('message', this.handleWindowMessage);
+        this.controller.setSessionStorageHooks({
+            getSessionStorageReport: () => this.readSessionStorageReport(),
+            deleteSessions: (sessionIds) => this.deleteSessions(sessionIds),
+        });
+    }
+
+    /**
+     * The standalone page reads the saved chats straight from extension storage.
+     */
+    async readSessionStorageReport() {
+        try {
+            const { geminiSessions } = await getLocalStorageData(['geminiSessions']);
+            return buildSessionStorageReport(geminiSessions);
+        } catch (error) {
+            console.warn('Unable to read saved chats:', error);
+            return null;
+        }
+    }
+
+    async deleteSessions(sessionIds) {
+        const ids = (Array.isArray(sessionIds) ? sessionIds : []).filter(Boolean);
+        if (ids.length === 0) return { deletedCount: 0, skippedGenerating: false };
+
+        const storedHistory = await getLocalStorageData(SESSION_STORAGE_KEYS);
+        const sessions = Array.isArray(storedHistory.geminiSessions)
+            ? storedHistory.geminiSessions
+            : [];
+        const deletedIds = new Set(ids);
+        const remaining = sessions.filter((session) => !session?.id || !deletedIds.has(session.id));
+
+        const storedDeletedSessionIds = storedHistory.geminiDeletedSessionIds;
+        const deletedSessionIds =
+            storedDeletedSessionIds &&
+            typeof storedDeletedSessionIds === 'object' &&
+            !Array.isArray(storedDeletedSessionIds)
+                ? { ...storedDeletedSessionIds }
+                : {};
+        for (const sessionId of deletedIds) {
+            deletedSessionIds[sessionId] = Date.now();
+        }
+
+        await setLocalStorageDataAsync({
+            geminiSessions: remaining,
+            geminiDeletedSessionIds: deletedSessionIds,
+        });
+
+        return { deletedCount: sessions.length - remaining.length, skippedGenerating: false };
     }
 
     async restoreInitialState() {

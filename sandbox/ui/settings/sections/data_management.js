@@ -111,6 +111,12 @@ export class DataManagementSection {
         }
     }
 
+    requestSessionStorageReport() {
+        if (this.callbacks.onRequestSessionStorageReport) {
+            this.callbacks.onRequestSessionStorageReport();
+        }
+    }
+
     toggleSessionManager(forceOpen = null) {
         this.managerOpen = forceOpen === null ? !this.managerOpen : forceOpen === true;
 
@@ -125,9 +131,7 @@ export class DataManagementSection {
         }
         if (this.managerOpen) {
             this.setStatus('');
-            if (this.callbacks.onRequestSessionStorageReport) {
-                this.callbacks.onRequestSessionStorageReport();
-            }
+            this.requestSessionStorageReport();
         }
 
         this.renderSessionStorage();

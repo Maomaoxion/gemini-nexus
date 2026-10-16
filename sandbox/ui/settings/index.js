@@ -172,9 +172,16 @@ export class SettingsController {
     }
 
     refreshSessionStorage() {
-        const report = this.sessionStorageHooks?.getSessionStorageReport?.() || null;
-        this.view.dataManagement.setSessionStorageReport(report);
-        return report;
+        return Promise.resolve(this.sessionStorageHooks?.getSessionStorageReport?.() || null)
+            .then((report) => {
+                this.view.dataManagement.setSessionStorageReport(report);
+                return report;
+            })
+            .catch((error) => {
+                console.warn('Unable to collect chat storage usage:', error);
+                this.view.dataManagement.setSessionStorageReport(null);
+                return null;
+            });
     }
 
     async deleteSessions(sessionIds) {

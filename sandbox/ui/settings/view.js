@@ -108,6 +108,12 @@ export class SettingsView {
                         }
                     }
                 }
+
+                // Chat storage sizes are read from stored sessions, so refresh
+                // them whenever the data tab becomes visible.
+                if (targetTab === 'data') {
+                    this.dataManagement.requestSessionStorageReport();
+                }
             };
 
             tab.addEventListener('click', activateTab);

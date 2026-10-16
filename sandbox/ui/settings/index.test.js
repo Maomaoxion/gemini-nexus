@@ -57,6 +57,34 @@ describe('SettingsController', () => {
         expect(document.getElementById('settings-modal').classList.contains('visible')).toBe(false);
     });
 
+    it('shows the chat storage totals when the settings modal opens', async () => {
+        const controller = new SettingsController();
+        controller.setSessionStorageHooks({
+            getSessionStorageReport: () => ({
+                sessions: [
+                    {
+                        id: 'session-1',
+                        title: 'Chat',
+                        messageCount: 3,
+                        bytes: 2048,
+                        imageBytes: 0,
+                        updatedAt: 1,
+                    },
+                ],
+                totals: { sessionCount: 1, messageCount: 3, totalBytes: 2048, imageBytes: 0 },
+                now: 1,
+            }),
+        });
+
+        controller.open();
+
+        await vi.waitFor(() => {
+            const summary = document.getElementById('session-storage-summary').textContent;
+            expect(summary).toContain('1');
+            expect(summary).toContain('KB');
+        });
+    });
+
     it('cleans account indices before saving and reflects the saved value in the form', async () => {
         const { saveAccountIndicesToStorage } = await import('../../../shared/messaging/index.js');
         const controller = new SettingsController();
