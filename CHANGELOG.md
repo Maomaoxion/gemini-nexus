@@ -1,5 +1,33 @@
 # Changelog
 
+## v5.7.0 - 2026-10-16
+
+### Features
+
+- **设置页会话管理**：数据管理新增聊天历史占用统计与批量清理——汇总显示会话数、总占用与图片占用，可展开列表按占用排序、勾选后批量删除，并支持一键清理 90 天未活动的会话；仍在生成的会话会被保留。侧边栏弹窗与独立设置页均可用。
+
+### Models
+
+- **渠道默认模型刷新**（按各家官方文档核对）：
+    - DeepSeek：更新为 `deepseek-v4-pro, deepseek-flash`（原 `deepseek-v4-flash`、`deepseek-reasoner`、`deepseek-chat` 官方已退役）。
+    - 通义千问：更新为 `qwen3.8-max, qwen3.8-flash, qwen3.8-omni-flash, qwen3.7-plus`。
+    - 智谱 AI：更新为 `glm-5.3, glm-5.3-flash, glm-5.3-flashx, glm-5.2`。
+    - 官方 Gemini API：默认模型升级为 `gemini-4-argon`，默认列表同步加入。
+- **同步上游 v5.5.0 / v5.6.0**：Web 渠道支持 Gemini 4 Argon 与别名；快捷键体系扩充（浏览器控制 `Alt+Shift+B`、`Alt+N/T/H/S` 工作流快捷键、模型切换改为 `Ctrl+M`）；暗色主题语义色对齐 WCAG AAA；扩展重载后不再抛 `Extension context invalidated`；官方 API 渠道错误信息统一抽取。
+
+### Fixed
+
+- **侧边栏首次点击打不开**：首次在某个标签页打开时可能失败，现在会自动重试，失败时记录错误并回传给调用方。
+- **独立设置页下载日志无响应**：补齐日志下载消息处理。
+- **独立设置页会话占用一直显示"统计中"**：改为进入数据管理页签即读取存储统计。
+- **重试图标画反**：补全双箭头刷新的两处路径。
+- **浏览器受限页面的注入报错**：内置 PDF 查看器等不可注入页面不再按失败告警。
+
+### Chore
+
+- 依赖小版本更新（marked、katex、highlight.js、@viz-js/viz、jsdom、knip、prettier、vite、vitest、mermaid）。
+- 版本号升级至 `5.7.0`。
+
 ## v5.6.0 - 2026-10-15
 
 ### Features
