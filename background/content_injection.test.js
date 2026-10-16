@@ -360,4 +360,33 @@ describe('content script startup injection', () => {
             files: ['content/page_guard.js', 'content/index.js'],
         });
     });
+
+    it('treats browser-restricted targets as skipped instead of a failure', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        chrome.scripting.executeScript.mockRejectedValue(
+            new Error(
+                'Cannot access contents of the page. Extension manifest must request permission to access the respective host.'
+            )
+        );
+
+        const result = await injectContentScriptsIntoTab({
+            id: 12,
+            url: 'https://example.test/report.pdf',
+        });
+
+        expect(result.status).toBe('restricted');
+        expect(warn).not.toHaveBeenCalled();
+        warn.mockRestore();
+    });
+
+    it('still warns when an injection fails for an unexpected reason', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        chrome.scripting.executeScript.mockRejectedValue(new Error('Unexpected scripting failure'));
+
+        const result = await injectContentScriptsIntoTab({ id: 13, url: 'https://example.test/' });
+
+        expect(result.status).toBe('failed');
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+    });
 });

@@ -13,6 +13,22 @@ const BLOCKED_WEB_ORIGINS = new Set([
 
 const DEFAULT_CONTENT_SCRIPT_WORLD = 'ISOLATED';
 
+// Pages Chrome refuses to script even though their URL looks injectable: the
+// built-in PDF viewer, pages with restricted frames (about:blank / srcdoc),
+// and other browser-owned targets. These are expected, not failures.
+const RESTRICTED_TARGET_ERROR_PATTERNS = [
+    'Cannot access contents of the page',
+    'Cannot access a chrome:// URL',
+    'Cannot access a chrome-extension:// URL',
+    'The extensions gallery cannot be scripted',
+    'No tab with id',
+];
+
+function isRestrictedTargetError(error) {
+    const message = error?.message || String(error || '');
+    return RESTRICTED_TARGET_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+}
+
 function hasGeminiNexusContentScript() {
     return Boolean(
         window.GeminiNexusContentReady === true ||
@@ -228,6 +244,9 @@ export async function injectContentScriptsIntoTab(tab, options = {}) {
 
         return { tabId, status: injected ? 'injected' : 'already-injected' };
     } catch (error) {
+        if (isRestrictedTargetError(error)) {
+            return { tabId, status: 'restricted', error };
+        }
         console.warn('[Gemini Nexus] Failed to inject content scripts into existing tab:', error);
         return { tabId, status: 'failed', error };
     }
