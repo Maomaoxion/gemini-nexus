@@ -448,6 +448,15 @@ export class AppController {
                 return;
             }
             if (payload.action === 'BACKGROUND_REQUEST_ERROR') {
+                // Settings-panel requests (MCP test, model list) own their own
+                // progress UI. Clearing the chat's generating state for them
+                // would also drop a reply that is still streaming in.
+                const handledBySettings = this.ui.handleBackgroundRequestFailure?.(
+                    payload.requestAction || null,
+                    payload.error || ''
+                );
+                if (handledBySettings) return;
+
                 // SEND_PROMPT sets isGenerating before the parent forwards the
                 // message. Clear loading if sendMessage failed mid-flight.
                 this.prompt.forceClearGenerating({

@@ -33,6 +33,7 @@ import {
     buildSettingsImportStorageUpdate,
 } from '../shared/data_management/index.js';
 import { downloadText } from '../sidepanel/core/downloads.js';
+import { formatT } from '../sandbox/core/i18n.js';
 import { buildSessionStorageReport } from '../sandbox/core/session_storage_report.js';
 
 const SESSION_STORAGE_KEYS = ['geminiSessions', 'geminiDeletedSessionIds'];
@@ -293,6 +294,9 @@ export class StandaloneSettingsBridge {
             case 'EXPORT_HISTORY_DATA':
                 this.exportHistoryData();
                 return;
+            case 'OPEN_EXTERNAL_URL':
+                this.openExternalUrl(payload);
+                return;
             case 'DOWNLOAD_LOGS':
                 // The settings controller posts downloaded logs back through the
                 // window message channel; on the standalone page that is this page.
@@ -312,6 +316,13 @@ export class StandaloneSettingsBridge {
         }
     }
 
+    openExternalUrl(payload) {
+        const url = payload?.url;
+        if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+            chrome.tabs.create({ url });
+        }
+    }
+
     async exportHistoryData() {
         try {
             const storageData = await getLocalStorageData(HISTORY_STORAGE_KEYS);
@@ -323,6 +334,7 @@ export class StandaloneSettingsBridge {
             );
         } catch (error) {
             console.warn('Unable to export history data:', error);
+            alert(formatT('dataExportFailed', { error: error?.message || String(error || '') }));
         }
     }
 
@@ -337,6 +349,7 @@ export class StandaloneSettingsBridge {
             );
         } catch (error) {
             console.warn('Unable to export settings data:', error);
+            alert(formatT('dataExportFailed', { error: error?.message || String(error || '') }));
         }
     }
 

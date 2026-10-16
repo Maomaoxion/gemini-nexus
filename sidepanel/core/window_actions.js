@@ -67,14 +67,14 @@ const WINDOW_MESSAGE_HANDLERS = {
             payload?.contentType
         );
     },
-    EXPORT_HISTORY_DATA() {
-        exportStorageData(HISTORY_STORAGE_KEYS, 'history', buildHistoryExportPayload);
+    EXPORT_HISTORY_DATA(payload, bridge) {
+        exportStorageData(bridge, HISTORY_STORAGE_KEYS, 'history', buildHistoryExportPayload);
     },
     IMPORT_HISTORY_DATA(payload, bridge) {
         bridge.importHistoryData(payload);
     },
-    EXPORT_SETTINGS_DATA() {
-        exportStorageData(SETTINGS_STORAGE_KEYS, 'settings', buildSettingsExportPayload);
+    EXPORT_SETTINGS_DATA(payload, bridge) {
+        exportStorageData(bridge, SETTINGS_STORAGE_KEYS, 'settings', buildSettingsExportPayload);
     },
     IMPORT_SETTINGS_DATA(payload, bridge) {
         bridge.importSettingsData(payload);
@@ -177,11 +177,22 @@ const WINDOW_MESSAGE_HANDLERS = {
     },
 };
 
-function exportStorageData(storageKeys, kind, buildPayload) {
+function getExportRequestAction(kind) {
+    return kind === 'history' ? 'EXPORT_HISTORY_DATA' : 'EXPORT_SETTINGS_DATA';
+}
+
+function exportStorageData(bridge, storageKeys, kind, buildPayload) {
     chrome.storage.local.get(storageKeys, (result) => {
         const readError = getRuntimeLastError();
         if (readError) {
             console.warn(`[Gemini Nexus] Failed to export ${kind} data:`, readError);
+            // The read happens here, but the user clicked in the sandbox panel:
+            // report the failure where the export button is.
+            bridge?.postBackgroundMessage({
+                action: 'BACKGROUND_REQUEST_ERROR',
+                requestAction: getExportRequestAction(kind),
+                error: readError.message || String(readError),
+            });
             return;
         }
 

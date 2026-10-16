@@ -129,6 +129,13 @@ export class MessageBridge {
             }
 
             chrome.tabs.getCurrent((tab) => {
+                if (getRuntimeLastError()) {
+                    // Same guard as StateManager: a rejected lookup must not be
+                    // read as "not running in a tab".
+                    this.state.setHostTabId?.(null);
+                    resolve(false);
+                    return;
+                }
                 const tabId = Number.isInteger(tab?.id) && tab.id > 0 ? tab.id : null;
                 this.state.setHostTabId?.(tabId);
                 resolve(Boolean(tabId));
@@ -245,7 +252,7 @@ export class MessageBridge {
 
         chrome.storage.local.getBytesInUse((bytesUsed) => {
             const quota = chrome.storage.local.QUOTA_BYTES;
-            if (!quota) {
+            if (getRuntimeLastError() || !quota) {
                 performWrite();
                 return;
             }
@@ -277,6 +284,12 @@ export class MessageBridge {
             const readError = getRuntimeLastError();
             if (readError) {
                 console.warn('Unable to save sessions after storage read failed:', readError);
+                // Same feedback contract as the quota guard below: the UI keeps
+                // its own copy, so a dropped write must not stay invisible.
+                this.postBackgroundMessage({
+                    action: 'HISTORY_SAVE_BLOCKED',
+                    reason: 'read_failed',
+                });
                 return;
             }
 

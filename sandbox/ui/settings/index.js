@@ -171,6 +171,28 @@ export class SettingsController {
         this.sessionStorageHooks = hooks || {};
     }
 
+    /**
+     * Clears the progress state of settings requests that never got a result
+     * (e.g. the background message failed outright).
+     * @returns {boolean} whether the action belonged to the settings panel.
+     */
+    handleBackgroundRequestFailure(action, error = '') {
+        if (action === 'GET_PROVIDER_MODELS') {
+            this.view.connection?.setProviderModelListStatus?.(error, true);
+            return true;
+        }
+        if (action === 'MCP_TEST_CONNECTION' || action === 'MCP_LIST_TOOLS') {
+            this.view.connection?.setMcpTestStatus?.(error, true);
+            return true;
+        }
+        if (action === 'EXPORT_HISTORY_DATA' || action === 'EXPORT_SETTINGS_DATA') {
+            // Export failures would otherwise look like a dead button.
+            alert(formatT('dataExportFailed', { error: error || '' }));
+            return true;
+        }
+        return false;
+    }
+
     refreshSessionStorage() {
         return Promise.resolve(this.sessionStorageHooks?.getSessionStorageReport?.() || null)
             .then((report) => {

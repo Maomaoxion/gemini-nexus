@@ -51,6 +51,10 @@ export class UIController {
         this.settings.setSessionStorageHooks(hooks);
     }
 
+    handleBackgroundRequestFailure(action, error) {
+        return this.settings.handleBackgroundRequestFailure(action, error);
+    }
+
     checkLayout() {
         // Threshold for Wide Mode (e.g. Full Page Tab or large side panel)
         const isWide = window.innerWidth > 800;
