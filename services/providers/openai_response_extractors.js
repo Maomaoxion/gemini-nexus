@@ -15,6 +15,18 @@ export function extractSourcesFromAnnotation(annotation, sources, seenSourceUrls
     addSource(sources, seenSourceUrls, annotation);
 }
 
+// Chat Completions send message content either as a plain string or as an array
+// of parts, in `delta` while streaming and in `message` for non-streamed bodies.
+export function extractContentText(container = {}) {
+    if (typeof container.content === 'string') return container.content;
+    if (!Array.isArray(container.content)) return '';
+
+    return container.content
+        .map((part) => (typeof part === 'string' ? part : part?.text || ''))
+        .filter(Boolean)
+        .join('');
+}
+
 export function extractSourcesFromResponseItem(item, sources, seenSourceUrls) {
     if (!item || typeof item !== 'object') return;
 

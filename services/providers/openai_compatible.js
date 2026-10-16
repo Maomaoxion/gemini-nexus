@@ -7,6 +7,7 @@ import {
     hasImageAttachmentsInRequest,
 } from './openai_payloads.js';
 import {
+    extractContentText,
     extractReasoningSummaryFromCompletedResponse,
     extractReasoningSummaryFromResponseItem,
     extractSourcesFromAnnotation,
@@ -69,19 +70,6 @@ function extractReasoningText(container = {}) {
 
     return container.reasoning_details
         .map((detail) => detail?.text || detail?.summary || '')
-        .filter(Boolean)
-        .join('');
-}
-
-// Compatible servers send content either as a plain string or as an array of
-// parts (the array form also shows up in non-streamed bodies, which arrive as
-// `choice.message` instead of `choice.delta`).
-function extractContentText(container = {}) {
-    if (typeof container.content === 'string') return container.content;
-    if (!Array.isArray(container.content)) return '';
-
-    return container.content
-        .map((part) => (typeof part === 'string' ? part : part?.text || ''))
         .filter(Boolean)
         .join('');
 }
