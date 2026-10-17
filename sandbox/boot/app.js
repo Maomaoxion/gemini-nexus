@@ -62,6 +62,7 @@ export function initAppMode() {
                     },
                     onFilesChanged: (hasFiles) => {
                         ui.chat?.setHasAttachments?.(hasFiles);
+                        app?.onComposerChanged?.();
                     },
                 }
             );

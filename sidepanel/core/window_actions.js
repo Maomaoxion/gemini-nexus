@@ -37,6 +37,9 @@ import {
 const WINDOW_MESSAGE_HANDLERS = {
     UI_READY(payload, bridge) {
         bridge.state.markUiReady();
+        // Drafts are hydrated before the tab context lands; the sandbox keeps
+        // whichever restore arrives last, so a slow storage read cannot lose them.
+        bridge.restoreSidePanelInputDrafts();
         publishHostContext(bridge.frame, () => bridge.isRunningInTab());
     },
     OPEN_FULL_PAGE(payload, bridge) {
@@ -165,6 +168,9 @@ const WINDOW_MESSAGE_HANDLERS = {
     },
     SAVE_SIDE_PANEL_SESSION_BINDING(payload, bridge) {
         bridge.saveSidePanelSessionBinding(payload);
+    },
+    SAVE_SIDE_PANEL_INPUT_DRAFT(payload, bridge) {
+        bridge.saveSidePanelInputDraft(payload);
     },
     SAVE_ACCOUNT_INDICES(payload, bridge) {
         bridge.state.save('geminiAccountIndices', normalizeAccountIndicesSetting(payload));

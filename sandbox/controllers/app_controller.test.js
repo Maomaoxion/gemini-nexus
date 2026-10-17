@@ -501,3 +501,143 @@ describe('AppController session restore behavior', () => {
         expect(ui.updateStatus).not.toHaveBeenCalled();
     });
 });
+
+describe('AppController composer drafts', () => {
+    function createComposerHarness() {
+        const sessionManager = new SessionManager();
+        const ui = createUi();
+        let text = '';
+        let files = [];
+
+        const inputFn = document.createElement('textarea');
+        inputFn.focus = vi.fn();
+
+        ui.chat = {
+            ...ui.chat,
+            inputFn,
+            getInputValue: () => text,
+            setInputValue: vi.fn((value) => {
+                text = value;
+            }),
+        };
+
+        const imageManager = {
+            getFiles: () => [...files],
+            setFiles: vi.fn((next) => {
+                files = Array.isArray(next) ? [...next] : [];
+            }),
+            clearFile: vi.fn(() => {
+                files = [];
+            }),
+        };
+
+        const app = new AppController(sessionManager, ui, imageManager);
+
+        return {
+            app,
+            ui,
+            imageManager,
+            getText: () => text,
+            setText: (value) => {
+                text = value;
+            },
+            setFiles: (next) => {
+                files = next;
+            },
+        };
+    }
+
+    function tabContext(tabId) {
+        return {
+            data: {
+                action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT',
+                payload: { tabId, url: '', title: '', sessionId: null },
+            },
+        };
+    }
+
+    function restoreDrafts(drafts) {
+        return {
+            data: { action: 'RESTORE_INPUT_DRAFTS', payload: drafts },
+        };
+    }
+
+    it('keeps unsent text per tab across a tab switch', async () => {
+        const harness = createComposerHarness();
+
+        await harness.app.handleIncomingMessage(tabContext(1));
+        harness.setText('half-written question');
+        await harness.app.handleIncomingMessage(tabContext(2));
+
+        expect(harness.app.inputDrafts.get('draft:1')).toEqual({
+            text: 'half-written question',
+            files: [],
+        });
+        expect(harness.getText()).toBe('');
+    });
+
+    it('restores the draft when the panel returns to the tab', async () => {
+        const harness = createComposerHarness();
+
+        await harness.app.handleIncomingMessage(tabContext(1));
+        harness.setText('keep me');
+        await harness.app.handleIncomingMessage(tabContext(2));
+        await harness.app.handleIncomingMessage(tabContext(1));
+
+        expect(harness.getText()).toBe('keep me');
+    });
+
+    it('restores attachments together with the draft text', async () => {
+        const harness = createComposerHarness();
+        const attachment = {
+            base64: 'data:image/png;base64,AAAA',
+            type: 'image/png',
+            name: 'a.png',
+        };
+
+        await harness.app.handleIncomingMessage(tabContext(1));
+        harness.setText('with image');
+        harness.setFiles([attachment]);
+        await harness.app.handleIncomingMessage(tabContext(2));
+        await harness.app.handleIncomingMessage(tabContext(1));
+
+        expect(harness.imageManager.setFiles).toHaveBeenLastCalledWith([attachment]);
+    });
+
+    it('hydrates persisted drafts and restores them for the active tab', async () => {
+        const harness = createComposerHarness();
+
+        await harness.app.handleIncomingMessage(
+            restoreDrafts({ 'draft:7': { text: 'from storage', files: [] } })
+        );
+        await harness.app.handleIncomingMessage(tabContext(7));
+
+        expect(harness.getText()).toBe('from storage');
+    });
+
+    it('does not overwrite text typed before a late hydration', async () => {
+        const harness = createComposerHarness();
+
+        await harness.app.handleIncomingMessage(tabContext(1));
+        harness.setText('typing right now');
+        await harness.app.handleIncomingMessage(
+            restoreDrafts({ 'draft:1': { text: 'older draft', files: [] } })
+        );
+
+        expect(harness.getText()).toBe('typing right now');
+    });
+
+    it('drops the stored draft once the prompt is sent', async () => {
+        const harness = createComposerHarness();
+
+        await harness.app.handleIncomingMessage(tabContext(1));
+        harness.setText('send me');
+        await harness.app.handleIncomingMessage(tabContext(2));
+        await harness.app.handleIncomingMessage(tabContext(1));
+        expect(harness.app.inputDrafts.has('draft:1')).toBe(true);
+
+        harness.app.clearComposerDraftAfterSend();
+
+        expect(harness.app.inputDrafts.has('draft:1')).toBe(false);
+    });
+});

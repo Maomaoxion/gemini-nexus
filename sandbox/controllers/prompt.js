@@ -391,6 +391,7 @@ export class PromptController {
 
         this.ui.resetInput();
         this.imageManager.clearFile();
+        this.app.clearComposerDraftAfterSend?.();
 
         this.setGeneratingState(true, currentId);
 
@@ -456,6 +457,7 @@ export class PromptController {
 
         this.imageManager.clearFile();
         this.ui.resetInput();
+        this.app.clearComposerDraftAfterSend?.();
         this.setGeneratingState(true, currentId);
 
         sendToBackground(

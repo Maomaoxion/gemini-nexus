@@ -22,6 +22,8 @@ import {
 import {
     restoreConnectionSettings,
     restoreSidebarExpanded,
+    restoreSidePanelInputDrafts,
+    saveSidePanelInputDraft,
     saveSidePanelSessionBinding,
 } from './bridge_storage.js';
 import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
@@ -173,6 +175,14 @@ export class MessageBridge {
 
     restoreSidebarExpanded() {
         restoreSidebarExpanded(this.frame);
+    }
+
+    restoreSidePanelInputDrafts() {
+        restoreSidePanelInputDrafts(this.frame);
+    }
+
+    saveSidePanelInputDraft(payload) {
+        saveSidePanelInputDraft(payload);
     }
 
     saveSidebarExpanded(payload) {

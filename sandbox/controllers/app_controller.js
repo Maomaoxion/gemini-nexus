@@ -15,6 +15,12 @@ import {
 import { isDedicatedApiProvider } from '../../shared/settings/dedicated_providers.js';
 import { formatLiveArtifactFollowupPrompt } from '../core/live_artifacts.js';
 import { buildSessionStorageReport } from '../core/session_storage_report.js';
+import {
+    getComposerDraftKey,
+    isEmptyComposerDraft,
+    normalizeComposerDraft,
+    normalizeComposerDraftMap,
+} from '../../shared/text/composer_draft.js';
 
 export class AppController {
     constructor(sessionManager, uiController, imageManager) {
@@ -35,6 +41,10 @@ export class AppController {
         this.boundSessionId = null;
         this.hostIsTab = false;
         this.sessionsRestored = false;
+        // Unsent composer text/attachments, keyed by tab. The composer belongs to
+        // the tab, so switching tabs must not lose it.
+        this.inputDrafts = new Map();
+        this.inputDraftSaveTimer = null;
 
         // Sidebar Restore Behavior: 'auto', 'restore', 'new'
         this.sidebarRestoreBehavior = 'auto';
@@ -62,6 +72,94 @@ export class AppController {
                 deleteSessions: (sessionIds) => this.sessionFlow.handleDeleteSessions(sessionIds),
             });
         }
+
+        if (this.ui?.chat?.inputFn?.addEventListener) {
+            this.ui.chat.inputFn.addEventListener('input', () => this.scheduleInputDraftSave());
+        }
+    }
+
+    // ── Composer drafts ────────────────────────────────────────────────────────
+    // One draft per tab: typing in tab A, switching to tab B, then coming back
+    // must restore A's text and attachments. The host persists the same map in
+    // chrome.storage.session so a panel reload survives too.
+
+    getInputDraftKey(tabId = this.currentTabId) {
+        return getComposerDraftKey(tabId);
+    }
+
+    readComposerSnapshot() {
+        return {
+            text: this.ui?.chat?.getInputValue?.() || '',
+            files: this.imageManager?.getFiles?.() || [],
+        };
+    }
+
+    hasComposerContent() {
+        return !isEmptyComposerDraft(this.readComposerSnapshot());
+    }
+
+    applyComposerSnapshot(value, options = {}) {
+        const draft = normalizeComposerDraft(value);
+        // A late hydration must not overwrite what the user already typed;
+        // an explicit tab switch always replaces the composer.
+        if (!options.force && this.hasComposerContent()) return;
+
+        this.ui?.chat?.setInputValue?.(draft.text);
+        this.imageManager?.setFiles?.(draft.files);
+    }
+
+    postInputDraftToHost(tabId, value) {
+        window.parent.postMessage(
+            {
+                action: 'SAVE_SIDE_PANEL_INPUT_DRAFT',
+                payload: { tabId, value },
+            },
+            '*'
+        );
+    }
+
+    saveInputDraftForTab(tabId = this.currentTabId) {
+        const key = this.getInputDraftKey(tabId);
+        const draft = normalizeComposerDraft(this.readComposerSnapshot());
+        if (isEmptyComposerDraft(draft)) {
+            this.inputDrafts.delete(key);
+        } else {
+            this.inputDrafts.set(key, draft);
+        }
+        this.postInputDraftToHost(tabId, draft);
+    }
+
+    restoreInputDraftForTab(tabId = this.currentTabId, options = {}) {
+        const key = this.getInputDraftKey(tabId);
+        this.applyComposerSnapshot(this.inputDrafts.get(key) || null, options);
+    }
+
+    hydrateInputDrafts(rawDrafts) {
+        const drafts = normalizeComposerDraftMap(rawDrafts);
+        this.inputDrafts.clear();
+        Object.entries(drafts).forEach(([key, draft]) => this.inputDrafts.set(key, draft));
+    }
+
+    scheduleInputDraftSave() {
+        if (this.inputDraftSaveTimer) clearTimeout(this.inputDraftSaveTimer);
+        this.inputDraftSaveTimer = setTimeout(() => {
+            this.inputDraftSaveTimer = null;
+            this.saveInputDraftForTab();
+        }, 300);
+    }
+
+    onComposerChanged() {
+        this.scheduleInputDraftSave();
+    }
+
+    clearComposerDraftAfterSend() {
+        if (this.inputDraftSaveTimer) {
+            clearTimeout(this.inputDraftSaveTimer);
+            this.inputDraftSaveTimer = null;
+        }
+        const key = this.getInputDraftKey();
+        this.inputDrafts.delete(key);
+        this.postInputDraftToHost(this.currentTabId, null);
     }
 
     setCaptureMode(mode) {
@@ -338,8 +436,19 @@ export class AppController {
             this.ui.settings.updateContextSettings(payload);
             return;
         }
+        if (action === 'RESTORE_INPUT_DRAFTS') {
+            this.hydrateInputDrafts(payload);
+            this.restoreInputDraftForTab(this.currentTabId);
+            return;
+        }
         if (action === 'RESTORE_SIDE_PANEL_TAB_CONTEXT') {
-            this.currentTabId = payload?.tabId || null;
+            const nextTabId = payload?.tabId || null;
+            const tabChanged = nextTabId !== this.currentTabId;
+            if (tabChanged && this.hasComposerContent()) {
+                this.saveInputDraftForTab(this.currentTabId);
+            }
+
+            this.currentTabId = nextTabId;
             this.currentTabUrl = payload?.url || '';
             this.currentTabTitle = payload?.title || '';
             this.boundSessionId = payload?.sessionId || null;
@@ -354,6 +463,9 @@ export class AppController {
             }
             if (this.sessionsRestored && this.sidePanelScope === DEFAULT_SIDE_PANEL_SCOPE) {
                 this.restoreRememberedTabSession();
+            }
+            if (tabChanged) {
+                this.restoreInputDraftForTab(this.currentTabId, { force: true });
             }
             return;
         }

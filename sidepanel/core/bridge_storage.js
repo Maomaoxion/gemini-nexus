@@ -3,9 +3,21 @@ import {
     createConnectionSettingsPayload,
 } from '../../shared/settings/connection.js';
 import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
+import {
+    getComposerDraftKey,
+    isEmptyComposerDraft,
+    normalizeComposerDraft,
+    normalizeComposerDraftMap,
+} from '../../shared/text/composer_draft.js';
+
+const INPUT_DRAFTS_KEY = 'geminiSidePanelInputDrafts';
 
 function logSessionBindingWriteError(error) {
     console.warn('Unable to save side panel session binding after storage write failed:', error);
+}
+
+function logInputDraftWriteError(error) {
+    console.warn('Unable to save side panel input draft after storage write failed:', error);
 }
 
 export function restoreConnectionSettings(frame) {
@@ -77,6 +89,55 @@ export function saveSidePanelSessionBinding(payload) {
             writeResult?.catch?.(logSessionBindingWriteError);
         } catch (error) {
             logSessionBindingWriteError(error);
+        }
+    });
+}
+
+export function restoreSidePanelInputDrafts(frame) {
+    chrome.storage.session.get([INPUT_DRAFTS_KEY], (result) => {
+        const readError = getRuntimeLastError();
+        if (readError) {
+            console.warn(
+                'Unable to restore side panel input drafts after storage read failed:',
+                readError
+            );
+            return;
+        }
+
+        frame.postMessage({
+            action: 'RESTORE_INPUT_DRAFTS',
+            payload: normalizeComposerDraftMap(result?.[INPUT_DRAFTS_KEY]),
+        });
+    });
+}
+
+export function saveSidePanelInputDraft(payload) {
+    const tabId = payload?.tabId;
+    const key = getComposerDraftKey(tabId);
+
+    chrome.storage.session.get([INPUT_DRAFTS_KEY], (result) => {
+        const readError = getRuntimeLastError();
+        if (readError) {
+            console.warn(
+                'Unable to save side panel input draft after storage read failed:',
+                readError
+            );
+            return;
+        }
+
+        const drafts = normalizeComposerDraftMap(result?.[INPUT_DRAFTS_KEY]);
+        const draft = normalizeComposerDraft(payload?.value);
+        if (isEmptyComposerDraft(draft)) {
+            delete drafts[key];
+        } else {
+            drafts[key] = draft;
+        }
+
+        try {
+            const writeResult = chrome.storage.session.set({ [INPUT_DRAFTS_KEY]: drafts });
+            writeResult?.catch?.(logInputDraftWriteError);
+        } catch (error) {
+            logInputDraftWriteError(error);
         }
     });
 }

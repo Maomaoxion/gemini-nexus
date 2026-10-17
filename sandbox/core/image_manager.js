@@ -223,6 +223,13 @@ export class ImageManager {
         this._render();
     }
 
+    setFiles(files) {
+        this.files = Array.isArray(files)
+            ? files.filter((file) => file && typeof file.base64 === 'string')
+            : [];
+        this._render();
+    }
+
     getFiles() {
         return [...this.files];
     }

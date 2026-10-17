@@ -277,14 +277,24 @@ export class ChatController {
         }
     }
 
-    resetInput() {
-        if (this.inputFn) {
-            this.inputFn.value = '';
-            this.inputFn.style.height = 'auto';
-            this.updateFooterOffset();
-            this.inputFn.focus();
+    getInputValue() {
+        return this.inputFn?.value || '';
+    }
+
+    setInputValue(value, options = {}) {
+        if (!this.inputFn) return;
+        this.inputFn.value = typeof value === 'string' ? value : '';
+        this.inputFn.style.height = 'auto';
+        if (this.inputFn.value) {
+            this.inputFn.style.height = `${this.inputFn.scrollHeight}px`;
         }
+        this.updateFooterOffset();
+        if (options.focus) this.inputFn.focus();
         this.syncSendEnabled();
+    }
+
+    resetInput() {
+        this.setInputValue('', { focus: true });
     }
 
     setHasAttachments(hasAttachments) {
