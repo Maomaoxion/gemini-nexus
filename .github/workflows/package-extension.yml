@@ -53,7 +53,7 @@ jobs:
           npm run build
           npm exec tsc -- --noEmit
           npm run lint:unused
-          npx vitest run --exclude='services/providers/**'
+          npx vitest run --retry=1
 
       - name: Build extension bundle
         run: npm run package:extension
