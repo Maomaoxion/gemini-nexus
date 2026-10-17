@@ -1,5 +1,16 @@
 # Changelog
 
+## v5.7.2 - 2026-10-17
+
+### Features
+
+- **输入框草稿按标签页保留**：切到别的标签页、或面板重新加载后，未发送的文字和附件会随标签页恢复；发送后自动清除，迟到的草稿恢复也不会覆盖正在输入的内容。草稿存于 `chrome.storage.session`，单条草稿最多保留 10 个附件、2MB base64，超出时只丢附件、不丢文字。
+
+### Chore
+
+- **依赖升级**：`marked` 18.1.1、`knip` 6.41.0、`@types/node` 25.9.9；GitHub Actions 升级至 `checkout@v7`、`setup-node@v7`、`upload-artifact@v7`。
+- 版本号升级至 `5.7.2`。
+
 ## v5.7.1 - 2026-10-16
 
 ### Fixed
