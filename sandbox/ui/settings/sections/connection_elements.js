@@ -14,7 +14,8 @@ export function queryConnectionElements(getElement = getSettingsElement) {
         officialModel: getElement(DOM_IDS.OFFICIAL_MODEL),
         officialRefreshModels: getElement(DOM_IDS.OFFICIAL_REFRESH_MODELS),
         officialModelListStatus: getElement(DOM_IDS.OFFICIAL_MODEL_LIST_STATUS),
-        officialModelPicker: getElement(DOM_IDS.OFFICIAL_MODEL_PICKER),        officialWebSearchEnabled: getElement(DOM_IDS.OFFICIAL_WEB_SEARCH),
+        officialModelPicker: getElement(DOM_IDS.OFFICIAL_MODEL_PICKER),
+        officialWebSearchEnabled: getElement(DOM_IDS.OFFICIAL_WEB_SEARCH),
 
         openaiFields: getElement(DOM_IDS.OPENAI_FIELDS),
         openaiBaseUrl: getElement(DOM_IDS.OPENAI_BASE_URL),
