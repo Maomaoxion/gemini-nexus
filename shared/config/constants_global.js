@@ -100,7 +100,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'reasoning_effort',
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['low', 'medium', 'high']),
+            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'max']),
         }),
         openrouter: Object.freeze({
             id: 'openrouter',

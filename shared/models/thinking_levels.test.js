@@ -25,7 +25,7 @@ describe('provider thinking levels', () => {
             'max',
         ]);
         expect(getProviderThinkingLevels('dashscope')).toEqual(['off', 'on']);
-        expect(getProviderThinkingLevels('deepseek')).not.toContain('max');
+        expect(getProviderThinkingLevels('deepseek')).toEqual(['low', 'medium', 'high', 'max']);
         expect(getProviderThinkingLevels('web', '56fdd199312815e2')).toEqual(['low', 'high']);
         expect(getProviderThinkingLevels('web', 'unknown-model')).toEqual([]);
     });
@@ -35,6 +35,7 @@ describe('provider thinking levels', () => {
             'low'
         );
         expect(normalizeThinkingLevelForProvider('openai', 'gpt-6-astra', 'max')).toBe('max');
+        expect(normalizeThinkingLevelForProvider('deepseek', 'deepseek-v4-pro', 'max')).toBe('max');
         expect(normalizeThinkingLevelForProvider('dashscope', 'qwen3.8-max', 'high')).toBe('on');
         expect(normalizeThinkingLevelForProvider('dashscope', 'qwen3.8-max', 'off')).toBe('off');
         expect(normalizeThinkingLevelForProvider('web', '56fdd199312815e2', 'low')).toBe('low');
