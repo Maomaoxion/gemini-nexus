@@ -19,13 +19,26 @@ export const HeaderTemplate = `
                     ${createWebModelOptionMarkup()}
                 </select>
                 <button id="model-picker-trigger" class="model-picker-trigger" type="button" data-i18n-title="modelSelectTooltip" title="Select Model (Ctrl+M to cycle)" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-picker-listbox">
+                    <span class="model-picker-trigger-icon" aria-hidden="true">${TemplateIcons.MODEL}</span>
                     <span class="model-picker-current">${defaultModelLabel}</span>
-                </button>
-                <button id="web-thinking-toggle" class="web-thinking-toggle" type="button" hidden data-i18n-title="headerThinkingToggleAria" title="Toggle thinking level (Alt+T)" aria-label="Toggle thinking level (Alt+T)" aria-pressed="false">
-                    ${TemplateIcons.ZAP}
                 </button>
                 <div id="model-picker-menu" class="model-picker-menu" hidden>
                     <div id="model-picker-listbox" class="model-picker-listbox" role="listbox"></div>
+                    <div id="model-picker-effort" class="model-picker-effort" hidden>
+                        <div class="model-picker-effort-header">
+                            <span class="model-picker-effort-icon" aria-hidden="true">${TemplateIcons.EFFORT}</span>
+                            <span class="model-picker-effort-label">
+                                <span id="model-picker-effort-label" data-i18n="effortLabel">Effort</span>
+                                (<span id="model-picker-effort-value"></span>)
+                            </span>
+                        </div>
+                        <div class="model-picker-effort-control">
+                            <div class="model-picker-effort-track" aria-hidden="true"></div>
+                            <div class="model-picker-effort-fill" aria-hidden="true"></div>
+                            <div id="model-picker-effort-dots" class="model-picker-effort-dots" aria-hidden="true"></div>
+                            <input id="model-picker-effort-slider" class="model-picker-effort-slider" type="range" min="0" max="0" step="1" value="0" aria-labelledby="model-picker-effort-label" />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

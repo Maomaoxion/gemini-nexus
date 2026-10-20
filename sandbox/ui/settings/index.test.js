@@ -57,6 +57,53 @@ describe('SettingsController', () => {
         expect(document.getElementById('settings-modal').classList.contains('visible')).toBe(false);
     });
 
+    it('requests and displays the auto context window for the current model', () => {
+        const controller = new SettingsController();
+        const getContextWindow = vi.fn();
+        controller.setContextWindowHooks({ getContextWindow });
+        controller.updateContextSettings({ windowAuto: true, windowTokens: 0 });
+
+        controller.updateConnectionSettings({
+            provider: 'official',
+            selectedModel: 'gemini-3.8-flash',
+            officialModel: 'gemini-4-argon, gemini-3.8-flash',
+            officialBaseUrl: 'https://api.test',
+            apiKey: 'key',
+        });
+
+        expect(getContextWindow).toHaveBeenCalledWith(
+            expect.objectContaining({
+                provider: 'official',
+                model: 'gemini-4-argon',
+                baseUrl: 'https://api.test',
+                apiKey: 'key',
+            })
+        );
+
+        controller.updateContextWindowResult({
+            ok: true,
+            model: 'deepseek-flash',
+            tokens: 1048576,
+            source: 'default',
+            diagnostics: { reason: 'no-context-field', fields: ['id', 'object', 'owned_by'] },
+        });
+
+        const input = document.getElementById('context-window-tokens');
+        const status = document.getElementById('context-window-status');
+        expect(input.value).toBe('');
+        expect(input.placeholder).toContain('1,048,576');
+        expect(status.textContent).toContain('id, object, owned_by');
+        expect(status.textContent).toContain('1,048,576');
+
+        controller.updateContextWindowResult({
+            ok: true,
+            model: 'deepseek-flash',
+            tokens: 1048576,
+            source: 'api',
+        });
+        expect(status.textContent).toContain('API');
+    });
+
     it('shows the chat storage totals when the settings modal opens', async () => {
         const controller = new SettingsController();
         controller.setSessionStorageHooks({

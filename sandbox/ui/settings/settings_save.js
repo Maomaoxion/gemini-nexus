@@ -1,10 +1,9 @@
 import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
     DEFAULT_MCP_TRANSPORT,
     DEFAULT_SIDE_PANEL_SCOPE,
     DEFAULT_THINKING_LEVEL,
 } from '../../../shared/config/constants.js';
+import { normalizeContextWindowTokens } from '../../../shared/models/context_window.js';
 import { normalizeWebThinkingLevel } from '../../../shared/models/web_thinking.js';
 import { normalizeDedicatedApiSettingsPayload } from '../../../shared/settings/dedicated_providers.js';
 import { normalizeOpenAIWebSearchSettings } from '../../../shared/settings/openai.js';
@@ -17,12 +16,6 @@ export function normalizeAccountIndices(value) {
         .filter((part) => /^\d+$/.test(part))
         .join(',');
     return cleaned || '0';
-}
-
-export function normalizeRecentTurns(value) {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) return DEFAULT_CONTEXT_RECENT_TURNS;
-    return Math.min(50, Math.max(1, parsed));
 }
 
 export function buildGeneralSettingsForSave(formData) {
@@ -41,14 +34,27 @@ export function buildGeneralSettingsForSave(formData) {
 }
 
 export function buildContextSettingsForSave(formData) {
+    const windowTokens = normalizeContextWindowTokens(formData.contextWindowTokens, 0);
     return {
-        mode: formData.contextMode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE,
-        recentTurns: normalizeRecentTurns(formData.contextRecentTurns),
+        windowAuto: windowTokens <= 0,
+        windowTokens,
     };
 }
 
 export function buildConnectionSettingsForSave(connection, previousConnectionData = {}) {
     const openaiSettings = normalizeOpenAIWebSearchSettings(connection);
+    // Thinking levels are edited from the chat header, not this form. Keep the
+    // live values so saving unrelated connection fields cannot reset them.
+    const dedicatedApiProviders = normalizeDedicatedApiSettingsPayload(
+        connection.dedicatedApiProviders || previousConnectionData.dedicatedApiProviders
+    );
+    for (const [provider, liveSettings] of Object.entries(
+        previousConnectionData.dedicatedApiProviders || {}
+    )) {
+        if (dedicatedApiProviders[provider] && liveSettings?.thinkingLevel) {
+            dedicatedApiProviders[provider].thinkingLevel = liveSettings.thinkingLevel;
+        }
+    }
 
     return {
         provider: connection.provider,
@@ -57,18 +63,19 @@ export function buildConnectionSettingsForSave(connection, previousConnectionDat
         officialBaseUrl: connection.officialBaseUrl,
         apiKey: connection.apiKey,
         officialModel: connection.officialModel,
-        thinkingLevel: connection.thinkingLevel,
+        thinkingLevel: previousConnectionData.thinkingLevel || connection.thinkingLevel,
         officialWebSearch: connection.officialWebSearch === true,
         openaiBaseUrl: connection.openaiBaseUrl,
         openaiApiKey: connection.openaiApiKey,
         openaiModel: connection.openaiModel,
         openaiSelectedModel: previousConnectionData.openaiSelectedModel || '',
-        openaiThinkingLevel: connection.openaiThinkingLevel || DEFAULT_THINKING_LEVEL,
+        openaiThinkingLevel:
+            previousConnectionData.openaiThinkingLevel ||
+            connection.openaiThinkingLevel ||
+            DEFAULT_THINKING_LEVEL,
         openaiUseResponsesApi: openaiSettings.useResponsesApi,
         openaiWebSearch: openaiSettings.webSearch,
-        dedicatedApiProviders: normalizeDedicatedApiSettingsPayload(
-            connection.dedicatedApiProviders || previousConnectionData.dedicatedApiProviders
-        ),
+        dedicatedApiProviders,
         mcpEnabled: connection.mcpEnabled === true,
         mcpTransport: connection.mcpTransport || DEFAULT_MCP_TRANSPORT,
         mcpServerUrl: connection.mcpServerUrl || '',

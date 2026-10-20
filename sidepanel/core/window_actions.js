@@ -124,6 +124,9 @@ const WINDOW_MESSAGE_HANDLERS = {
     SAVE_MODEL(payload, bridge) {
         bridge.saveSelectedModel(payload);
     },
+    SAVE_THINKING_LEVEL(payload, bridge) {
+        bridge.saveThinkingLevel(payload);
+    },
     SAVE_WEB_THINKING_LEVEL(payload, bridge) {
         bridge.state.save('geminiWebThinkingLevel', normalizeWebThinkingLevel(payload));
     },

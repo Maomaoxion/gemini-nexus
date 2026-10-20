@@ -12,10 +12,15 @@ import { normalizeBaseUrl, getDataUrlPayload } from './shared/urls.js';
 import { fetchWithHeadersTimeout } from './shared/fetch_timeout.js';
 
 const DEFAULT_MAX_TOKENS = 8192;
+// Budget used by Claude models without adaptive thinking. xhigh/max exist only
+// for adaptive models; legacy models cap at the high budget so thinking still
+// leaves room for the answer inside max_tokens.
 const THINKING_BUDGET_BY_LEVEL = Object.freeze({
     low: 1024,
     medium: 2048,
     high: 4096,
+    xhigh: 4096,
+    max: 4096,
 });
 const ADAPTIVE_THINKING_MODEL_PATTERNS = Object.freeze([
     /^claude-jupiter(?:-|$)/i,

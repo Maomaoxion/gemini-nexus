@@ -329,59 +329,6 @@ body.layout-wide.sidebar-collapsed .browser-control-bar {
         color var(--duration-normal) var(--ease-standard);
 }
 
-.web-thinking-toggle {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    border: 1px solid var(--icon-btn-border);
-    border-radius: var(--radius-md);
-    background: var(--icon-btn-bg);
-    backdrop-filter: blur(8px);
-    box-shadow: var(--shadow-sm);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    outline: none;
-    transition:
-        background-color var(--duration-normal) var(--ease-standard),
-        border-color var(--duration-normal) var(--ease-standard),
-        box-shadow var(--duration-normal) var(--ease-standard),
-        color var(--duration-normal) var(--ease-standard);
-}
-
-.web-thinking-toggle[hidden] {
-    display: none !important;
-}
-
-.web-thinking-toggle svg {
-    width: 18px;
-    height: 18px;
-    transition: fill var(--duration-normal) var(--ease-standard);
-}
-
-.web-thinking-toggle:hover {
-    background: var(--icon-btn-hover);
-    border-color: var(--icon-btn-border);
-    box-shadow: var(--shadow-md);
-    color: var(--text-primary);
-}
-
-.web-thinking-toggle:focus-visible {
-    box-shadow:
-        0 0 0 2px var(--bg-body),
-        0 0 0 4px var(--border-focus);
-}
-
-.web-thinking-toggle.is-fast {
-    color: var(--warning);
-}
-
-.web-thinking-toggle.is-fast svg {
-    fill: currentColor;
-}
-
 .model-picker-trigger:hover,
 .model-picker-trigger[aria-expanded='true'] {
     background: var(--icon-btn-hover);
@@ -407,18 +354,33 @@ body.layout-wide.sidebar-collapsed .browser-control-bar {
     text-overflow: ellipsis;
 }
 
+.model-picker-trigger-icon {
+    flex: 0 0 auto;
+    color: var(--text-tertiary);
+    display: inline-flex;
+    align-items: center;
+}
+
+.model-picker-trigger-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
 .model-picker-menu {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    width: min(320px, calc(100vw - 32px));
+    width: min(320px, calc(100vw - 24px));
     max-width: 320px;
-    max-height: min(384px, calc(100vh - 88px));
+    max-height: min(460px, calc(100vh - 88px));
     padding: 6px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-modal);
     box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     overflow: hidden;
     z-index: var(--z-header-flyout);
 }
@@ -428,11 +390,165 @@ body.layout-wide.sidebar-collapsed .browser-control-bar {
 }
 
 .model-picker-listbox {
-    max-height: calc(min(384px, calc(100vh - 88px)) - 12px);
+    flex: 1;
+    min-height: 0;
+    max-height: calc(min(460px, calc(100vh - 88px)) - 92px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.model-picker-effort {
+    --effort-thumb-size: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 8px 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.model-picker-effort[hidden] {
+    display: none !important;
+}
+
+.model-picker-effort-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-picker-effort-icon {
+    flex: 0 0 auto;
+    color: var(--text-tertiary);
+    display: inline-flex;
+    align-items: center;
+}
+
+.model-picker-effort-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.model-picker-effort-label {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.model-picker-effort-control {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+}
+
+.model-picker-effort-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 20px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: var(--border-color);
+}
+
+.model-picker-effort-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: calc(
+        var(--effort-thumb-size) * 0.5 + (100% - var(--effort-thumb-size)) * var(--effort-ratio, 0)
+    );
+    height: 20px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: var(--primary);
+    transition: width 60ms linear;
+}
+
+.model-picker-effort-dots {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.model-picker-effort-dots span {
+    position: absolute;
+    left: calc(
+        var(--effort-thumb-size) * 0.5 + (100% - var(--effort-thumb-size)) * var(--effort-ratio, 0)
+    );
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    margin-top: -2px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text-tertiary) 45%, transparent);
+}
+
+.model-picker-effort-dots span.is-filled {
+    background: color-mix(in srgb, var(--bg-modal) 70%, transparent);
+}
+
+.model-picker-effort-slider {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.model-picker-effort-slider::-webkit-slider-runnable-track {
+    height: 20px;
+    background: transparent;
+}
+
+.model-picker-effort-slider::-moz-range-track {
+    height: 20px;
+    background: transparent;
+}
+
+.model-picker-effort-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--effort-thumb-size);
+    height: var(--effort-thumb-size);
+    margin-top: 1px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-modal);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.model-picker-effort-slider::-moz-range-thumb {
+    width: var(--effort-thumb-size);
+    height: var(--effort-thumb-size);
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-modal);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.model-picker-effort-slider:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.model-picker-effort-slider:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--border-focus);
+    border-radius: 999px;
 }
 
 .model-picker-option {
@@ -530,11 +646,5 @@ body.layout-wide.sidebar-collapsed .browser-control-bar {
         min-height: 34px;
         padding: 0 10px;
         font-size: 14px;
-    }
-
-    .web-thinking-toggle {
-        width: 34px;
-        height: 34px;
-        flex-basis: 34px;
     }
 }

@@ -8,11 +8,7 @@ import { AppearanceSettingsTemplate } from './appearance.js';
 import { DataManagementSettingsTemplate } from './data_management.js';
 import { AboutSettingsTemplate } from './about.js';
 import { SettingsPageTemplate } from './index.js';
-import { DOM_IDS, CONFIG_LIMITS } from '../../settings/constants.js';
-import {
-    CONTEXT_RECENT_TURNS_LIMITS,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-} from '../../../../shared/config/constants.js';
+import { DOM_IDS } from '../../settings/constants.js';
 
 describe('settings templates', () => {
     it('moves explanatory copy into compact help buttons', () => {
@@ -31,8 +27,7 @@ describe('settings templates', () => {
                 'textSelectionBlacklistDesc',
                 'imageToolsToggleDesc',
                 'accountIndicesDesc',
-                'contextModeDesc',
-                'contextRecentTurnsDesc',
+                'contextWindowDesc',
                 'sidebarBehaviorAutoDesc',
                 'mcpToolsDesc',
                 'mcpHeadersDesc',
@@ -194,8 +189,13 @@ describe('settings templates', () => {
         );
     });
 
-    it('shares the recent-turns default with the app-wide setting default', () => {
-        expect(CONFIG_LIMITS.RECENT_TURNS.DEFAULT).toBe(DEFAULT_CONTEXT_RECENT_TURNS);
-        expect(CONFIG_LIMITS.RECENT_TURNS).toEqual(CONTEXT_RECENT_TURNS_LIMITS);
+    it('renders the context length field inside the API settings', () => {
+        document.body.innerHTML = ConnectionSettingsTemplate;
+
+        const input = document.getElementById(DOM_IDS.CONTEXT_WINDOW_TOKENS);
+        expect(input).not.toBeNull();
+        expect(input.closest('#api-key-container')).not.toBeNull();
+        expect(input.getAttribute('data-i18n-placeholder')).toBe('contextWindowAutoPlaceholder');
+        expect(document.getElementById(DOM_IDS.CONTEXT_WINDOW_STATUS)).not.toBeNull();
     });
 });

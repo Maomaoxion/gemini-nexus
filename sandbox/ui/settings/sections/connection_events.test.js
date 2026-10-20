@@ -56,6 +56,36 @@ function createModelRefreshHarness() {
     return { dedicatedApiRefreshModels, section };
 }
 
+function createOfficialModelRefreshHarness() {
+    const officialRefreshModels = document.createElement('button');
+    const officialBaseUrl = document.createElement('input');
+    officialBaseUrl.value = 'https://generativelanguage.googleapis.com/v1beta';
+    const apiKeyInput = document.createElement('input');
+    apiKeyInput.value = 'official-key';
+    const section = {
+        activeProvider: 'official',
+        elements: { officialRefreshModels, officialBaseUrl, apiKeyInput },
+        setProviderModelListStatus: vi.fn(),
+    };
+
+    return { officialRefreshModels, section };
+}
+
+function createOpenAiModelRefreshHarness() {
+    const openaiRefreshModels = document.createElement('button');
+    const openaiBaseUrl = document.createElement('input');
+    openaiBaseUrl.value = 'https://relay.test/v1';
+    const openaiApiKey = document.createElement('input');
+    openaiApiKey.value = 'relay-key';
+    const section = {
+        activeProvider: 'openai',
+        elements: { openaiRefreshModels, openaiBaseUrl, openaiApiKey },
+        setProviderModelListStatus: vi.fn(),
+    };
+
+    return { openaiRefreshModels, section };
+}
+
 describe('bindConnectionSectionEvents', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -85,13 +115,55 @@ describe('bindConnectionSectionEvents', () => {
         dedicatedApiRefreshModels.click();
 
         expect(section._saveDedicatedApiProviderEdits).toHaveBeenCalledWith('openrouter');
-        expect(section.setProviderModelListStatus).toHaveBeenCalledWith('modelListFetching');
+        expect(section.setProviderModelListStatus).toHaveBeenCalledWith(
+            'modelListFetching',
+            false,
+            'openrouter'
+        );
         expect(dedicatedApiRefreshModels.disabled).toBe(true);
         expect(sendToBackground).toHaveBeenCalledWith({
             action: 'GET_PROVIDER_MODELS',
             provider: 'openrouter',
             baseUrl: 'https://openrouter.ai/api/v1',
             apiKey: 'openrouter-key',
+        });
+    });
+
+    it('requests Official Gemini models from the connection form', () => {
+        const { officialRefreshModels, section } = createOfficialModelRefreshHarness();
+
+        bindConnectionSectionEvents(section);
+        officialRefreshModels.click();
+
+        expect(section.setProviderModelListStatus).toHaveBeenCalledWith(
+            'modelListFetching',
+            false,
+            'official'
+        );
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'GET_PROVIDER_MODELS',
+            provider: 'official',
+            baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+            apiKey: 'official-key',
+        });
+    });
+
+    it('requests OpenAI-compatible models from the connection form', () => {
+        const { openaiRefreshModels, section } = createOpenAiModelRefreshHarness();
+
+        bindConnectionSectionEvents(section);
+        openaiRefreshModels.click();
+
+        expect(section.setProviderModelListStatus).toHaveBeenCalledWith(
+            'modelListFetching',
+            false,
+            'openai'
+        );
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'GET_PROVIDER_MODELS',
+            provider: 'openai',
+            baseUrl: 'https://relay.test/v1',
+            apiKey: 'relay-key',
         });
     });
 });

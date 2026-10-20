@@ -6,6 +6,8 @@ import {
     createDefaultMcpServer,
     getConnectionProvider,
     getDefaultMcpUrlForTransport,
+    getFirstConfiguredModelForProvider,
+    getProviderConnectionSettings,
     getSelectedModelForProvider,
 } from './connection.js';
 
@@ -124,6 +126,66 @@ describe('connection settings helpers', () => {
         expect(getSelectedModelForProvider({}, 'openai')).toBe('openai_custom');
         expect(getSelectedModelForProvider({}, 'deepseek')).toBe('deepseek-v4-pro');
         expect(getSelectedModelForProvider({}, 'web')).toBe('56fdd199312815e2');
+    });
+
+    it('resolves provider connection settings and the first configured model', () => {
+        expect(
+            getProviderConnectionSettings('official', {
+                officialBaseUrl: 'https://official.test',
+                apiKey: 'official-key',
+            })
+        ).toEqual({ baseUrl: 'https://official.test', apiKey: 'official-key' });
+
+        expect(
+            getProviderConnectionSettings('openai', {
+                openaiBaseUrl: 'https://relay.test/v1',
+                openaiApiKey: 'relay-key',
+            })
+        ).toEqual({ baseUrl: 'https://relay.test/v1', apiKey: 'relay-key' });
+
+        expect(
+            getProviderConnectionSettings('deepseek', {
+                dedicatedApiProviders: {
+                    deepseek: { baseUrl: 'https://api.deepseek.com', apiKey: 'deepseek-key' },
+                },
+            })
+        ).toEqual({ baseUrl: 'https://api.deepseek.com', apiKey: 'deepseek-key' });
+
+        expect(
+            getFirstConfiguredModelForProvider('official', {
+                officialModel: 'gemini-4-argon, gemini-3.8-flash',
+                selectedModel: 'gemini-3.8-flash',
+            })
+        ).toBe('gemini-4-argon');
+        expect(
+            getFirstConfiguredModelForProvider('official', {
+                officialModel: '',
+                selectedModel: 'gemini-3.8-flash',
+            })
+        ).toBe('gemini-3.8-flash');
+        expect(
+            getFirstConfiguredModelForProvider('openai', {
+                openaiModel: '',
+                openaiSelectedModel: 'gpt-6-astra',
+            })
+        ).toBe('gpt-6-astra');
+        expect(
+            getFirstConfiguredModelForProvider('deepseek', {
+                dedicatedApiProviders: {
+                    deepseek: {
+                        model: 'deepseek-v4-pro, deepseek-flash',
+                        selectedModel: 'deepseek-flash',
+                    },
+                },
+            })
+        ).toBe('deepseek-v4-pro');
+        expect(
+            getFirstConfiguredModelForProvider('deepseek', {
+                dedicatedApiProviders: {
+                    deepseek: { model: '', selectedModel: 'deepseek-flash' },
+                },
+            })
+        ).toBe('deepseek-flash');
     });
 
     it('declares the storage keys needed for connection restore', () => {

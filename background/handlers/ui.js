@@ -16,6 +16,7 @@ import {
 } from './ui_mcp_tools.js';
 import { handleCheckPageContext, handleGetActiveSelection } from './ui_page_context.js';
 import { handleProviderModelList } from './ui_provider_models.js';
+import { handleContextWindow } from './ui_context_window.js';
 import {
     handleOpenSidePanel,
     handleToggleSidePanel,
@@ -120,6 +121,11 @@ export class UIMessageHandler {
 
         if (request.action === 'GET_PROVIDER_MODELS') {
             handleProviderModelList(request, sendResponse);
+            return true;
+        }
+
+        if (request.action === 'GET_CONTEXT_WINDOW') {
+            handleContextWindow(request, sendResponse);
             return true;
         }
 

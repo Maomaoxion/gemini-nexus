@@ -6,6 +6,8 @@ import {
     normalizeUserAttachments,
 } from '../../shared/attachments/index.js';
 import { getLiveArtifactsSystemInstruction } from '../core/live_artifacts.js';
+import { getProviderThinkingLevel } from '../../shared/models/thinking_levels.js';
+import { getConfiguredModels } from '../../shared/settings/model_selection.js';
 
 // Idle (no stream / tool activity) budget before the UI treats a run as stuck.
 // Browser-control tool loops may legitimately run longer between model turns.
@@ -38,6 +40,7 @@ export class PromptController {
     buildRequestPayload(text, files, sessionId, extra = {}) {
         const selectedModel = this.app.getSelectedModel();
         const conn = this.getConnectionData();
+        const provider = this.getConnectionProvider();
         const liveArtifactsInstruction =
             this.app.liveArtifactsEnabled === true
                 ? getLiveArtifactsSystemInstruction(this.getUiLanguage())
@@ -84,6 +87,14 @@ export class PromptController {
             files,
             model: selectedModel,
             webThinkingLevel: conn.webThinkingLevel,
+            ...(provider === 'web'
+                ? {}
+                : {
+                      thinkingLevel: getProviderThinkingLevel(conn, provider),
+                      // The selected model may have just been added from the
+                      // catalog; the background's stored list can lag that write.
+                      configuredModels: getConfiguredModels(conn, provider).join(', '),
+                  }),
             includePageContext: this.app.pageContextActive,
             enableBrowserControl: this.app.browserControlActive,
             hostIsTab: this.app.hostIsTab === true,
@@ -364,6 +375,9 @@ export class PromptController {
             null,
             this.getMessageEditOptions(messageIndex)
         );
+        // Sending is an explicit return to the live edge, even after the user
+        // had scrolled up to read earlier messages.
+        this.ui.followBottom?.();
 
         this.sessionManager.addMessage(currentId, 'user', text, displayAttachments);
 
@@ -454,6 +468,7 @@ export class PromptController {
         });
         this.app.sessionFlow.refreshHistoryUI();
         this.app.rerender();
+        this.ui.followBottom?.();
 
         this.imageManager.clearFile();
         this.ui.resetInput();

@@ -17,6 +17,8 @@ export function handleToolOutputMessage(handler, request) {
     handler.app?.prompt?.markGenerationActivity?.();
     const sessionId = handler.getRequestSessionId(request);
     const toolCallText = handler.getRequestToolCallText(request, sessionId);
+    // Capture the user's position before the row changes the scroll height.
+    const autoScroll = shouldAutoScroll(handler);
 
     if (!handler.isCurrentSessionMessage(request)) {
         handler.clearStreamState(sessionId);
@@ -75,15 +77,22 @@ export function handleToolOutputMessage(handler, request) {
             callIndex: request.callIndex,
             callCount: request.callCount,
             toolOutputKey: renderedKey,
+            autoScroll,
         }
     );
     handler.ui.scrollToBottom();
+}
+
+function shouldAutoScroll(handler) {
+    const state = handler.ui?.getChatScrollState?.();
+    return !state || state.isNearBottom !== false;
 }
 
 export function handleToolCallStatusMessage(handler, request) {
     if (!handler.isGeneratingSessionMessage(request)) return;
     handler.app?.prompt?.markGenerationActivity?.();
     if (!handler.isCurrentSessionMessage(request)) return;
+    const autoScroll = shouldAutoScroll(handler);
 
     const sessionId = handler.getRequestSessionId(request);
     const toolCallText = handler.getRequestToolCallText(request, sessionId);
@@ -126,6 +135,7 @@ export function handleToolCallStatusMessage(handler, request) {
             callCount: request.callCount,
             toolStatusKey: statusKey,
             isCollapsed: true,
+            autoScroll,
         }
     );
 

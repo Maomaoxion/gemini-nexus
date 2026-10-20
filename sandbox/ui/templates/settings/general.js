@@ -53,25 +53,6 @@ export const GeneralSettingsTemplate = `
         </div>
 
         <div class="setting-panel">
-            <div class="setting-panel-header">
-                <h5 data-i18n="contextManagement">Context Management</h5>
-            </div>
-            <div class="setting-panel-grid settings-section-offset">
-                <label class="setting-field">
-                    <span class="setting-field-label"><span data-i18n="contextMode">Mode</span>${createSettingsHelpButton('contextModeDesc')}</span>
-                    <select id="context-mode-select" class="settings-input settings-select">
-                        <option value="summary" data-i18n="contextModeSummary">Summary</option>
-                        <option value="recent" data-i18n="contextModeRecent">Recent</option>
-                    </select>
-                </label>
-                <div class="setting-field setting-field-number">
-                    <label class="setting-field-label"><span data-i18n="contextRecentTurns">Turns</span>${createSettingsHelpButton('contextRecentTurnsDesc')}</label>
-                    <input type="number" id="context-recent-turns-input" class="settings-input" min="1" max="50">
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-panel">
             <div class="setting-panel-header setting-panel-header-spaced">
                 <h5><span data-i18n="sidebarBehavior">Sidebar Behavior</span>${createSettingsHelpButton('sidebarBehaviorAutoDesc')}</h5>
             </div>

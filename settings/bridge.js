@@ -1,10 +1,5 @@
-import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-    DEFAULT_SIDE_PANEL_SCOPE,
-    normalizeShortcutDefaults,
-    normalizeContextRecentTurns,
-} from '../shared/config/constants.js';
+import { DEFAULT_SIDE_PANEL_SCOPE, normalizeShortcutDefaults } from '../shared/config/constants.js';
+import { normalizeContextWindowTokens } from '../shared/models/context_window.js';
 import { getRuntimeLastError } from '../shared/logging/runtime_error.js';
 import {
     createConnectionSettingsPayload,
@@ -95,8 +90,8 @@ function setLocalStorageDataAsync(storageUpdate) {
 
 function normalizeContextSettings(payload) {
     return {
-        mode: payload?.mode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE,
-        recentTurns: normalizeContextRecentTurns(payload?.recentTurns),
+        windowAuto: payload?.windowAuto !== false,
+        windowTokens: normalizeContextWindowTokens(payload?.windowTokens, 0),
     };
 }
 
@@ -112,6 +107,24 @@ export class StandaloneSettingsBridge {
             getSessionStorageReport: () => this.readSessionStorageReport(),
             deleteSessions: (sessionIds) => this.deleteSessions(sessionIds),
         });
+        this.controller.setContextWindowHooks({
+            getContextWindow: (payload) => this.requestContextWindow(payload),
+        });
+    }
+
+    async requestContextWindow(payload = {}) {
+        try {
+            const response = await chrome.runtime.sendMessage({
+                action: 'GET_CONTEXT_WINDOW',
+                ...payload,
+            });
+            this.controller.updateContextWindowResult(response);
+        } catch (error) {
+            this.controller.updateContextWindowResult({
+                ok: false,
+                error: error?.message || String(error),
+            });
+        }
     }
 
     /**
@@ -192,8 +205,8 @@ export class StandaloneSettingsBridge {
         );
         this.controller.updateAccountIndices(localStorageData.geminiAccountIndices || '0');
         this.controller.updateContextSettings({
-            mode: localStorageData.geminiContextMode || DEFAULT_CONTEXT_MODE,
-            recentTurns: localStorageData.geminiContextRecentTurns || DEFAULT_CONTEXT_RECENT_TURNS,
+            windowAuto: localStorageData.geminiContextWindowAuto !== false,
+            windowTokens: Number.parseInt(localStorageData.geminiContextWindowTokens, 10) || 0,
         });
         this.controller.updateConnectionSettings(
             createConnectionSettingsPayload(localStorageData, { includeLegacyFallbacks: true })
@@ -283,8 +296,8 @@ export class StandaloneSettingsBridge {
                 {
                     const context = normalizeContextSettings(payload);
                     setLocalStorageData({
-                        geminiContextMode: context.mode,
-                        geminiContextRecentTurns: context.recentTurns,
+                        geminiContextWindowAuto: context.windowAuto,
+                        geminiContextWindowTokens: context.windowTokens,
                     });
                 }
                 return;

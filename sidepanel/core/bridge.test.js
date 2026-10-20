@@ -106,6 +106,22 @@ describe('MessageBridge model persistence', () => {
         expect(state.save).not.toHaveBeenCalledWith('geminiModel', 'deepseek-v4-pro');
     });
 
+    it('saves per-provider thinking levels to their dedicated storage keys', () => {
+        const frame = createFrame();
+        const state = createState();
+        const bridge = new MessageBridge(frame, state);
+
+        bridge.saveThinkingLevel({ provider: 'web', level: 'high' });
+        bridge.saveThinkingLevel({ provider: 'official', level: 'medium' });
+        bridge.saveThinkingLevel({ provider: 'openai', level: 'max' });
+        bridge.saveThinkingLevel({ provider: 'deepseek', level: 'xhigh' });
+
+        expect(state.save).toHaveBeenCalledWith('geminiWebThinkingLevel', 'high');
+        expect(state.save).toHaveBeenCalledWith('geminiThinkingLevel', 'medium');
+        expect(state.save).toHaveBeenCalledWith('geminiOpenaiThinkingLevel', 'max');
+        expect(state.save).toHaveBeenCalledWith('geminiDeepseekThinkingLevel', 'xhigh');
+    });
+
     it('marks full-page chat launches as standalone tabs', () => {
         const frame = createFrame();
         const state = createState();
@@ -781,15 +797,15 @@ describe('MessageBridge model persistence', () => {
             data: {
                 action: 'SAVE_CONTEXT_SETTINGS',
                 payload: {
-                    mode: 'recent',
-                    recentTurns: 999,
+                    windowAuto: false,
+                    windowTokens: 99999999,
                 },
             },
         });
 
         expect(state.saveMany).toHaveBeenCalledWith({
-            geminiContextMode: 'recent',
-            geminiContextRecentTurns: 50,
+            geminiContextWindowAuto: false,
+            geminiContextWindowTokens: 10000000,
         });
         expect(state.save).not.toHaveBeenCalled();
     });

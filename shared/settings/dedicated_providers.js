@@ -60,7 +60,7 @@ function getOpenRouterReasoningPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
 
 function getDashScopeThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
     return {
-        enable_thinking: thinkingLevel !== 'minimal',
+        enable_thinking: thinkingLevel !== 'off',
         stream_options: {
             include_usage: true,
         },
@@ -68,7 +68,7 @@ function getDashScopeThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
 }
 
 function getZhipuThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
-    if (thinkingLevel === 'minimal') {
+    if (thinkingLevel === 'off') {
         return { thinking: { type: 'disabled' } };
     }
     return { thinking: { type: 'enabled' } };

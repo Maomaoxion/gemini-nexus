@@ -1,7 +1,3 @@
-import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-} from '../../shared/config/constants.js';
 import { CUSTOM_SELECTION_TOOLS_STORAGE_KEY } from '../../shared/settings/selection_tools.js';
 import { getRuntimeLastErrorMessage } from '../../shared/logging/runtime_error.js';
 
@@ -85,14 +81,15 @@ export function restoreAccountIndices(frame) {
 
 export function restoreContextSettings(frame) {
     restorePreference(
-        ['geminiContextMode', 'geminiContextRecentTurns'],
+        ['geminiContextWindowAuto', 'geminiContextWindowTokens'],
         'context settings',
         (result) => {
+            const tokens = Number.parseInt(result.geminiContextWindowTokens, 10);
             frame.postMessage({
                 action: 'RESTORE_CONTEXT_SETTINGS',
                 payload: {
-                    mode: result.geminiContextMode || DEFAULT_CONTEXT_MODE,
-                    recentTurns: result.geminiContextRecentTurns || DEFAULT_CONTEXT_RECENT_TURNS,
+                    windowAuto: result.geminiContextWindowAuto !== false,
+                    windowTokens: Number.isFinite(tokens) && tokens > 0 ? tokens : 0,
                 },
             });
         }

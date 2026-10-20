@@ -4,12 +4,11 @@ import { sendOpenAIMessage } from '../../../services/providers/openai_compatible
 import { sendAnthropicMessage } from '../../../services/providers/anthropic.js';
 import { stripNativeContextIds } from '../../../services/providers/shared/web_auth.js';
 import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
     DEFAULT_OFFICIAL_MODEL,
     DEFAULT_OPENAI_MODEL,
+    DEFAULT_THINKING_LEVEL,
 } from '../../../shared/config/constants.js';
-import { normalizeWebThinkingLevelForModel } from '../../../shared/models/web_thinking.js';
+import { normalizeThinkingLevelForProvider } from '../../../shared/models/thinking_levels.js';
 import {
     describeMessageAttachmentMarkers,
     getAttachmentDataUrls,
@@ -146,26 +145,14 @@ function omitCurrentUserMessage(history, request, files) {
     return isCurrentUserMessage(lastMessage, request, files) ? trimmed.slice(0, -1) : trimmed;
 }
 
-function assertOpenAIWebSearchSupported(model, reasoningEffort) {
+function assertOpenAIWebSearchSupported(model) {
     const normalizedModel = String(model || '')
-        .trim()
-        .toLowerCase();
-    const normalizedReasoning = String(reasoningEffort || '')
         .trim()
         .toLowerCase();
 
     if (normalizedModel === 'gpt-4.1-nano' || normalizedModel.startsWith('gpt-4.1-nano-')) {
         throw new Error(
             'OpenAI web search is not supported for gpt-4.1-nano. Disable OpenAI web search or choose another model.'
-        );
-    }
-
-    if (
-        (normalizedModel === 'gpt-5' || normalizedModel.startsWith('gpt-5-')) &&
-        normalizedReasoning === 'minimal'
-    ) {
-        throw new Error(
-            'OpenAI web search is not supported for gpt-5 with minimal reasoning. Choose low/medium/high reasoning or disable OpenAI web search.'
         );
     }
 }
@@ -235,7 +222,7 @@ function selectConfiguredModel(
 function getSelectedDedicatedModel(request, providerSettings, provider) {
     return selectConfiguredModel(
         [request.model, providerSettings?.selectedModel],
-        providerSettings?.model,
+        request.configuredModels || providerSettings?.model,
         getDedicatedApiDefaultModel(provider)
     );
 }
@@ -247,18 +234,13 @@ async function resolveRequestHistory(request, files = request.files) {
     return omitCurrentUserMessage(storedHistory, request, files);
 }
 
-function createContextStatusSender(request, settings) {
-    return (state, detail = {}) => {
+function createContextStatusSender(request) {
+    return (state) => {
         chrome.runtime
             .sendMessage({
                 action: 'GEMINI_CONTEXT_STATUS',
                 sessionId: request.sessionId || null,
                 state,
-                mode: settings.contextMode || DEFAULT_CONTEXT_MODE,
-                recentTurns:
-                    detail.recentTurns ||
-                    settings.contextRecentTurns ||
-                    DEFAULT_CONTEXT_RECENT_TURNS,
             })
             .catch(() => {});
     };
@@ -344,13 +326,26 @@ export class RequestDispatcher {
     async _handleOfficialRequest(request, settings, files, onUpdate, signal) {
         if (!settings.apiKey) throw new Error('API Key is missing. Please check settings.');
 
+        const targetModel = selectConfiguredModel(
+            request.model,
+            request.configuredModels || settings.officialModel,
+            DEFAULT_OFFICIAL_MODEL
+        );
+        const configuredThinking =
+            request.thinkingLevel || settings.thinkingLevel || DEFAULT_THINKING_LEVEL;
+        const thinkingLevel = normalizeThinkingLevelForProvider(
+            'official',
+            targetModel,
+            configuredThinking
+        );
+
         const history = await resolveRequestHistory(request, files);
         const context = await prepareManagedContext(
             request,
             settings,
             history,
             signal,
-            createContextStatusSender(request, settings)
+            createContextStatusSender(request)
         );
 
         const response = await withProviderRetry(
@@ -362,15 +357,11 @@ export class RequestDispatcher {
                     {
                         baseUrl: settings.officialBaseUrl,
                         apiKey: settings.apiKey,
-                        model: selectConfiguredModel(
-                            request.model,
-                            settings.officialModel,
-                            DEFAULT_OFFICIAL_MODEL
-                        ),
+                        model: targetModel,
                         configuredModels: settings.officialModel,
                         officialUserParts: request.officialUserParts,
                     },
-                    settings.thinkingLevel,
+                    thinkingLevel,
                     files,
                     settings.officialWebSearch === true,
                     signal,
@@ -388,21 +379,28 @@ export class RequestDispatcher {
     }
 
     async _handleOpenAIRequest(request, settings, files, onUpdate, signal) {
-        const targetModel = selectConfiguredModel(request.model, settings.openaiModel, '', {
-            placeholderModels: [DEFAULT_OPENAI_MODEL],
-        });
+        const targetModel = selectConfiguredModel(
+            request.model,
+            request.configuredModels || settings.openaiModel,
+            '',
+            { placeholderModels: [DEFAULT_OPENAI_MODEL] }
+        );
 
         const config = {
             baseUrl: settings.openaiBaseUrl,
             apiKey: settings.openaiApiKey,
             model: targetModel,
-            reasoningEffort: settings.openaiThinkingLevel,
+            reasoningEffort: normalizeThinkingLevelForProvider(
+                'openai',
+                targetModel,
+                request.thinkingLevel || settings.openaiThinkingLevel || DEFAULT_THINKING_LEVEL
+            ),
             useResponsesApi: settings.openaiUseResponsesApi === true,
             webSearch: settings.openaiWebSearch === true,
         };
 
         if (config.webSearch) {
-            assertOpenAIWebSearchSupported(config.model, config.reasoningEffort);
+            assertOpenAIWebSearchSupported(config.model);
             if (!config.useResponsesApi) {
                 assertOpenAIChatWebSearchSupported(config.model, config.baseUrl);
             }
@@ -414,7 +412,7 @@ export class RequestDispatcher {
             settings,
             history,
             signal,
-            createContextStatusSender(request, settings)
+            createContextStatusSender(request)
         );
 
         const response = await withProviderRetry(
@@ -441,6 +439,11 @@ export class RequestDispatcher {
         const providerSettings = getDedicatedApiRuntimeSettings(settings, provider);
         const providerConfig = getDedicatedApiProviderConfig(provider);
         const targetModel = getSelectedDedicatedModel(request, providerSettings, provider);
+        const thinkingLevel = normalizeThinkingLevelForProvider(
+            provider,
+            targetModel,
+            request.thinkingLevel || providerSettings?.thinkingLevel || DEFAULT_THINKING_LEVEL
+        );
 
         if (!providerSettings?.apiKey) {
             throw new Error('API Key is missing. Please check settings.');
@@ -452,7 +455,7 @@ export class RequestDispatcher {
             settings,
             history,
             signal,
-            createContextStatusSender(request, settings)
+            createContextStatusSender(request)
         );
 
         if (providerConfig?.transport === 'anthropic-messages') {
@@ -466,7 +469,7 @@ export class RequestDispatcher {
                             baseUrl: providerSettings.baseUrl,
                             apiKey: providerSettings.apiKey,
                             model: targetModel,
-                            thinkingLevel: providerSettings.thinkingLevel,
+                            thinkingLevel,
                         },
                         files,
                         signal,
@@ -483,18 +486,18 @@ export class RequestDispatcher {
             baseUrl: providerSettings.baseUrl,
             apiKey: providerSettings.apiKey,
             model: targetModel,
-            reasoningEffort: getDedicatedApiReasoningEffort(
-                provider,
-                providerSettings.thinkingLevel
-            ),
+            reasoningEffort: getDedicatedApiReasoningEffort(provider, thinkingLevel),
             useResponsesApi,
             webSearch: useResponsesApi && providerSettings.webSearch === true,
-            chatPayload: createDedicatedApiChatPayload(provider, providerSettings),
+            chatPayload: createDedicatedApiChatPayload(provider, {
+                ...providerSettings,
+                thinkingLevel,
+            }),
             headers: getDedicatedApiHeaders(provider),
         };
 
         if (config.webSearch) {
-            assertOpenAIWebSearchSupported(config.model, config.reasoningEffort);
+            assertOpenAIWebSearchSupported(config.model);
         }
 
         const response = await withProviderRetry(
@@ -529,13 +532,14 @@ export class RequestDispatcher {
             fullText = request.systemInstruction + '\n\nQuestion: ' + fullText;
         }
         fullText = buildWebPromptWithHistory(fullText, history);
-        const configuredThinkingLevel = request.webThinkingLevel || settings.webThinkingLevel;
+        const configuredThinkingLevel =
+            request.thinkingLevel || request.webThinkingLevel || settings.webThinkingLevel;
         const webOptions = {};
-        if (configuredThinkingLevel) {
-            webOptions.thinkingLevel = normalizeWebThinkingLevelForModel(
-                request.model,
-                configuredThinkingLevel
-            );
+        const thinkingLevel = configuredThinkingLevel
+            ? normalizeThinkingLevelForProvider('web', request.model, configuredThinkingLevel)
+            : null;
+        if (thinkingLevel) {
+            webOptions.thinkingLevel = thinkingLevel;
         }
         if (request.webTemporaryChat === true || settings.webTemporaryChat === true) {
             webOptions.temporaryChat = true;

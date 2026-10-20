@@ -12,6 +12,7 @@ import {
 } from '../config/constants.js';
 import { createPrefixedId } from '../utils/index.js';
 import { normalizeWebThinkingLevel } from '../models/web_thinking.js';
+import { parseConfiguredModels } from './model_selection.js';
 import { normalizeOpenAIWebSearchSettings } from './openai.js';
 import {
     DEDICATED_API_STORAGE_KEYS,
@@ -88,6 +89,39 @@ export function getSelectedModelForProvider(
     }
 
     return storageData.geminiModel || DEFAULT_STORED_GEMINI_MODEL;
+}
+
+export function getProviderConnectionSettings(provider, settings = {}) {
+    if (provider === 'official') {
+        return {
+            baseUrl: settings.officialBaseUrl || '',
+            apiKey: settings.apiKey || '',
+        };
+    }
+    if (provider === 'openai') {
+        return {
+            baseUrl: settings.openaiBaseUrl || '',
+            apiKey: settings.openaiApiKey || '',
+        };
+    }
+
+    const providerSettings = settings.dedicatedApiProviders?.[provider] || {};
+    return {
+        baseUrl: providerSettings.baseUrl || '',
+        apiKey: providerSettings.apiKey || '',
+    };
+}
+
+export function getFirstConfiguredModelForProvider(provider, settings = {}) {
+    if (provider === 'official') {
+        return parseConfiguredModels(settings.officialModel)[0] || settings.selectedModel || '';
+    }
+    if (provider === 'openai') {
+        return parseConfiguredModels(settings.openaiModel)[0] || settings.openaiSelectedModel || '';
+    }
+
+    const providerSettings = settings.dedicatedApiProviders?.[provider] || {};
+    return parseConfiguredModels(providerSettings.model)[0] || providerSettings.selectedModel || '';
 }
 
 export function createConnectionSettingsPayload(storageData = {}, options = {}) {

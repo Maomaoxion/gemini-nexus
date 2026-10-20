@@ -7,8 +7,8 @@ const HELP_BUTTON_TITLES = {
     customSelectionToolsDesc: 'Add your own selection toolbar prompts.',
     imageToolsToggleDesc: 'Show the AI button when hovering over images.',
     accountIndicesDesc: 'Comma-separated user indices for polling.',
-    contextModeDesc: 'Summarize older messages or keep recent turns.',
-    contextRecentTurnsDesc: 'Number of latest user turns kept verbatim.',
+    contextWindowDesc:
+        'Leave empty to detect the model context window automatically, or enter a token limit manually.',
     sidebarBehaviorAutoDesc: 'Restore if opened soon, otherwise start new chat.',
 };
 

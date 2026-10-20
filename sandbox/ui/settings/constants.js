@@ -1,5 +1,3 @@
-import { CONTEXT_RECENT_TURNS_LIMITS } from '../../../shared/config/constants.js';
-
 export const DOM_IDS = {
     MODAL: 'settings-modal',
     BTN_CLOSE: 'close-settings',
@@ -14,8 +12,8 @@ export const DOM_IDS = {
     IMAGE_TOOLS_BLACKLIST: 'image-tools-blacklist',
     GENERATED_IMAGE_WATERMARK_TOGGLE: 'generated-image-watermark-toggle',
     ACCOUNT_INDICES: 'account-indices-input',
-    CONTEXT_MODE: 'context-mode-select',
-    INPUT_RECENT_TURNS: 'context-recent-turns-input',
+    CONTEXT_WINDOW_TOKENS: 'context-window-tokens',
+    CONTEXT_WINDOW_STATUS: 'context-window-status',
     CONTAINER_SELECTION_TOOLS: 'custom-selection-tools-list',
     BTN_ADD_SELECTION_TOOL: 'add-custom-selection-tool',
 
@@ -27,14 +25,18 @@ export const DOM_IDS = {
     OFFICIAL_BASE_URL: 'official-base-url',
     OFFICIAL_API_KEY: 'api-key-input',
     OFFICIAL_MODEL: 'official-model',
-    OFFICIAL_THINKING_LEVEL: 'thinking-level-select',
+    OFFICIAL_REFRESH_MODELS: 'official-refresh-models',
+    OFFICIAL_MODEL_LIST_STATUS: 'official-model-list-status',
+    OFFICIAL_MODEL_PICKER: 'official-model-picker',
     OFFICIAL_WEB_SEARCH: 'official-web-search-enabled',
 
     OPENAI_FIELDS: 'openai-fields',
     OPENAI_BASE_URL: 'openai-base-url',
     OPENAI_API_KEY: 'openai-api-key',
     OPENAI_MODEL: 'openai-model',
-    OPENAI_THINKING_LEVEL: 'openai-thinking-level-select',
+    OPENAI_REFRESH_MODELS: 'openai-refresh-models',
+    OPENAI_MODEL_LIST_STATUS: 'openai-model-list-status',
+    OPENAI_MODEL_PICKER: 'openai-model-picker',
     OPENAI_USE_RESPONSES_API: 'openai-use-responses-api',
     OPENAI_WEB_SEARCH: 'openai-web-search-enabled',
 
@@ -44,7 +46,7 @@ export const DOM_IDS = {
     DEDICATED_API_MODEL: 'dedicated-api-model',
     DEDICATED_API_REFRESH_MODELS: 'dedicated-api-refresh-models',
     DEDICATED_API_MODEL_LIST_STATUS: 'dedicated-api-model-list-status',
-    DEDICATED_API_THINKING_LEVEL: 'dedicated-api-thinking-level-select',
+    DEDICATED_API_MODEL_PICKER: 'dedicated-api-model-picker',
     DEDICATED_API_WEB_SEARCH_ROW: 'dedicated-api-web-search-row',
     DEDICATED_API_WEB_SEARCH: 'dedicated-api-web-search-enabled',
     DEDICATED_API_PROVIDER_ROUTING_ROW: 'dedicated-api-provider-routing-row',
@@ -96,8 +98,4 @@ export const DOM_IDS = {
     APP_CURRENT_VERSION: 'app-current-version',
     APP_UPDATE_STATUS: 'app-update-status',
     STAR_COUNT: 'star-count',
-};
-
-export const CONFIG_LIMITS = {
-    RECENT_TURNS: CONTEXT_RECENT_TURNS_LIMITS,
 };

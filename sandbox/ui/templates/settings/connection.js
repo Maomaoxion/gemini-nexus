@@ -1,5 +1,6 @@
 import { createSettingsHelpButton } from './help_button.js';
 import { DEFAULT_MCP_HTTP_URL } from '../../../../shared/config/constants.js';
+import { TemplateIcons } from '../icons.js';
 
 export const ConnectionSettingsTemplate = `
     <div class="setting-group">
@@ -40,16 +41,12 @@ export const ConnectionSettingsTemplate = `
                     </div>
                     <div class="setting-field">
                         <span data-i18n="modelIds">Model IDs</span>
-                        <input type="text" id="official-model" class="settings-input settings-full-input" data-i18n-placeholder="officialModelPlaceholder">
-                    </div>
-                    <div class="setting-field">
-                        <span data-i18n="thinkingLevelGemini3">Thinking Level</span>
-                        <select id="thinking-level-select" class="settings-input settings-select">
-                            <option value="minimal" data-i18n="thinkingMinimalFlashOnly">Minimal</option>
-                            <option value="low" data-i18n="thinkingLowFaster">Low</option>
-                            <option value="medium" data-i18n="thinkingMediumBalanced">Medium</option>
-                            <option value="high" data-i18n="thinkingHighDeepReasoning">High</option>
-                        </select>
+                        <div class="settings-action-row">
+                            <input type="text" id="official-model" class="settings-input settings-full-input settings-flex-fill" data-i18n-placeholder="officialModelPlaceholder">
+                            <button id="official-refresh-models" class="btn-secondary settings-small-button settings-icon-button" type="button" data-i18n-title="refreshModels" title="Refresh" aria-label="Refresh">${TemplateIcons.REFRESH}</button>
+                        </div>
+                        <div id="official-model-list-status" class="settings-muted-text" role="status" aria-live="polite" hidden></div>
+                        <div id="official-model-picker" class="settings-model-picker" hidden></div>
                     </div>
                     <div class="setting-panel-row settings-section-offset">
                         <div class="setting-panel-header">
@@ -70,16 +67,12 @@ export const ConnectionSettingsTemplate = `
                     </div>
                     <div class="setting-field">
                         <span data-i18n="modelIdsCommaSeparated">Model IDs</span>
-                        <input type="text" id="openai-model" class="settings-input settings-full-input" data-i18n-placeholder="modelIdPlaceholder">
-                    </div>
-                    <div class="setting-field">
-                        <span data-i18n="thinkingLevel">Thinking Level</span>
-                        <select id="openai-thinking-level-select" class="settings-input settings-select">
-                            <option value="minimal" data-i18n="thinkingMinimal">Minimal</option>
-                            <option value="low" data-i18n="thinkingLow">Low</option>
-                            <option value="medium" data-i18n="thinkingMedium">Medium</option>
-                            <option value="high" data-i18n="thinkingHigh">High</option>
-                        </select>
+                        <div class="settings-action-row">
+                            <input type="text" id="openai-model" class="settings-input settings-full-input settings-flex-fill" data-i18n-placeholder="modelIdPlaceholder">
+                            <button id="openai-refresh-models" class="btn-secondary settings-small-button settings-icon-button" type="button" data-i18n-title="refreshModels" title="Refresh" aria-label="Refresh">${TemplateIcons.REFRESH}</button>
+                        </div>
+                        <div id="openai-model-list-status" class="settings-muted-text" role="status" aria-live="polite" hidden></div>
+                        <div id="openai-model-picker" class="settings-model-picker" hidden></div>
                     </div>
                     <div class="setting-panel-row settings-section-offset">
                         <div class="setting-panel-header">
@@ -108,18 +101,10 @@ export const ConnectionSettingsTemplate = `
                         <span data-i18n="modelIdsCommaSeparated">Model IDs</span>
                         <div class="settings-action-row">
                             <input type="text" id="dedicated-api-model" class="settings-input settings-full-input settings-flex-fill" data-i18n-placeholder="modelIdPlaceholder">
-                            <button id="dedicated-api-refresh-models" class="btn-secondary settings-small-button" type="button" data-i18n="refreshModels" hidden>Refresh</button>
+                            <button id="dedicated-api-refresh-models" class="btn-secondary settings-small-button settings-icon-button" type="button" data-i18n-title="refreshModels" title="Refresh" aria-label="Refresh" hidden>${TemplateIcons.REFRESH}</button>
                         </div>
                         <div id="dedicated-api-model-list-status" class="settings-muted-text" role="status" aria-live="polite" hidden></div>
-                    </div>
-                    <div class="setting-field">
-                        <span data-i18n="thinkingLevel">Thinking Level</span>
-                        <select id="dedicated-api-thinking-level-select" class="settings-input settings-select">
-                            <option value="minimal" data-i18n="thinkingMinimal">Minimal</option>
-                            <option value="low" data-i18n="thinkingLow">Low</option>
-                            <option value="medium" data-i18n="thinkingMedium">Medium</option>
-                            <option value="high" data-i18n="thinkingHigh">High</option>
-                        </select>
+                        <div id="dedicated-api-model-picker" class="settings-model-picker" hidden></div>
                     </div>
                     <div id="dedicated-api-web-search-row" class="setting-panel-row settings-section-offset" hidden>
                         <div class="setting-panel-header">
@@ -131,6 +116,11 @@ export const ConnectionSettingsTemplate = `
                         <span data-i18n="providerRouting">Provider Routing (JSON)</span>
                         <textarea id="dedicated-api-provider-routing" class="settings-input settings-full-input settings-monospace-textarea" data-i18n-placeholder="providerRoutingPlaceholder"></textarea>
                     </div>
+                </div>
+                <div class="setting-field settings-section-offset">
+                    <label class="setting-field-label"><span data-i18n="contextWindow">Context</span>${createSettingsHelpButton('contextWindowDesc')}</label>
+                    <input type="number" id="context-window-tokens" class="settings-input settings-full-input" min="4000" max="10000000" step="1000" data-i18n-placeholder="contextWindowAutoPlaceholder">
+                    <div id="context-window-status" class="settings-muted-text" role="status" aria-live="polite" hidden></div>
                 </div>
             </div>
         </div>

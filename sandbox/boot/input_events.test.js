@@ -35,7 +35,7 @@ function createApp(overrides = {}) {
     };
 }
 
-function bindHarness(overrides = {}) {
+function bindHarness(overrides = {}, uiOverrides = {}) {
     const app = createApp(overrides);
     const inputFn = document.getElementById('prompt');
     const sendBtn = document.getElementById('send');
@@ -43,6 +43,7 @@ function bindHarness(overrides = {}) {
         inputFn,
         sendBtn,
         resizeModelSelect: vi.fn(),
+        ...uiOverrides,
     };
 
     cleanupInputEvents = bindInputEvents(app, ui);
@@ -334,25 +335,22 @@ describe('input events', () => {
         expect(modelSelect.value).toBe('a');
     });
 
-    it('triggers new chat, thinking toggle, and history drawer shortcuts', () => {
-        bindHarness();
+    it('triggers new chat, thinking cycle, and history drawer shortcuts', () => {
+        const { ui } = bindHarness({}, { cycleThinkingLevel: vi.fn() });
         document.body.insertAdjacentHTML(
             'beforeend',
             `
             <button id="new-chat-composer-btn"></button>
-            <button id="web-thinking-toggle"></button>
             <button id="history-toggle"></button>
             <button id="snip-btn"></button>
             `
         );
 
         const newChatSpy = vi.fn();
-        const thinkingSpy = vi.fn();
         const historySpy = vi.fn();
         const snipSpy = vi.fn();
 
         document.getElementById('new-chat-composer-btn').addEventListener('click', newChatSpy);
-        document.getElementById('web-thinking-toggle').addEventListener('click', thinkingSpy);
         document.getElementById('history-toggle').addEventListener('click', historySpy);
         document.getElementById('snip-btn').addEventListener('click', snipSpy);
 
@@ -372,7 +370,7 @@ describe('input events', () => {
         const thinkingEvent = createKeyboardEvent('t', { altKey: true });
         document.body.dispatchEvent(thinkingEvent);
         expect(thinkingEvent.defaultPrevented).toBe(true);
-        expect(thinkingSpy).toHaveBeenCalledTimes(1);
+        expect(ui.cycleThinkingLevel).toHaveBeenCalledTimes(1);
 
         // Alt+H
         const historyEvent = createKeyboardEvent('h', { altKey: true });

@@ -123,8 +123,8 @@ export class StateManager {
                 'geminiGeneratedImageWatermarkRemovalEnabled',
                 'geminiAccountIndices',
                 ...CONNECTION_STORAGE_KEYS,
-                'geminiContextMode',
-                'geminiContextRecentTurns',
+                'geminiContextWindowAuto',
+                'geminiContextWindowTokens',
             ],
             (result) => {
                 const errorMessage = getRuntimeLastErrorMessage();

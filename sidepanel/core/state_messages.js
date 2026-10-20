@@ -1,8 +1,4 @@
-import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-    DEFAULT_SIDE_PANEL_SCOPE,
-} from '../../shared/config/constants.js';
+import { DEFAULT_SIDE_PANEL_SCOPE } from '../../shared/config/constants.js';
 import {
     CONNECTION_STORAGE_KEYS,
     createConnectionSettingsPayload,
@@ -19,9 +15,10 @@ function createConnectionRestoreMessage(localStorageData) {
 }
 
 function createContextRestorePayload(localStorageData) {
+    const tokens = Number.parseInt(localStorageData.geminiContextWindowTokens, 10);
     return {
-        mode: localStorageData.geminiContextMode || DEFAULT_CONTEXT_MODE,
-        recentTurns: localStorageData.geminiContextRecentTurns || DEFAULT_CONTEXT_RECENT_TURNS,
+        windowAuto: localStorageData.geminiContextWindowAuto !== false,
+        windowTokens: Number.isFinite(tokens) && tokens > 0 ? tokens : 0,
     };
 }
 
@@ -167,7 +164,7 @@ export function createLocalStorageRestoreMessages(localStorageData, changedKeys)
         });
     }
 
-    if (hasChanged('geminiContextMode') || hasChanged('geminiContextRecentTurns')) {
+    if (hasChanged('geminiContextWindowAuto') || hasChanged('geminiContextWindowTokens')) {
         messages.push({
             action: 'RESTORE_CONTEXT_SETTINGS',
             payload: createContextRestorePayload(localStorageData),

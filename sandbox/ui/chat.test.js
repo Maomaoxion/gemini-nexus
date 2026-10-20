@@ -163,6 +163,111 @@ describe('ChatController streaming scroll following', () => {
         expect(historyDiv.scrollTo).not.toHaveBeenCalled();
     });
 
+    it('stops following immediately on wheel-up even while still near the bottom', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1000,
+            clientHeight: 400,
+            scrollTop: 600,
+        });
+
+        controller.handleHistoryWheel({ deltaY: -100 });
+
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1400,
+            clientHeight: 400,
+            scrollTop: 536,
+        });
+        controller.followStreamingContent();
+
+        expect(historyDiv.scrollTo).not.toHaveBeenCalled();
+        expect(controller.shouldFollowBottom).toBe(false);
+    });
+
+    it('does not re-arm following from programmatic scroll events', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1000,
+            clientHeight: 400,
+            scrollTop: 600,
+        });
+        controller.handleHistoryWheel({ deltaY: -100 });
+        controller.handleHistoryScroll();
+
+        controller.handleHistoryScroll();
+
+        expect(controller.shouldFollowBottom).toBe(false);
+    });
+
+    it('re-arms following after an intentional wheel-down back to the bottom', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1000,
+            clientHeight: 400,
+            scrollTop: 600,
+        });
+        controller.handleHistoryWheel({ deltaY: -100 });
+        controller.handleHistoryScroll();
+
+        controller.handleHistoryWheel({ deltaY: 120 });
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1400,
+            clientHeight: 400,
+            scrollTop: 1000,
+        });
+        controller.handleHistoryScroll();
+        controller.followStreamingContent();
+
+        expect(controller.shouldFollowBottom).toBe(true);
+        expect(historyDiv.scrollTo).toHaveBeenCalledWith({
+            top: 1400,
+            behavior: 'instant',
+        });
+    });
+
+    it('does not force the viewport down while the user is reading history', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1400,
+            clientHeight: 400,
+            scrollTop: 300,
+        });
+        controller.handleHistoryScroll();
+
+        controller.scrollToBottom();
+        vi.advanceTimersByTime(50);
+
+        expect(historyDiv.scrollTo).not.toHaveBeenCalled();
+
+        controller.scrollToBottom({ force: true });
+        vi.advanceTimersByTime(50);
+
+        expect(historyDiv.scrollTop).toBe(1400);
+    });
+
+    it('follows the stream again after the user sends a new message', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1400,
+            clientHeight: 400,
+            scrollTop: 300,
+        });
+        controller.handleHistoryScroll();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 1800,
+            clientHeight: 400,
+            scrollTop: 300,
+        });
+
+        controller.followBottom();
+
+        expect(controller.shouldFollowBottom).toBe(true);
+        expect(historyDiv.scrollTo).toHaveBeenCalledWith({
+            top: 1800,
+            behavior: 'instant',
+        });
+    });
+
     it('releases artifact resources when clearing history', () => {
         const { controller, historyDiv } = createController();
         const artifact = document.createElement('div');

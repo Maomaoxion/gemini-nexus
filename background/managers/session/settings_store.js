@@ -1,6 +1,4 @@
 import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
     DEFAULT_OFFICIAL_BASE_URL,
     DEFAULT_OFFICIAL_MODELS,
     DEFAULT_THINKING_LEVEL,
@@ -36,8 +34,8 @@ export async function getConnectionSettings(options = {}) {
         stored = await chrome.storage.local.get([
             ...CONNECTION_STORAGE_KEYS,
             'geminiApiKeyPointer',
-            'geminiContextMode',
-            'geminiContextRecentTurns',
+            'geminiContextWindowAuto',
+            'geminiContextWindowTokens',
         ]);
     } catch (error) {
         console.warn('[Gemini Nexus] Failed to read connection settings:', error);
@@ -104,7 +102,7 @@ export async function getConnectionSettings(options = {}) {
         openaiUseResponsesApi: openaiSettings.useResponsesApi,
         openaiWebSearch: openaiSettings.webSearch,
         dedicatedApiProviders: createDedicatedApiSettingsPayload(stored),
-        contextMode: stored.geminiContextMode || DEFAULT_CONTEXT_MODE,
-        contextRecentTurns: stored.geminiContextRecentTurns || DEFAULT_CONTEXT_RECENT_TURNS,
+        contextWindowAuto: stored.geminiContextWindowAuto !== false,
+        contextWindowTokens: stored.geminiContextWindowTokens || 0,
     };
 }

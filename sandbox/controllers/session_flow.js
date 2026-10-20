@@ -120,7 +120,7 @@ export class SessionFlowController {
         if (options.restoreScrollState && this.ui.restoreChatScrollState) {
             this.ui.restoreChatScrollState(options.restoreScrollState);
         } else {
-            this.ui.scrollToBottom(options.scrollOptions);
+            this.ui.scrollToBottom({ ...(options.scrollOptions || {}), force: true });
         }
 
         this.app.boundSessionId = sessionId;

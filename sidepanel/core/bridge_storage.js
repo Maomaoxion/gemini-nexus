@@ -3,6 +3,7 @@ import {
     createConnectionSettingsPayload,
 } from '../../shared/settings/connection.js';
 import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
+import { getThinkingLevelStorageKey } from '../../shared/models/thinking_levels.js';
 import {
     getComposerDraftKey,
     isEmptyComposerDraft,
@@ -36,6 +37,19 @@ export function restoreConnectionSettings(frame) {
             payload: createConnectionSettingsPayload(result, { includeLegacyFallbacks: true }),
         });
     });
+}
+
+export function saveThinkingLevel(state, payload) {
+    const provider = payload?.provider;
+    const level = typeof payload?.level === 'string' ? payload.level.trim() : '';
+    const storageKey = getThinkingLevelStorageKey(provider);
+    if (!storageKey || !level) return;
+
+    if (typeof state?.save === 'function') {
+        state.save(storageKey, level);
+        return;
+    }
+    chrome.storage.local.set({ [storageKey]: level });
 }
 
 export function restoreSidebarExpanded(frame) {

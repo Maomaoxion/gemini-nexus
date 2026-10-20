@@ -346,10 +346,9 @@ export function bindInputEvents(app, ui, setResizeRef) {
             !keyEvent.metaKey &&
             keyEvent.key.toLowerCase() === 't'
         ) {
-            const thinkingToggle = document.getElementById('web-thinking-toggle');
-            if (thinkingToggle && !thinkingToggle.hidden) {
+            if (typeof ui?.cycleThinkingLevel === 'function') {
                 keyEvent.preventDefault();
-                thinkingToggle.click();
+                ui.cycleThinkingLevel();
                 return;
             }
         }

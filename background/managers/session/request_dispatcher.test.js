@@ -120,7 +120,47 @@ describe('RequestDispatcher response mapping', () => {
                 model: 'gemini-3.8-flash',
                 configuredModels: 'gemini-3.8-flash, gemini-3.5-flash-lite',
             }),
-            undefined,
+            'low',
+            [],
+            false,
+            null,
+            expect.any(Function)
+        );
+    });
+
+    it('accepts a model the panel just added from the provider catalog', async () => {
+        sendOfficialMessage.mockResolvedValue({
+            text: 'official text',
+            thoughts: null,
+            sources: [],
+            images: [],
+        });
+        const dispatcher = new RequestDispatcher({});
+
+        await dispatcher.dispatch(
+            {
+                text: 'hello',
+                model: 'gemini-3.8-flash',
+                configuredModels: 'gemini-4-argon, gemini-3.8-flash',
+                sessionId: null,
+            },
+            {
+                provider: 'official',
+                apiKey: 'key',
+                officialBaseUrl: 'https://api.example.test',
+                officialModel: 'gemini-4-argon',
+            },
+            [],
+            vi.fn(),
+            null
+        );
+
+        expect(sendOfficialMessage).toHaveBeenCalledWith(
+            'hello',
+            'system',
+            [],
+            expect.objectContaining({ model: 'gemini-3.8-flash' }),
+            'low',
             [],
             false,
             null,
@@ -594,7 +634,7 @@ describe('RequestDispatcher response mapping', () => {
                         baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
                         apiKey: 'dashscope-key',
                         model: 'qwen3-vl-plus, qwen-plus',
-                        thinkingLevel: 'minimal',
+                        thinkingLevel: 'off',
                     },
                 },
             },

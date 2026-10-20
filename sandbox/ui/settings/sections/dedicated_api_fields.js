@@ -1,4 +1,3 @@
-import { DEFAULT_THINKING_LEVEL } from '../../../../shared/config/constants.js';
 import {
     getDedicatedApiProviderConfig,
     isDedicatedApiProvider,
@@ -12,7 +11,6 @@ export function saveDedicatedApiProviderEdits(section, provider = section.active
         dedicatedApiBaseUrl,
         dedicatedApiKey,
         dedicatedApiModel,
-        dedicatedApiThinkingLevel,
         dedicatedApiWebSearch,
         dedicatedApiProviderRouting,
     } = section.elements;
@@ -23,9 +21,6 @@ export function saveDedicatedApiProviderEdits(section, provider = section.active
         baseUrl: dedicatedApiBaseUrl ? dedicatedApiBaseUrl.value.trim() : previous.baseUrl,
         apiKey: dedicatedApiKey ? dedicatedApiKey.value.trim() : previous.apiKey,
         model: dedicatedApiModel ? dedicatedApiModel.value.trim() : previous.model,
-        thinkingLevel: dedicatedApiThinkingLevel
-            ? dedicatedApiThinkingLevel.value
-            : previous.thinkingLevel,
         webSearch: dedicatedApiWebSearch
             ? dedicatedApiWebSearch.checked === true
             : previous.webSearch === true,
@@ -47,7 +42,6 @@ export function loadDedicatedApiProviderIntoForm(section, provider) {
         dedicatedApiModel,
         dedicatedApiRefreshModels,
         dedicatedApiModelListStatus,
-        dedicatedApiThinkingLevel,
         dedicatedApiWebSearchRow,
         dedicatedApiWebSearch,
         dedicatedApiProviderRoutingRow,
@@ -64,16 +58,13 @@ export function loadDedicatedApiProviderIntoForm(section, provider) {
         dedicatedApiModel.value = settings.model || config.defaultModels || '';
     }
     if (dedicatedApiRefreshModels) {
-        dedicatedApiRefreshModels.hidden = !config.modelListUrl;
+        dedicatedApiRefreshModels.hidden = false;
         dedicatedApiRefreshModels.disabled = false;
     }
     if (dedicatedApiModelListStatus) {
         dedicatedApiModelListStatus.hidden = true;
         dedicatedApiModelListStatus.textContent = '';
         dedicatedApiModelListStatus.classList.remove('is-error');
-    }
-    if (dedicatedApiThinkingLevel) {
-        dedicatedApiThinkingLevel.value = settings.thinkingLevel || DEFAULT_THINKING_LEVEL;
     }
     if (dedicatedApiWebSearchRow) {
         dedicatedApiWebSearchRow.hidden = config.supportsWebSearch !== true;

@@ -103,22 +103,19 @@ describe('ConnectionSection provider visibility', () => {
             dedicatedApiModel: document.createElement('input'),
             dedicatedApiRefreshModels: document.createElement('button'),
             dedicatedApiModelListStatus: document.createElement('div'),
-            dedicatedApiThinkingLevel: document.createElement('select'),
             dedicatedApiWebSearchRow: document.createElement('div'),
             dedicatedApiWebSearch: document.createElement('input'),
             dedicatedApiProviderRoutingRow: document.createElement('div'),
             dedicatedApiProviderRouting: document.createElement('textarea'),
         };
-        section.elements.dedicatedApiThinkingLevel.innerHTML =
-            '<option value="low">Low</option><option value="high">High</option>';
 
         section.updateVisibility('deepseek');
 
         expect(section.elements.dedicatedApiFields.hidden).toBe(false);
         expect(section.elements.dedicatedApiKey.value).toBe('deepseek-key');
         expect(section.elements.dedicatedApiModel.value).toBe('deepseek-v4-pro');
-        expect(section.elements.dedicatedApiThinkingLevel.value).toBe('high');
-        expect(section.elements.dedicatedApiRefreshModels.hidden).toBe(true);
+        expect(section.dedicatedApiProviders.deepseek.thinkingLevel).toBe('high');
+        expect(section.elements.dedicatedApiRefreshModels.hidden).toBe(false);
         expect(section.elements.dedicatedApiWebSearchRow.hidden).toBe(true);
         expect(section.elements.dedicatedApiProviderRoutingRow.hidden).toBe(true);
     });
@@ -146,14 +143,11 @@ describe('ConnectionSection provider visibility', () => {
             dedicatedApiModel: document.createElement('input'),
             dedicatedApiRefreshModels: document.createElement('button'),
             dedicatedApiModelListStatus: document.createElement('div'),
-            dedicatedApiThinkingLevel: document.createElement('select'),
             dedicatedApiWebSearchRow: document.createElement('div'),
             dedicatedApiWebSearch: document.createElement('input'),
             dedicatedApiProviderRoutingRow: document.createElement('div'),
             dedicatedApiProviderRouting: document.createElement('textarea'),
         };
-        section.elements.dedicatedApiThinkingLevel.innerHTML =
-            '<option value="low">Low</option><option value="medium">Medium</option>';
 
         section.updateVisibility('openrouter');
 
@@ -162,31 +156,79 @@ describe('ConnectionSection provider visibility', () => {
         expect(section.elements.dedicatedApiProviderRouting.value).toBe('{"order":["openai"]}');
     });
 
-    it('applies refreshed provider models to the active dedicated API form', () => {
+    it('shows fetched dedicated provider models as selectable additions', () => {
         const section = Object.create(ConnectionSection.prototype);
         section.activeProvider = 'openrouter';
-        section.dedicatedApiProviders = {
-            openrouter: {
-                provider: 'openrouter',
-                selectedModel: 'missing-model',
-            },
-        };
+        const modelInput = document.createElement('input');
+        modelInput.value = 'existing-model';
+        const picker = document.createElement('div');
+        picker.hidden = true;
         section.elements = {
-            dedicatedApiModel: document.createElement('input'),
+            dedicatedApiModel: modelInput,
             dedicatedApiRefreshModels: document.createElement('button'),
             dedicatedApiModelListStatus: document.createElement('div'),
+            dedicatedApiModelPicker: picker,
         };
 
-        section.setProviderModelList('openrouter', ['openai/gpt-5.2', 'anthropic/claude']);
+        section.setProviderModelList('openrouter', [
+            'existing-model',
+            'openai/gpt-5.2',
+            'anthropic/claude',
+        ]);
 
-        expect(section.elements.dedicatedApiModel.value).toBe('openai/gpt-5.2, anthropic/claude');
-        expect(section.dedicatedApiProviders.openrouter).toEqual(
-            expect.objectContaining({
-                model: 'openai/gpt-5.2, anthropic/claude',
-                selectedModel: '',
-            })
+        expect(modelInput.value).toBe('existing-model');
+        expect(picker.hidden).toBe(false);
+        const rows = [...picker.querySelectorAll('.settings-model-picker-row')];
+        expect(rows).toHaveLength(2);
+        expect(rows.map((row) => row.querySelector('span').textContent)).toEqual([
+            'openai/gpt-5.2',
+            'anthropic/claude',
+        ]);
+
+        rows[0].querySelector('input').checked = true;
+        picker.querySelector('.settings-model-picker-add').click();
+
+        expect(modelInput.value).toBe('existing-model, openai/gpt-5.2');
+        expect(picker.hidden).toBe(true);
+    });
+
+    it('shows fetched Official and OpenAI models as selectable additions', () => {
+        const section = Object.create(ConnectionSection.prototype);
+        const officialModel = document.createElement('input');
+        officialModel.value = 'gemini-4-argon';
+        const openaiModel = document.createElement('input');
+        openaiModel.value = 'gpt-6-astra';
+        section.elements = {
+            officialModel,
+            officialRefreshModels: document.createElement('button'),
+            officialModelListStatus: document.createElement('div'),
+            officialModelPicker: document.createElement('div'),
+            openaiModel,
+            openaiRefreshModels: document.createElement('button'),
+            openaiModelListStatus: document.createElement('div'),
+            openaiModelPicker: document.createElement('div'),
+        };
+
+        section.setProviderModelList('official', ['gemini-4-argon', 'gemini-3.8-flash']);
+        section.setProviderModelList('openai', ['gpt-6-astra', 'gpt-6-mini']);
+
+        expect(officialModel.value).toBe('gemini-4-argon');
+        expect(openaiModel.value).toBe('gpt-6-astra');
+
+        const officialRow = section.elements.officialModelPicker.querySelector(
+            '.settings-model-picker-row input'
         );
-        expect(section.elements.dedicatedApiModelListStatus.textContent).toBe('Loaded 2 models.');
+        officialRow.checked = true;
+        section.elements.officialModelPicker.querySelector('.settings-model-picker-add').click();
+
+        const openaiRow = section.elements.openaiModelPicker.querySelector(
+            '.settings-model-picker-row input'
+        );
+        openaiRow.checked = true;
+        section.elements.openaiModelPicker.querySelector('.settings-model-picker-add').click();
+
+        expect(officialModel.value).toBe('gemini-4-argon, gemini-3.8-flash');
+        expect(openaiModel.value).toBe('gpt-6-astra, gpt-6-mini');
     });
 
     it('restores and reads the Gemini Web temporary chat checkbox', () => {

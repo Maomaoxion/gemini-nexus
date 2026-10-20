@@ -33,9 +33,10 @@ describe('HeaderTemplate', () => {
         const wrapper = document.querySelector('.model-select-wrapper');
         const nativeSelect = document.getElementById('model-select');
         const trigger = document.getElementById('model-picker-trigger');
-        const thinkingToggle = document.getElementById('web-thinking-toggle');
         const menu = document.getElementById('model-picker-menu');
         const listbox = document.getElementById('model-picker-listbox');
+        const effort = document.getElementById('model-picker-effort');
+        const slider = document.getElementById('model-picker-effort-slider');
 
         expect(wrapper.contains(nativeSelect)).toBe(true);
         expect(nativeSelect.classList.contains('model-native-select')).toBe(true);
@@ -43,12 +44,12 @@ describe('HeaderTemplate', () => {
         expect(trigger.getAttribute('aria-expanded')).toBe('false');
         expect(trigger.querySelector('.model-picker-current')).not.toBeNull();
         expect(trigger.querySelector('.model-picker-current').textContent).toBe('3.8 Flash');
-        expect(trigger.querySelectorAll('svg')).toHaveLength(0);
-        expect(wrapper.contains(thinkingToggle)).toBe(true);
-        expect(thinkingToggle.hidden).toBe(true);
-        expect(thinkingToggle.getAttribute('data-i18n-title')).toBe('headerThinkingToggleAria');
-        expect(thinkingToggle.querySelectorAll('svg')).toHaveLength(1);
+        expect(trigger.querySelectorAll('.model-picker-trigger-icon svg')).toHaveLength(1);
         expect(menu.hidden).toBe(true);
         expect(listbox.getAttribute('role')).toBe('listbox');
+        expect(effort.hidden).toBe(true);
+        expect(effort.querySelector('.model-picker-effort-icon svg')).not.toBeNull();
+        expect(slider.getAttribute('type')).toBe('range');
+        expect(slider.getAttribute('aria-labelledby')).toBe('model-picker-effort-label');
     });
 });

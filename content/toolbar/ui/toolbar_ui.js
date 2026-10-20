@@ -56,15 +56,13 @@
     }
 
     function getDefaultWebThinkingLevel() {
-        return getWebThinking()?.DEFAULT_WEB_THINKING_LEVEL || 'minimal';
+        return getWebThinking()?.DEFAULT_WEB_THINKING_LEVEL || 'low';
     }
 
     function getThinkingToggleTitle(level, fastLevel) {
         const strings = getStrings();
         if (level === fastLevel) {
-            return fastLevel === 'minimal'
-                ? strings.toolbarThinkingMinimalFastTitle || 'Thinking: Minimal (Fast Mode)'
-                : strings.toolbarThinkingLowFastTitle || 'Thinking: Low (Fast Mode)';
+            return strings.toolbarThinkingLowFastTitle || 'Thinking: Low (Fast Mode)';
         }
         return strings.toolbarThinkingHighTitle || 'Thinking: High (Deep Mode)';
     }

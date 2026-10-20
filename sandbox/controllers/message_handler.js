@@ -46,6 +46,9 @@ export class MessageHandler {
             case 'PROVIDER_MODELS_RESULT':
                 this.handleProviderModelsResult(request);
                 return;
+            case 'CONTEXT_WINDOW_RESULT':
+                this.ui.settings?.updateContextWindowResult?.(request);
+                return;
             case 'GEMINI_STREAM_UPDATE':
                 this.handleStreamUpdate(request);
                 return;

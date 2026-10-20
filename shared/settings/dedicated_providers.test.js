@@ -83,13 +83,13 @@ describe('dedicated API provider settings', () => {
     });
 
     it('creates DashScope enable_thinking payloads from thinking settings', () => {
-        expect(createDedicatedApiChatPayload('dashscope', { thinkingLevel: 'minimal' })).toEqual({
+        expect(createDedicatedApiChatPayload('dashscope', { thinkingLevel: 'off' })).toEqual({
             enable_thinking: false,
             stream_options: {
                 include_usage: true,
             },
         });
-        expect(createDedicatedApiChatPayload('dashscope', { thinkingLevel: 'medium' })).toEqual({
+        expect(createDedicatedApiChatPayload('dashscope', { thinkingLevel: 'on' })).toEqual({
             enable_thinking: true,
             stream_options: {
                 include_usage: true,

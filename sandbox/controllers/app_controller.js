@@ -8,10 +8,6 @@ import {
     DEFAULT_SIDE_PANEL_SCOPE,
     DEFAULT_STORED_GEMINI_MODEL,
 } from '../../shared/config/constants.js';
-import {
-    getNextWebThinkingLevel,
-    normalizeWebThinkingLevelForModel,
-} from '../../shared/models/web_thinking.js';
 import { isDedicatedApiProvider } from '../../shared/settings/dedicated_providers.js';
 import { formatLiveArtifactFollowupPrompt } from '../core/live_artifacts.js';
 import { buildSessionStorageReport } from '../core/session_storage_report.js';
@@ -72,6 +68,13 @@ export class AppController {
                 getSessionStorageReport: () =>
                     buildSessionStorageReport(sessionManager.getPersistableSessions()),
                 deleteSessions: (sessionIds) => this.sessionFlow.handleDeleteSessions(sessionIds),
+            });
+        }
+
+        if (this.ui.setContextWindowHooks) {
+            this.ui.setContextWindowHooks({
+                getContextWindow: (payload) =>
+                    sendToBackground({ action: 'GET_CONTEXT_WINDOW', ...payload }),
             });
         }
 
@@ -289,67 +292,14 @@ export class AppController {
             };
         }
         if (provider === 'web') {
-            this.syncWebThinkingForModel(model, { saveIfChanged: true });
+            this.ui.syncThinkingForModel?.(model, { saveIfChanged: true });
+        } else {
+            this.ui.syncThinkingForModel?.(model);
         }
         window.parent.postMessage(
             {
                 action: 'SAVE_MODEL',
                 payload: { provider, model },
-            },
-            '*'
-        );
-    }
-
-    syncWebThinkingForModel(model = this.getSelectedModel(), { saveIfChanged = false } = {}) {
-        const connectionData = this.ui.settings?.connectionData;
-        if (!connectionData) return null;
-
-        const provider =
-            connectionData.provider ||
-            (connectionData.useOfficialApi === true ? 'official' : DEFAULT_PROVIDER);
-        if (provider !== 'web') {
-            this.ui.updateWebThinkingToggle?.(connectionData);
-            return null;
-        }
-
-        const previousLevel = connectionData.webThinkingLevel;
-        const nextLevel = normalizeWebThinkingLevelForModel(model, previousLevel);
-        connectionData.webThinkingLevel = nextLevel;
-        this.ui.updateWebThinkingToggle?.(connectionData);
-
-        if (saveIfChanged && previousLevel && previousLevel !== nextLevel) {
-            window.parent.postMessage(
-                {
-                    action: 'SAVE_WEB_THINKING_LEVEL',
-                    payload: nextLevel,
-                },
-                '*'
-            );
-        }
-
-        return nextLevel;
-    }
-
-    handleWebThinkingToggle() {
-        const connectionData = this.ui.settings?.connectionData;
-        if (!connectionData) return;
-
-        const provider =
-            connectionData.provider ||
-            (connectionData.useOfficialApi === true ? 'official' : DEFAULT_PROVIDER);
-        if (provider !== 'web') {
-            this.ui.updateWebThinkingToggle?.(connectionData);
-            return;
-        }
-
-        const model = this.getSelectedModel();
-        const nextLevel = getNextWebThinkingLevel(model, connectionData.webThinkingLevel);
-        connectionData.webThinkingLevel = nextLevel;
-        this.ui.updateWebThinkingToggle?.(connectionData);
-        window.parent.postMessage(
-            {
-                action: 'SAVE_WEB_THINKING_LEVEL',
-                payload: nextLevel,
             },
             '*'
         );

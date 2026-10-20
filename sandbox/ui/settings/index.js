@@ -33,8 +33,6 @@ import { SettingsView } from './view.js';
 import { compareVersionStrings, fetchGithubMetadata } from './github_metadata.js';
 import { formatLogDownloadText } from './log_download.js';
 import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
     DEFAULT_MCP_HTTP_URL,
     DEFAULT_MCP_TRANSPORT,
     DEFAULT_OFFICIAL_BASE_URL,
@@ -45,15 +43,19 @@ import {
     DEFAULT_THINKING_LEVEL,
     normalizeShortcutDefaults,
 } from '../../../shared/config/constants.js';
-import { createDefaultMcpServer } from '../../../shared/settings/connection.js';
+import {
+    createDefaultMcpServer,
+    getFirstConfiguredModelForProvider,
+    getProviderConnectionSettings,
+} from '../../../shared/settings/connection.js';
 import { DEFAULT_WEB_THINKING_LEVEL } from '../../../shared/models/web_thinking.js';
+import { normalizeContextWindowTokens } from '../../../shared/models/context_window.js';
 import { normalizeDedicatedApiSettingsPayload } from '../../../shared/settings/dedicated_providers.js';
 import { normalizeCustomSelectionTools } from '../../../shared/settings/selection_tools.js';
 import {
     buildConnectionSettingsForSave,
     buildContextSettingsForSave,
     buildGeneralSettingsForSave,
-    normalizeRecentTurns,
 } from './settings_save.js';
 
 export class SettingsController {
@@ -74,9 +76,10 @@ export class SettingsController {
         this.sidebarBehavior = 'auto';
         this.sidePanelScope = DEFAULT_SIDE_PANEL_SCOPE;
         this.contextSettings = {
-            mode: DEFAULT_CONTEXT_MODE,
-            recentTurns: DEFAULT_CONTEXT_RECENT_TURNS,
+            windowAuto: true,
+            windowTokens: 0,
         };
+        this.contextWindowHooks = null;
 
         this.connectionData = {
             provider: DEFAULT_PROVIDER,
@@ -137,6 +140,7 @@ export class SettingsController {
                 this.sidePanelScope = value || DEFAULT_SIDE_PANEL_SCOPE;
                 saveSidePanelScopeToStorage(this.sidePanelScope);
             },
+            onProviderChange: () => this.requestContextWindow({ force: true }),
             onDownloadLogs: () => this.downloadLogs(),
             onExportHistory: () => this.exportHistory(),
             onImportHistory: (payload) => this.importHistory(payload),
@@ -171,6 +175,43 @@ export class SettingsController {
         this.sessionStorageHooks = hooks || {};
     }
 
+    setContextWindowHooks(hooks = {}) {
+        this.contextWindowHooks = hooks || {};
+    }
+
+    requestContextWindow({ force = false } = {}) {
+        const manualInput = this.view.connection?.elements?.contextWindowTokens?.value?.trim();
+        if (manualInput) return false;
+
+        const sectionRequest = this.view.connection?.getContextWindowRequest?.();
+        if (sectionRequest?.provider === 'web') return false;
+        if (sectionRequest?.model) {
+            this.contextWindowHooks?.getContextWindow?.({ ...sectionRequest, force });
+            return true;
+        }
+
+        if (!this.contextSettings.windowAuto) return false;
+        const settings = this.connectionData || {};
+        const provider = settings.provider || DEFAULT_PROVIDER;
+        if (provider === 'web') return false;
+
+        const model = getFirstConfiguredModelForProvider(provider, settings);
+        if (!model) return false;
+
+        const { baseUrl, apiKey } = getProviderConnectionSettings(provider, settings);
+        this.contextWindowHooks?.getContextWindow?.({ provider, model, baseUrl, apiKey, force });
+        return true;
+    }
+
+    updateContextWindowResult(result) {
+        if (!result || result.ok !== true) {
+            this.view.connection?.setContextWindowFallback?.();
+            return;
+        }
+
+        this.view.connection?.setContextWindowResult?.(result);
+    }
+
     /**
      * Clears the progress state of settings requests that never got a result
      * (e.g. the background message failed outright).
@@ -179,6 +220,10 @@ export class SettingsController {
     handleBackgroundRequestFailure(action, error = '') {
         if (action === 'GET_PROVIDER_MODELS') {
             this.view.connection?.setProviderModelListStatus?.(error, true);
+            return true;
+        }
+        if (action === 'GET_CONTEXT_WINDOW') {
+            this.view.connection?.setContextWindowFallback?.();
             return true;
         }
         if (action === 'MCP_TEST_CONNECTION' || action === 'MCP_LIST_TOOLS') {
@@ -284,14 +329,17 @@ export class SettingsController {
         this.sidePanelScope = generalSettings.sidePanelScope;
         saveSidePanelScopeToStorage(this.sidePanelScope);
 
-        this.contextSettings = buildContextSettingsForSave(formData);
+        this.contextSettings = buildContextSettingsForSave(formData.connection);
         saveContextSettingsToStorage(this.contextSettings);
+        this.view.setContextSettings(this.contextSettings);
 
         this.connectionData = buildConnectionSettingsForSave(
             formData.connection,
             this.connectionData
         );
         saveConnectionSettingsToStorage(this.connectionData);
+
+        this.requestContextWindow({ force: true });
 
         if (this.callbacks.onSettingsChanged) {
             this.callbacks.onSettingsChanged(this.connectionData, {
@@ -450,6 +498,7 @@ export class SettingsController {
         }
 
         this.view.setConnectionSettings(this.connectionData);
+        this.requestContextWindow({ force: true });
     }
 
     updateAppVersion(version) {
@@ -464,8 +513,8 @@ export class SettingsController {
 
     updateContextSettings(settings) {
         this.contextSettings = {
-            mode: settings?.mode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE,
-            recentTurns: normalizeRecentTurns(settings?.recentTurns),
+            windowAuto: settings?.windowAuto !== false,
+            windowTokens: normalizeContextWindowTokens(settings?.windowTokens, 0),
         };
         this.view.setContextSettings(this.contextSettings);
     }
@@ -526,7 +575,8 @@ export class SettingsController {
             const errorMessage = result && result.error ? result.error : t('modelListFailed');
             this.view.connection.setProviderModelListStatus(
                 formatT('mcpFailed', { error: errorMessage }),
-                true
+                true,
+                result?.provider
             );
             return;
         }
@@ -535,6 +585,7 @@ export class SettingsController {
             result.provider || null,
             Array.isArray(result.models) ? result.models : []
         );
+        this.requestContextWindow({ force: true });
     }
 
     updateSidebarBehavior(behavior) {

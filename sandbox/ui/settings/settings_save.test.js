@@ -5,7 +5,6 @@ import {
     buildContextSettingsForSave,
     normalizeAccountIndices,
 } from './settings_save.js';
-import { DEFAULT_CONTEXT_RECENT_TURNS } from '../../../shared/config/constants.js';
 
 describe('settings save helpers', () => {
     it('normalizes comma-separated account indices before saving', () => {
@@ -13,18 +12,14 @@ describe('settings save helpers', () => {
         expect(normalizeAccountIndices('abc')).toBe('0');
     });
 
-    it('clamps context recent turns to the supported settings range', () => {
-        expect(
-            buildContextSettingsForSave({ contextMode: 'recent', contextRecentTurns: 99 })
-        ).toEqual({
-            mode: 'recent',
-            recentTurns: 50,
+    it('keeps the manual context window override when set', () => {
+        expect(buildContextSettingsForSave({ contextWindowTokens: '200000' })).toEqual({
+            windowAuto: false,
+            windowTokens: 200000,
         });
-        expect(
-            buildContextSettingsForSave({ contextMode: 'summary', contextRecentTurns: 'bad' })
-        ).toMatchObject({
-            mode: 'summary',
-            recentTurns: DEFAULT_CONTEXT_RECENT_TURNS,
+        expect(buildContextSettingsForSave({ contextWindowTokens: '' })).toEqual({
+            windowAuto: true,
+            windowTokens: 0,
         });
     });
 
@@ -80,5 +75,33 @@ describe('settings save helpers', () => {
                 }),
             }),
         });
+    });
+
+    it('keeps header-selected thinking levels while saving connection form data', () => {
+        const saved = buildConnectionSettingsForSave(
+            {
+                provider: 'anthropic',
+                thinkingLevel: 'low',
+                openaiThinkingLevel: 'low',
+                dedicatedApiProviders: {
+                    anthropic: {
+                        provider: 'anthropic',
+                        model: 'claude-sonnet-5-5',
+                        thinkingLevel: 'low',
+                    },
+                },
+            },
+            {
+                thinkingLevel: 'max',
+                openaiThinkingLevel: 'xhigh',
+                dedicatedApiProviders: {
+                    anthropic: { provider: 'anthropic', thinkingLevel: 'max' },
+                },
+            }
+        );
+
+        expect(saved.thinkingLevel).toBe('max');
+        expect(saved.openaiThinkingLevel).toBe('xhigh');
+        expect(saved.dedicatedApiProviders.anthropic.thinkingLevel).toBe('max');
     });
 });

@@ -311,6 +311,35 @@ describe('PromptController.send', () => {
         );
     });
 
+    it('includes the current provider thinking level in prompt requests', () => {
+        const { controller, ui } = createPromptHarness();
+        ui.settings.connectionData = {
+            provider: 'openai',
+            openaiModel: 'gpt-6-astra, gpt-6-mini',
+            openaiThinkingLevel: 'max',
+        };
+
+        expect(controller.buildRequestPayload('Hello', [], 'session-1')).toEqual(
+            expect.objectContaining({
+                thinkingLevel: 'max',
+                configuredModels: 'gpt-6-astra, gpt-6-mini',
+            })
+        );
+    });
+
+    it('does not send a generic thinking level for Gemini Web requests', () => {
+        const { controller, ui } = createPromptHarness();
+        ui.settings.connectionData = {
+            provider: 'web',
+            webThinkingLevel: 'minimal',
+        };
+
+        const payload = controller.buildRequestPayload('Hello', [], 'session-1');
+
+        expect(payload.thinkingLevel).toBeUndefined();
+        expect(payload.webThinkingLevel).toBe('minimal');
+    });
+
     it('includes standalone host context in browser-control prompt requests', () => {
         const { app, controller } = createPromptHarness();
         app.browserControlActive = true;

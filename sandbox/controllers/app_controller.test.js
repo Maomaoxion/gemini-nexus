@@ -54,7 +54,7 @@ function createUi() {
         setPageContextAvailable: vi.fn(),
         setLoading: vi.fn(),
         updateBrowserControlState: vi.fn(),
-        updateWebThinkingToggle: vi.fn(),
+        syncThinkingForModel: vi.fn(),
         setBrowserControlCallbacks: vi.fn(),
         updateModelList: vi.fn(),
         openTabSelector: vi.fn(),
@@ -276,46 +276,24 @@ describe('AppController session restore behavior', () => {
         );
     });
 
-    it('toggles Gemini Web thinking between high and the model fast level', () => {
+    it('normalizes the thinking level after a Web model change', () => {
         const { app, ui } = createAppHarness();
-        ui.modelSelect.value = 'cf41b0e0dd7d53e5';
-        ui.settings.connectionData = { provider: 'web', webThinkingLevel: 'high' };
+        ui.settings.connectionData.provider = 'web';
 
-        app.handleWebThinkingToggle();
+        app.handleModelChange('cf41b0e0dd7d53e5');
 
-        expect(ui.settings.connectionData.webThinkingLevel).toBe('minimal');
-        expect(ui.updateWebThinkingToggle).toHaveBeenCalledWith(ui.settings.connectionData);
-        expect(window.parent.postMessage).toHaveBeenCalledWith(
-            {
-                action: 'SAVE_WEB_THINKING_LEVEL',
-                payload: 'minimal',
-            },
-            '*'
-        );
-
-        app.handleWebThinkingToggle();
-
-        expect(ui.settings.connectionData.webThinkingLevel).toBe('high');
-        expect(window.parent.postMessage).toHaveBeenCalledWith(
-            {
-                action: 'SAVE_WEB_THINKING_LEVEL',
-                payload: 'high',
-            },
-            '*'
-        );
+        expect(ui.syncThinkingForModel).toHaveBeenCalledWith('cf41b0e0dd7d53e5', {
+            saveIfChanged: true,
+        });
     });
 
-    it('does not toggle Web thinking for non-Web providers', () => {
+    it('keeps the stored thinking level when switching API models', () => {
         const { app, ui } = createAppHarness();
-        ui.settings.connectionData = { provider: 'official', webThinkingLevel: 'high' };
+        ui.settings.connectionData.provider = 'openai';
 
-        app.handleWebThinkingToggle();
+        app.handleModelChange('gpt-5');
 
-        expect(window.parent.postMessage).not.toHaveBeenCalledWith(
-            expect.objectContaining({ action: 'SAVE_WEB_THINKING_LEVEL' }),
-            '*'
-        );
-        expect(ui.updateWebThinkingToggle).toHaveBeenCalledWith(ui.settings.connectionData);
+        expect(ui.syncThinkingForModel).toHaveBeenCalledWith('gpt-5');
     });
 
     it('toggles Live Artifacts mode and updates the chat tool state', () => {

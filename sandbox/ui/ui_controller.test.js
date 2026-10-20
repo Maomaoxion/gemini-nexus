@@ -48,3 +48,28 @@ describe('UIController host context', () => {
         expect(btn.getAttribute('aria-pressed')).toBe('false');
     });
 });
+
+describe('UIController model and thinking controls', () => {
+    it('cycles the active provider thinking level and persists it', () => {
+        const controller = Object.create(UIController.prototype);
+        controller.settings = {
+            connectionData: { provider: 'openai', openaiThinkingLevel: 'low' },
+        };
+        controller.modelSelect = { value: 'gpt-6-astra' };
+        controller.modelPicker = { setThinking: vi.fn() };
+        const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {});
+
+        expect(controller.cycleThinkingLevel()).toBe('medium');
+
+        expect(controller.settings.connectionData.openaiThinkingLevel).toBe('medium');
+        expect(controller.modelPicker.setThinking).toHaveBeenCalled();
+        expect(postMessage).toHaveBeenCalledWith(
+            {
+                action: 'SAVE_THINKING_LEVEL',
+                payload: { provider: 'openai', level: 'medium' },
+            },
+            '*'
+        );
+        postMessage.mockRestore();
+    });
+});

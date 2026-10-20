@@ -5,6 +5,10 @@ import {
     isDedicatedApiProvider,
 } from '../../../../shared/settings/dedicated_providers.js';
 import { t } from '../../../core/i18n.js';
+import {
+    CONTEXT_WINDOW_MIN_TOKENS,
+    normalizeContextWindowTokens,
+} from '../../../../shared/models/context_window.js';
 
 export function bindConnectionSectionEvents(section) {
     const { providerSelect } = section.elements;
@@ -12,6 +16,7 @@ export function bindConnectionSectionEvents(section) {
         providerSelect.addEventListener('change', (event) => {
             section._saveDedicatedApiProviderEdits(section.activeProvider);
             section.updateVisibility(event.target.value);
+            section.callbacks?.onProviderChange?.(event.target.value);
         });
     }
 
@@ -20,11 +25,11 @@ export function bindConnectionSectionEvents(section) {
         dedicatedApiRefreshModels.addEventListener('click', () => {
             const provider = providerSelect?.value || section.activeProvider;
             const config = getDedicatedApiProviderConfig(provider);
-            if (!isDedicatedApiProvider(provider) || !config?.modelListUrl) return;
+            if (!isDedicatedApiProvider(provider)) return;
 
             section._saveDedicatedApiProviderEdits(provider);
             const providerSettings = section.dedicatedApiProviders[provider] || {};
-            section.setProviderModelListStatus(t('modelListFetching'));
+            section.setProviderModelListStatus(t('modelListFetching'), false, provider);
             dedicatedApiRefreshModels.disabled = true;
             sendToBackground({
                 action: 'GET_PROVIDER_MODELS',
@@ -32,6 +37,45 @@ export function bindConnectionSectionEvents(section) {
                 baseUrl: providerSettings.baseUrl || config.defaultBaseUrl,
                 apiKey: providerSettings.apiKey || '',
             });
+        });
+    }
+
+    const { officialRefreshModels, openaiRefreshModels } = section.elements;
+    if (officialRefreshModels) {
+        officialRefreshModels.addEventListener('click', () => {
+            section.setProviderModelListStatus(t('modelListFetching'), false, 'official');
+            officialRefreshModels.disabled = true;
+            sendToBackground({
+                action: 'GET_PROVIDER_MODELS',
+                provider: 'official',
+                baseUrl: section.elements.officialBaseUrl?.value.trim() || '',
+                apiKey: section.elements.apiKeyInput?.value.trim() || '',
+            });
+        });
+    }
+
+    if (openaiRefreshModels) {
+        openaiRefreshModels.addEventListener('click', () => {
+            section.setProviderModelListStatus(t('modelListFetching'), false, 'openai');
+            openaiRefreshModels.disabled = true;
+            sendToBackground({
+                action: 'GET_PROVIDER_MODELS',
+                provider: 'openai',
+                baseUrl: section.elements.openaiBaseUrl?.value.trim() || '',
+                apiKey: section.elements.openaiApiKey?.value.trim() || '',
+            });
+        });
+    }
+
+    const { contextWindowTokens } = section.elements;
+    if (contextWindowTokens) {
+        contextWindowTokens.addEventListener('change', (event) => {
+            if (!event.target.value.trim()) return;
+            const value = normalizeContextWindowTokens(
+                event.target.value,
+                CONTEXT_WINDOW_MIN_TOKENS
+            );
+            event.target.value = String(value);
         });
     }
 

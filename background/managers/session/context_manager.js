@@ -1,11 +1,15 @@
 import { sendOfficialMessage } from '../../../services/providers/official.js';
 import { sendOpenAIMessage } from '../../../services/providers/openai_compatible.js';
 import { sendAnthropicMessage } from '../../../services/providers/anthropic.js';
+import { DEFAULT_OPENAI_MODEL } from '../../../shared/config/constants.js';
 import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-    DEFAULT_OPENAI_MODEL,
-} from '../../../shared/config/constants.js';
+    estimateHistoryTokens,
+    estimateMessageTokens,
+    estimateTextTokens,
+    getAutoCompactBudget,
+    getBuiltinContextWindow,
+} from '../../../shared/models/context_window.js';
+import { resolveContextWindow } from './context_window_resolver.js';
 import { describeMessageAttachmentMarkers } from '../../../shared/attachments/index.js';
 import {
     createDedicatedApiChatPayload,
@@ -18,10 +22,10 @@ import {
 } from '../../../shared/settings/dedicated_providers.js';
 import { getSessionContextSummary, updateSessionContextSummary } from '../history_manager.js';
 
-const MIN_RECENT_TURNS = 1;
-const MAX_RECENT_TURNS = 50;
 const MAX_SUMMARY_MESSAGE_CHARS = 4000;
 const MAX_SUMMARY_TRANSCRIPT_CHARS = 60000;
+// Limit how long a turn waits for context metadata.
+const CONTEXT_WINDOW_WAIT_MS = 1500;
 const HIDDEN_COMPRESSED_MESSAGE_ROLE = 'user';
 const HIDDEN_COMPRESSED_MESSAGE_PREFIX = '[Hidden compressed conversation history]\n';
 
@@ -58,16 +62,6 @@ Keep durable information only:
 Discard small talk, duplicate details, transient wording, and anything already obsolete.
 Return only the updated hidden history message. Use the user's language when possible.`;
 
-function normalizeContextMode(mode) {
-    return mode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE;
-}
-
-function normalizeRecentTurns(value) {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) return DEFAULT_CONTEXT_RECENT_TURNS;
-    return Math.min(MAX_RECENT_TURNS, Math.max(MIN_RECENT_TURNS, parsed));
-}
-
 function isHiddenCompressedMessage(message) {
     return (
         typeof message?.text === 'string' &&
@@ -95,31 +89,6 @@ function hasOfficialFunctionResponseParts(parts) {
     return Array.isArray(parts) && parts.some((part) => part?.functionResponse);
 }
 
-function isConversationUserTurn(message) {
-    return (
-        message?.role === 'user' &&
-        !isToolOutputMessage(message) &&
-        !isHiddenCompressedMessage(message) &&
-        !isOfficialFunctionResponseMessage(message)
-    );
-}
-
-function getRecentCutoff(messages, recentTurns) {
-    if (!Array.isArray(messages) || messages.length === 0) return 0;
-
-    let userTurns = 0;
-    for (let i = messages.length - 1; i >= 0; i--) {
-        if (isConversationUserTurn(messages[i])) {
-            userTurns++;
-            if (userTurns === recentTurns) {
-                return i;
-            }
-        }
-    }
-
-    return 0;
-}
-
 // If the recent-turn slice would START with a tool-output (or official
 // function-response) message, that message is an orphaned result: its
 // originating tool-call (the preceding AI message) was dropped by the trim,
@@ -140,18 +109,6 @@ function snapCutoffToPreserveToolPairing(messages, cutoffIndex) {
         break;
     }
     return adjusted;
-}
-
-function countUserTurns(messages) {
-    if (!Array.isArray(messages)) return 0;
-    return messages.reduce(
-        (count, message) => (isConversationUserTurn(message) ? count + 1 : count),
-        0
-    );
-}
-
-function hasRecentTurnThreshold(messages, recentTurns) {
-    return countUserTurns(messages) >= recentTurns;
 }
 
 function getSummaryBoundary(summary, historyLength) {
@@ -422,17 +379,13 @@ async function resolveCompressedMessage(
     }
 
     const compressionPrompt = buildCompressionPrompt(messagesToCompress);
-    onStatus?.('compressing', {
-        recentTurns: normalizeRecentTurns(settings.contextRecentTurns),
-    });
+    onStatus?.('compressing');
 
     const text = normalizeCompressedMessageText(
         await generateCompressedMessage(compressionPrompt, settings, signal)
     );
     if (!text) {
-        onStatus?.('compression_failed', {
-            recentTurns: normalizeRecentTurns(settings.contextRecentTurns),
-        });
+        onStatus?.('compression_failed');
         throw new Error('Compression returned an empty response.');
     }
 
@@ -447,11 +400,42 @@ async function resolveCompressedMessage(
         clearCompressionFailure(sessionId);
     }
 
-    onStatus?.('compressed', {
-        recentTurns: normalizeRecentTurns(settings.contextRecentTurns),
-    });
+    onStatus?.('compressed');
 
     return text;
+}
+
+function withTimeout(promise, fallback, timeoutMs) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+        };
+        const timer = setTimeout(() => finish(fallback), timeoutMs);
+        promise.then(finish, () => finish(fallback));
+    });
+}
+
+function trimHistoryToTokenBudget(messages, triggerTokens, overheadTokens = 0) {
+    if (!Array.isArray(messages) || messages.length === 0) return [];
+
+    let cutoff = messages.length;
+    let total = overheadTokens;
+    for (let index = messages.length - 1; index >= 0; index--) {
+        const cost = estimateMessageTokens(messages[index]);
+        // The newest message is always kept so a request is never left empty.
+        if (cutoff < messages.length && total + cost > triggerTokens) break;
+        total += cost;
+        cutoff = index;
+    }
+
+    if (cutoff >= messages.length) return messages.slice(-1);
+    const safeCutoff = snapCutoffToPreserveToolPairing(messages, cutoff);
+    const trimmed = messages.slice(safeCutoff);
+    return trimmed.length > 0 ? trimmed : messages.slice(-1);
 }
 
 export async function prepareManagedContext(request, settings, history, signal, onStatus = null) {
@@ -473,136 +457,83 @@ export async function prepareManagedContext(request, settings, history, signal, 
         };
     }
 
-    const recentTurns = normalizeRecentTurns(settings.contextRecentTurns);
-    const mode = normalizeContextMode(settings.contextMode);
-
-    if (mode === 'recent') {
-        const cutoff = getRecentCutoff(sourceHistory, recentTurns);
-        // Move the cutoff forward past any leading tool output if the raw slice
-        // would split a tool-call/result pair, so a provider never receives an
-        // orphaned tool output (or an orphaned tool call) across the boundary.
-        const safeCutoff = snapCutoffToPreserveToolPairing(sourceHistory, cutoff);
-        const recentHistory = safeCutoff > 0 ? sourceHistory.slice(safeCutoff) : sourceHistory;
-        return {
-            history: recentHistory,
-            systemInstruction: request.systemInstruction || '',
-        };
-    }
+    const contextInfo = await withTimeout(
+        resolveContextWindow({
+            provider: settings.provider,
+            model: request.model,
+            settings,
+            signal,
+        }),
+        { tokens: getBuiltinContextWindow(request.model), source: 'default' },
+        CONTEXT_WINDOW_WAIT_MS
+    );
+    const budget = getAutoCompactBudget(contextInfo.tokens);
+    const overheadTokens =
+        estimateTextTokens(request.systemInstruction || '') +
+        estimateTextTokens(request.text || '');
+    const estimateTokens = (messages) => estimateHistoryTokens(messages) + overheadTokens;
 
     const existingSummary = await getSessionContextSummary(request.sessionId);
     const existingBoundary = getSummaryBoundary(existingSummary, sourceHistory.length);
 
+    let currentHistory = sourceHistory;
     if (existingBoundary > 0) {
         const tailHistory = sourceHistory.slice(existingBoundary);
         // Preserve tool-response batch linkage from the tail so the compressed
         // wrapper stays a valid function-response entry for providers that
-        // pair functionCall/functionResponse (Gemini API). Without this the
-        // wrapper is a plain user message and a subsequent request's
-        // officialUserParts referencing the batchId finds no match.
-        const tailToolMetadata = collectPreservedToolMetadata(tailHistory);
-        const hiddenHistory = buildHiddenCompressedMessage(existingSummary.text, tailToolMetadata);
-
-        if (!hasRecentTurnThreshold(tailHistory, recentTurns)) {
-            return {
-                history: [hiddenHistory, ...tailHistory],
-                systemInstruction: request.systemInstruction || '',
-            };
-        }
-
-        // A summary model that just failed is not retried on every turn.
-        if (isCompressionCoolingDown(request.sessionId)) {
-            return {
-                history: [hiddenHistory, ...tailHistory],
-                systemInstruction: request.systemInstruction || '',
-            };
-        }
-
-        try {
-            const compressedText = await resolveCompressedMessage(
-                request.sessionId,
-                [hiddenHistory, ...tailHistory],
-                sourceHistory.length,
-                {
-                    ...settings,
-                    summaryModel: request.model,
-                },
-                signal,
-                onStatus,
-                existingSummary
-            );
-            return {
-                history: [buildHiddenCompressedMessage(compressedText, tailToolMetadata)],
-                systemInstruction: request.systemInstruction || '',
-            };
-        } catch (error) {
-            console.warn(
-                '[Gemini Nexus] Failed to compress hidden history and tail, falling back to existing hidden history and unsummarized tail:',
-                error
-            );
-            markCompressionFailure(request.sessionId);
-            onStatus?.('compression_failed', {
-                recentTurns,
-            });
-            return {
-                history: [hiddenHistory, ...tailHistory],
-                systemInstruction: request.systemInstruction || '',
-            };
-        }
+        // pair functionCall/functionResponse (Gemini API).
+        const hiddenHistory = buildHiddenCompressedMessage(
+            existingSummary.text,
+            collectPreservedToolMetadata(tailHistory)
+        );
+        currentHistory = [hiddenHistory, ...tailHistory];
     }
 
-    if (!hasRecentTurnThreshold(sourceHistory, recentTurns)) {
+    if (estimateTokens(currentHistory) <= budget.triggerTokens) {
         return {
-            history: sourceHistory,
+            history: currentHistory,
             systemInstruction: request.systemInstruction || '',
         };
     }
 
-    const recentTurnsFallback = () => {
-        const cutoff = snapCutoffToPreserveToolPairing(
-            sourceHistory,
-            getRecentCutoff(sourceHistory, recentTurns)
-        );
-        return cutoff > 0 ? sourceHistory.slice(cutoff) : sourceHistory;
-    };
-
-    // A summary model that just failed is not retried on every turn.
     if (isCompressionCoolingDown(request.sessionId)) {
         return {
-            history: recentTurnsFallback(),
+            history: trimHistoryToTokenBudget(sourceHistory, budget.triggerTokens, overheadTokens),
             systemInstruction: request.systemInstruction || '',
         };
     }
 
-    // Capture tool-response linkage from the full history being compressed
-    // so the single compressed wrapper preserves batchId / officialContent.
-    const fullToolMetadata = collectPreservedToolMetadata(sourceHistory);
     try {
         const compressedText = await resolveCompressedMessage(
             request.sessionId,
-            sourceHistory,
+            currentHistory,
             sourceHistory.length,
             {
                 ...settings,
                 summaryModel: request.model,
             },
             signal,
-            onStatus
+            onStatus,
+            existingSummary
         );
         return {
-            history: [buildHiddenCompressedMessage(compressedText, fullToolMetadata)],
+            history: [
+                buildHiddenCompressedMessage(
+                    compressedText,
+                    collectPreservedToolMetadata(currentHistory)
+                ),
+            ],
             systemInstruction: request.systemInstruction || '',
         };
     } catch (error) {
         console.warn(
-            '[Gemini Nexus] Failed to compress history, falling back to recent turns:',
+            '[Gemini Nexus] Failed to compress history, falling back to a token-budget trim:',
             error
         );
         markCompressionFailure(request.sessionId);
-        onStatus?.('compression_failed', {
-            recentTurns,
-        });
+        onStatus?.('compression_failed');
         return {
-            history: recentTurnsFallback(),
+            history: trimHistoryToTokenBudget(sourceHistory, budget.triggerTokens, overheadTokens),
             systemInstruction: request.systemInstruction || '',
         };
     }

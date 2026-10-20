@@ -15,7 +15,9 @@ export class SettingsView {
         this._escapeKeyHandler = null;
         this._saveFeedbackTimer = null;
 
-        this.connection = new ConnectionSection();
+        this.connection = new ConnectionSection({
+            onProviderChange: (provider) => this.fire('onProviderChange', provider),
+        });
 
         // Forward exactly the events GeneralSection fires (see general.js); a key
         // here with no matching `fire()` in the section is a silently dead callback.
@@ -182,8 +184,6 @@ export class SettingsView {
             accountIndices: generalData.accountIndices,
             sidebarBehavior: generalData.sidebarBehavior,
             sidePanelScope: generalData.sidePanelScope,
-            contextMode: generalData.contextMode,
-            contextRecentTurns: generalData.contextRecentTurns,
         };
     }
 
@@ -277,7 +277,7 @@ export class SettingsView {
     }
 
     setContextSettings(settings) {
-        this.general.setContextSettings(settings);
+        this.connection.setContextSettings(settings);
     }
 
     setConnectionSettings(data) {

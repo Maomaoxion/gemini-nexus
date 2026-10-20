@@ -3,14 +3,16 @@ import { bindToolButtonEvents } from './tool_button_events.js';
 import { LIVE_ARTIFACT_FOLLOWUP_EVENT } from '../core/live_artifacts.js';
 
 export function bindAppEvents(app, ui, setResizeRef) {
-    ['new-chat-composer-btn', 'new-chat-sidebar-btn', 'collapsed-new-chat-btn'].forEach(
-        (buttonId) => {
-            const newChatBtn = document.getElementById(buttonId);
-            if (newChatBtn) {
-                newChatBtn.addEventListener('click', () => app.handleNewChat());
-            }
+    [
+        'new-chat-composer-btn',
+        'new-chat-sidebar-btn',
+        'collapsed-new-chat-btn',
+    ].forEach((buttonId) => {
+        const newChatBtn = document.getElementById(buttonId);
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', () => app.handleNewChat());
         }
-    );
+    });
 
     const newGroupSidebarBtn = document.getElementById('new-group-sidebar-btn');
     if (newGroupSidebarBtn) {
@@ -20,11 +22,6 @@ export function bindAppEvents(app, ui, setResizeRef) {
     const tabSwitcherBtn = document.getElementById('tab-switcher-btn');
     if (tabSwitcherBtn) {
         tabSwitcherBtn.addEventListener('click', () => app.handleTabSwitcher());
-    }
-
-    const webThinkingToggle = document.getElementById('web-thinking-toggle');
-    if (webThinkingToggle) {
-        webThinkingToggle.addEventListener('click', () => app.handleWebThinkingToggle());
     }
 
     const openFullPageBtn = document.getElementById('open-full-page-btn');

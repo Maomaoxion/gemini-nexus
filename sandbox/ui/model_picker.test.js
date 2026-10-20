@@ -13,9 +13,23 @@ function installPickerDom() {
             <button id="model-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="model-picker-listbox">
                 <span class="model-picker-current"></span>
             </button>
-            <button id="web-thinking-toggle" type="button"></button>
             <div id="model-picker-menu" hidden>
                 <div id="model-picker-listbox" role="listbox"></div>
+                <div id="model-picker-effort" class="model-picker-effort" hidden>
+                    <div class="model-picker-effort-header">
+                        <span class="model-picker-effort-icon"></span>
+                        <span class="model-picker-effort-label">
+                            <span id="model-picker-effort-label">Effort</span>
+                            (<span id="model-picker-effort-value"></span>)
+                        </span>
+                    </div>
+                    <div class="model-picker-effort-control">
+                        <div class="model-picker-effort-track"></div>
+                        <div class="model-picker-effort-fill"></div>
+                        <div id="model-picker-effort-dots" class="model-picker-effort-dots"></div>
+                        <input id="model-picker-effort-slider" class="model-picker-effort-slider" type="range" min="0" max="0" step="1" value="0" />
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -92,16 +106,68 @@ describe('model picker', () => {
         expect(document.getElementById('model-picker-menu').hidden).toBe(true);
     });
 
-    it('does not steal keyboard activation from the adjacent thinking toggle', () => {
+    it('does not steal keyboard activation from the effort slider', () => {
         const select = document.getElementById('model-select');
-        initModelPicker(select);
-        const toggle = document.getElementById('web-thinking-toggle');
+        const controller = initModelPicker(select);
+        controller.setThinking({
+            options: [
+                { value: 'low', label: 'low' },
+                { value: 'high', label: 'high' },
+            ],
+            value: 'low',
+            visible: true,
+        });
+        const slider = document.getElementById('model-picker-effort-slider');
 
-        toggle.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        slider.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
 
         expect(document.getElementById('model-picker-menu').hidden).toBe(true);
         expect(document.getElementById('model-picker-trigger').getAttribute('aria-expanded')).toBe(
             'false'
+        );
+    });
+
+    it('shows the selected effort in the trigger and slider', () => {
+        const select = document.getElementById('model-select');
+        const onSelect = vi.fn();
+        const controller = initModelPicker(select);
+        controller.setHandlers({ onSelectThinking: onSelect });
+        const options = ['low', 'medium', 'high', 'xhigh', 'max'].map((value) => ({
+            value,
+            label: value,
+        }));
+        controller.setThinking({ options, value: 'max', visible: true });
+
+        const slider = document.getElementById('model-picker-effort-slider');
+        const valueLabel = document.getElementById('model-picker-effort-value');
+
+        expect(document.querySelector('.model-picker-current').textContent).toBe('3 Flash · max');
+        expect(slider.max).toBe('4');
+        expect(slider.value).toBe('4');
+        expect(valueLabel.textContent).toBe('max');
+        const dots = [...document.querySelectorAll('.model-picker-effort-dots span')];
+        expect(dots).toHaveLength(5);
+        expect(dots[0].style.getPropertyValue('--effort-ratio')).toBe('0');
+        expect(dots[4].style.getPropertyValue('--effort-ratio')).toBe('1');
+        expect(
+            document
+                .querySelector('.model-picker-effort-fill')
+                .style.getPropertyValue('--effort-ratio')
+        ).toBe('1');
+
+        slider.value = '1';
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(valueLabel.textContent).toBe('medium');
+        expect(
+            document
+                .querySelector('.model-picker-effort-fill')
+                .style.getPropertyValue('--effort-ratio')
+        ).toBe('0.25');
+
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(onSelect).toHaveBeenCalledWith('medium');
+        expect(document.querySelector('.model-picker-current').textContent).toBe(
+            '3 Flash · medium'
         );
     });
 

@@ -397,6 +397,27 @@ export const TemplateIcons = {
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
         </svg>
     `,
+    EFFORT: icon`
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 6.5v11"></path>
+            <path d="M17.5 6.5v11"></path>
+            <path d="M3 9v6"></path>
+            <path d="M21 9v6"></path>
+            <path d="M6.5 12h11"></path>
+        </svg>
+    `,
+    MODEL: icon`
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 2 9 5-9 5-9-5 9-5Z"></path>
+            <path d="m3 7 9 5 9-5"></path>
+            <path d="m12 22 9-5V7"></path>
+            <path d="M3 7v10l9 5V12"></path>
+        </svg>
+    `,
     TRANSLATE: icon`
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

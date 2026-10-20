@@ -16,6 +16,8 @@ export class ChatController {
         this.footerEl = document.querySelector('.footer');
         this.shouldFollowBottom = true;
         this.scrollFrame = null;
+        this.userScrollIntent = null;
+        this.lastTouchScrollTop = null;
         this.resizeObserver = null;
         this.footerResizeObserver = null;
         this.observedResizeElements = new WeakSet();
@@ -119,6 +121,21 @@ export class ChatController {
             this.historyDiv.addEventListener('scroll', () => this.handleHistoryScroll(), {
                 passive: true,
             });
+            this.historyDiv.addEventListener('wheel', (event) => this.handleHistoryWheel(event), {
+                passive: true,
+            });
+            this.historyDiv.addEventListener('pointerdown', () => this.handleHistoryPointerDown(), {
+                passive: true,
+            });
+            window.addEventListener('pointerup', () => this.handleHistoryPointerUp(), {
+                passive: true,
+            });
+            this.historyDiv.addEventListener('touchstart', () => this.handleHistoryTouchStart(), {
+                passive: true,
+            });
+            this.historyDiv.addEventListener('touchmove', () => this.handleHistoryTouchMove(), {
+                passive: true,
+            });
             this.initScrollObservers();
         }
     }
@@ -177,11 +194,59 @@ export class ChatController {
         };
     }
 
+    // Wheel-up is an explicit "I want to read earlier content" signal.
+    handleHistoryWheel(event) {
+        const deltaY = Number(event?.deltaY) || 0;
+        if (deltaY === 0) return;
+
+        this.userScrollIntent = deltaY < 0 ? 'up' : 'down';
+        if (deltaY < 0) {
+            this.shouldFollowBottom = false;
+            this.cancelScheduledBottomScroll();
+        }
+    }
+
+    handleHistoryPointerDown() {
+        this.userScrollIntent = 'pointer';
+    }
+
+    handleHistoryPointerUp() {
+        if (this.userScrollIntent === 'pointer') this.userScrollIntent = null;
+    }
+
+    handleHistoryTouchStart() {
+        this.userScrollIntent = 'pointer';
+        this.lastTouchScrollTop = this.historyDiv?.scrollTop ?? null;
+    }
+
+    handleHistoryTouchMove() {
+        if (!this.historyDiv || this.lastTouchScrollTop === null) return;
+
+        const scrollTop = this.historyDiv.scrollTop;
+        if (scrollTop < this.lastTouchScrollTop - 2) {
+            this.shouldFollowBottom = false;
+            this.cancelScheduledBottomScroll();
+        }
+        this.lastTouchScrollTop = scrollTop;
+    }
+
     handleHistoryScroll() {
         const isNearBottom = this.isNearBottom();
-        if (isNearBottom !== null) {
-            this.shouldFollowBottom = isNearBottom;
+        if (isNearBottom === null) return;
+
+        if (!isNearBottom) {
+            this.shouldFollowBottom = false;
+            this.cancelScheduledBottomScroll();
+            if (this.userScrollIntent !== 'pointer') this.userScrollIntent = null;
+            return;
         }
+
+        // Programmatic auto-scroll must not re-arm following after the user
+        // scrolled away; only an intentional downward scroll does that.
+        if (this.userScrollIntent === 'down' || this.userScrollIntent === 'pointer') {
+            this.shouldFollowBottom = true;
+        }
+        if (this.userScrollIntent !== 'pointer') this.userScrollIntent = null;
     }
 
     initScrollObservers() {
@@ -216,18 +281,31 @@ export class ChatController {
         });
     }
 
+    cancelScheduledBottomScroll() {
+        if (this.scrollFrame === null) return;
+        window.cancelAnimationFrame(this.scrollFrame);
+        this.scrollFrame = null;
+    }
+
     scheduleBottomScroll(behavior = 'instant') {
         if (!this.historyDiv) return;
         if (this.scrollFrame !== null) return;
 
         this.scrollFrame = window.requestAnimationFrame(() => {
             this.scrollFrame = null;
-            if (!this.historyDiv) return;
+            // A pending frame must not pull the viewport down after the user
+            // scrolled away in the same frame.
+            if (!this.historyDiv || !this.shouldFollowBottom) return;
             this.historyDiv.scrollTo({
                 top: this.historyDiv.scrollHeight,
                 behavior,
             });
         });
+    }
+
+    followBottom({ smooth = false } = {}) {
+        this.shouldFollowBottom = true;
+        this.scheduleBottomScroll(smooth ? 'smooth' : 'instant');
     }
 
     followStreamingContent() {
@@ -255,26 +333,30 @@ export class ChatController {
     }
 
     scrollToBottom(options = {}) {
-        if (this.historyDiv) {
-            setTimeout(() => {
-                if (options.mode === 'bottom') {
-                    this.shouldFollowBottom = true;
-                    this.scheduleBottomScroll('instant');
-                    return;
-                }
+        if (!this.historyDiv) return;
+        if (options.mode !== 'bottom' && options.force !== true && !this.shouldFollowBottom) return;
 
-                // Scroll to the start of the last message to ensure visibility from the beginning
-                const lastMsg = this.historyDiv.lastElementChild;
-                if (lastMsg) {
-                    this.historyDiv.scrollTo({
-                        top: lastMsg.offsetTop - 20,
-                        behavior: 'smooth',
-                    });
-                } else {
-                    this.historyDiv.scrollTop = this.historyDiv.scrollHeight;
-                }
-            }, 50);
-        }
+        setTimeout(() => {
+            if (!this.historyDiv) return;
+
+            if (options.mode === 'bottom') {
+                this.shouldFollowBottom = true;
+                this.scheduleBottomScroll('instant');
+                return;
+            }
+            if (options.force !== true && !this.shouldFollowBottom) return;
+
+            // Scroll to the start of the last message to ensure visibility from the beginning
+            const lastMsg = this.historyDiv.lastElementChild;
+            if (lastMsg) {
+                this.historyDiv.scrollTo({
+                    top: lastMsg.offsetTop - 20,
+                    behavior: 'smooth',
+                });
+            } else {
+                this.historyDiv.scrollTop = this.historyDiv.scrollHeight;
+            }
+        }, 50);
     }
 
     getInputValue() {

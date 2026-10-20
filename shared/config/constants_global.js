@@ -80,22 +80,6 @@
         return { ...DEFAULT_SHORTCUTS, ...migrated };
     }
 
-    const CONTEXT_RECENT_TURNS_LIMITS = Object.freeze({
-        MIN: 1,
-        MAX: 50,
-        DEFAULT: 10,
-    });
-
-    function normalizeContextRecentTurns(value) {
-        const parsed = Number.parseInt(value, 10);
-        if (!Number.isFinite(parsed)) return CONTEXT_RECENT_TURNS_LIMITS.DEFAULT;
-
-        return Math.min(
-            CONTEXT_RECENT_TURNS_LIMITS.MAX,
-            Math.max(CONTEXT_RECENT_TURNS_LIMITS.MIN, parsed)
-        );
-    }
-
     const DEDICATED_API_PROVIDERS = Object.freeze({
         openai_official: Object.freeze({
             id: 'openai_official',
@@ -105,6 +89,7 @@
             defaultModel: 'gpt-6-astra',
             transport: 'openai-responses',
             supportsWebSearch: true,
+            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh']),
         }),
         deepseek: Object.freeze({
             id: 'deepseek',
@@ -115,6 +100,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'reasoning_effort',
             supportsWebSearch: false,
+            thinkingLevels: Object.freeze(['low', 'medium', 'high']),
         }),
         openrouter: Object.freeze({
             id: 'openrouter',
@@ -132,6 +118,7 @@
                 'X-Title': 'Gemini Nexus',
             }),
             supportsWebSearch: false,
+            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']),
         }),
         dashscope: Object.freeze({
             id: 'dashscope',
@@ -142,6 +129,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'dashscope_enable_thinking',
             supportsWebSearch: false,
+            thinkingLevels: Object.freeze(['off', 'on']),
         }),
         anthropic: Object.freeze({
             id: 'anthropic',
@@ -151,6 +139,7 @@
             defaultModel: 'claude-sonnet-5-5',
             transport: 'anthropic-messages',
             supportsWebSearch: false,
+            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']),
         }),
         zhipu: Object.freeze({
             id: 'zhipu',
@@ -161,13 +150,13 @@
             transport: 'openai-chat',
             reasoningAdapter: 'zhipu_thinking',
             supportsWebSearch: false,
+            thinkingLevels: Object.freeze(['off', 'on']),
         }),
     });
 
     globalThis.GeminiNexusConfig = Object.freeze({
         DEFAULT_SHORTCUTS,
         normalizeShortcutDefaults,
-        normalizeContextRecentTurns,
         DEFAULT_PROVIDER: 'web',
         DEFAULT_STORED_GEMINI_MODEL: '56fdd199312815e2',
         DEFAULT_OFFICIAL_MODEL: 'gemini-4-argon',
@@ -175,9 +164,6 @@
         DEFAULT_OFFICIAL_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
         DEFAULT_OPENAI_MODEL: 'openai_custom',
         DEFAULT_THINKING_LEVEL: 'low',
-        DEFAULT_CONTEXT_MODE: 'summary',
-        DEFAULT_CONTEXT_RECENT_TURNS: CONTEXT_RECENT_TURNS_LIMITS.DEFAULT,
-        CONTEXT_RECENT_TURNS_LIMITS,
         DEFAULT_SIDE_PANEL_SCOPE: 'remembered_tabs',
         DEFAULT_MCP_TRANSPORT: 'streamable-http',
         DEFAULT_MCP_HTTP_URL: 'http://127.0.0.1:3006/mcp',

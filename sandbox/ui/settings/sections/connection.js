@@ -11,18 +11,22 @@ import {
 } from '../../../../shared/settings/connection.js';
 import { inferMcpTransport, normalizeMcpHeaders } from '../../../../shared/mcp/transport.js';
 import { normalizeOpenAIWebSearchSettings } from '../../../../shared/settings/openai.js';
-import {
-    isDedicatedApiProvider,
-    normalizeDedicatedApiSettingsPayload,
-} from '../../../../shared/settings/dedicated_providers.js';
+import { normalizeDedicatedApiSettingsPayload } from '../../../../shared/settings/dedicated_providers.js';
 import { formatMcpHeaders, parseMcpHeadersText } from './mcp_header_fields.js';
 import { bindConnectionSectionEvents } from './connection_events.js';
 import { sendToBackground } from '../../../../shared/messaging/index.js';
+import {
+    applyContextSettings,
+    applyContextWindowFallback,
+    applyContextWindowResult,
+    buildContextWindowRequest,
+} from './context_window_fields.js';
 import {
     loadDedicatedApiProviderIntoForm,
     saveDedicatedApiProviderEdits,
 } from './dedicated_api_fields.js';
 import { setProviderModelList, setProviderModelListStatus } from './provider_model_list.js';
+import { applyProviderVisibility } from './connection_visibility.js';
 import { queryConnectionElements } from './connection_elements.js';
 import { renderMcpToolsUI } from './mcp_tools_view.js';
 import { t } from '../../../core/i18n.js';
@@ -34,12 +38,15 @@ export function createMcpServerId() {
 }
 
 export class ConnectionSection {
-    constructor() {
+    constructor(callbacks = {}) {
+        this.callbacks = callbacks || {};
         this.elements = {};
         this.mcpServers = [];
         this.mcpActiveServerId = null;
         this.activeProvider = null;
         this.dedicatedApiProviders = normalizeDedicatedApiSettingsPayload();
+        this.thinkingLevel = DEFAULT_THINKING_LEVEL;
+        this.openaiThinkingLevel = DEFAULT_THINKING_LEVEL;
         this.mcpToolsCache = new Map(); // serverId -> { key, tools }
         this.mcpToolsUiState = new Map(); // serverId -> { openGroups: Set<string> }
         this.queryElements();
@@ -72,13 +79,11 @@ export class ConnectionSection {
             officialBaseUrl,
             apiKeyInput,
             officialModel,
-            thinkingLevelSelect,
             webTemporaryChat,
             officialWebSearchEnabled,
             openaiBaseUrl,
             openaiApiKey,
             openaiModel,
-            openaiThinkingLevelSelect,
             openaiUseResponsesApi,
             openaiWebSearch,
             mcpEnabled,
@@ -94,8 +99,7 @@ export class ConnectionSection {
             officialBaseUrl.value = data?.officialBaseUrl || DEFAULT_OFFICIAL_BASE_URL;
         if (apiKeyInput) apiKeyInput.value = data?.apiKey || '';
         if (officialModel) officialModel.value = data?.officialModel || DEFAULT_OFFICIAL_MODELS;
-        if (thinkingLevelSelect)
-            thinkingLevelSelect.value = data?.thinkingLevel || DEFAULT_THINKING_LEVEL;
+        this.thinkingLevel = data?.thinkingLevel || DEFAULT_THINKING_LEVEL;
         if (webTemporaryChat) webTemporaryChat.checked = data?.webTemporaryChat === true;
         if (officialWebSearchEnabled)
             officialWebSearchEnabled.checked = data?.officialWebSearch === true;
@@ -103,8 +107,7 @@ export class ConnectionSection {
         if (openaiBaseUrl) openaiBaseUrl.value = data?.openaiBaseUrl || '';
         if (openaiApiKey) openaiApiKey.value = data?.openaiApiKey || '';
         if (openaiModel) openaiModel.value = data?.openaiModel || '';
-        if (openaiThinkingLevelSelect)
-            openaiThinkingLevelSelect.value = data?.openaiThinkingLevel || DEFAULT_THINKING_LEVEL;
+        this.openaiThinkingLevel = data?.openaiThinkingLevel || DEFAULT_THINKING_LEVEL;
         const openaiSettings = normalizeOpenAIWebSearchSettings(data || {});
         if (openaiUseResponsesApi) openaiUseResponsesApi.checked = openaiSettings.useResponsesApi;
         if (openaiWebSearch) openaiWebSearch.checked = openaiSettings.webSearch;
@@ -163,16 +166,15 @@ export class ConnectionSection {
             officialBaseUrl,
             apiKeyInput,
             officialModel,
-            thinkingLevelSelect,
             webTemporaryChat,
             officialWebSearchEnabled,
             openaiBaseUrl,
             openaiApiKey,
             openaiModel,
-            openaiThinkingLevelSelect,
             openaiUseResponsesApi,
             openaiWebSearch,
             mcpEnabled,
+            contextWindowTokens,
         } = this.elements;
 
         const provider = providerSelect ? providerSelect.value : DEFAULT_PROVIDER;
@@ -191,7 +193,7 @@ export class ConnectionSection {
                 : DEFAULT_OFFICIAL_BASE_URL,
             apiKey: apiKeyInput ? apiKeyInput.value.trim() : '',
             officialModel: officialModel ? officialModel.value.trim() : DEFAULT_OFFICIAL_MODELS,
-            thinkingLevel: thinkingLevelSelect ? thinkingLevelSelect.value : DEFAULT_THINKING_LEVEL,
+            thinkingLevel: this.thinkingLevel,
             webTemporaryChat: webTemporaryChat ? webTemporaryChat.checked === true : false,
             officialWebSearch: officialWebSearchEnabled
                 ? officialWebSearchEnabled.checked === true
@@ -199,9 +201,7 @@ export class ConnectionSection {
             openaiBaseUrl: openaiBaseUrl ? openaiBaseUrl.value.trim() : '',
             openaiApiKey: openaiApiKey ? openaiApiKey.value.trim() : '',
             openaiModel: openaiModel ? openaiModel.value.trim() : '',
-            openaiThinkingLevel: openaiThinkingLevelSelect
-                ? openaiThinkingLevelSelect.value
-                : DEFAULT_THINKING_LEVEL,
+            openaiThinkingLevel: this.openaiThinkingLevel,
             openaiUseResponsesApi: openaiUseResponsesApi
                 ? openaiUseResponsesApi.checked === true
                 : false,
@@ -216,25 +216,29 @@ export class ConnectionSection {
                 ? firstEnabled.transport || DEFAULT_MCP_TRANSPORT
                 : DEFAULT_MCP_TRANSPORT,
             mcpServerUrl: firstEnabled ? firstEnabled.url || '' : '',
+            contextWindowAuto: !(contextWindowTokens?.value || '').trim(),
+            contextWindowTokens: contextWindowTokens ? contextWindowTokens.value : '',
         };
     }
 
-    updateVisibility(provider) {
-        const { apiKeyContainer, webFields, officialFields, openaiFields, dedicatedApiFields } =
-            this.elements;
-        if (!apiKeyContainer) return;
+    setContextSettings(settings) {
+        applyContextSettings(this, settings);
+    }
 
-        if (webFields) webFields.hidden = provider !== 'web';
-        if (officialFields) officialFields.hidden = provider !== 'official';
-        if (openaiFields) openaiFields.hidden = provider !== 'openai';
-        if (dedicatedApiFields) dedicatedApiFields.hidden = !isDedicatedApiProvider(provider);
-        if (provider === 'web') {
-            apiKeyContainer.hidden = true;
-        } else {
-            apiKeyContainer.hidden = false;
-            if (isDedicatedApiProvider(provider)) this._loadDedicatedApiProviderIntoForm(provider);
-        }
-        this.activeProvider = provider;
+    setContextWindowFallback() {
+        applyContextWindowFallback(this);
+    }
+
+    setContextWindowResult(result) {
+        applyContextWindowResult(this, result);
+    }
+
+    getContextWindowRequest() {
+        return buildContextWindowRequest(this);
+    }
+
+    updateVisibility(provider) {
+        applyProviderVisibility(this, provider);
     }
 
     _saveDedicatedApiProviderEdits(provider = this.activeProvider) {
@@ -385,8 +389,8 @@ export class ConnectionSection {
         mcpTestStatus.classList.toggle('is-loading', isLoading);
     }
 
-    setProviderModelListStatus(text, isError = false) {
-        setProviderModelListStatus(this, text, isError);
+    setProviderModelListStatus(text, isError = false, provider = this.activeProvider) {
+        setProviderModelListStatus(this, text, isError, provider);
     }
 
     setProviderModelList(provider, models) {

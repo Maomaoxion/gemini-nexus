@@ -5,8 +5,14 @@ import { ViewerController } from './viewer.js';
 import { TabSelectorController } from './tab_selector.js';
 import { createModelOptions, getPreferredModel } from './model_options.js';
 import { resizeSelectToSelectedOption } from './model_select_width.js';
-import { syncModelPicker } from './model_picker.js';
-import { syncWebThinkingToggle } from './web_thinking_toggle.js';
+import { initModelPicker, syncModelPicker } from './model_picker.js';
+import {
+    getProviderThinkingLevel,
+    getProviderThinkingLevels,
+    normalizeThinkingLevelForProvider,
+    setProviderThinkingLevel,
+} from '../../shared/models/thinking_levels.js';
+import { DEFAULT_PROVIDER } from '../../shared/config/constants.js';
 import { t } from '../core/i18n.js';
 
 export class UIController {
@@ -38,17 +44,24 @@ export class UIController {
         this.historyDiv = this.chat.historyDiv;
         this.sendBtn = this.chat.sendBtn;
         this.modelSelect = elements.modelSelect;
-        this.webThinkingToggle = document.getElementById('web-thinking-toggle');
+        this.modelPicker = initModelPicker(this.modelSelect);
+        this.modelPicker?.setHandlers({
+            onSelectThinking: (level) => this.setThinkingLevel(level),
+        });
         this.tabSwitcherBtn = document.getElementById('tab-switcher-btn');
         window.addEventListener('resize', () => this.scheduleLayoutCheck());
         document.addEventListener('gemini-language-changed', () =>
-            this.updateWebThinkingToggle(this.settings.connectionData)
+            this.updateThinkingControls(this.settings.connectionData)
         );
-        this.updateWebThinkingToggle(this.settings.connectionData);
+        this.updateThinkingControls(this.settings.connectionData);
     }
 
     setSessionStorageHooks(hooks = {}) {
         this.settings.setSessionStorageHooks(hooks);
+    }
+
+    setContextWindowHooks(hooks = {}) {
+        this.settings.setContextWindowHooks(hooks);
     }
 
     handleBackgroundRequestFailure(action, error) {
@@ -130,7 +143,7 @@ export class UIController {
         }
 
         this.resizeModelSelect();
-        this.updateWebThinkingToggle(settings);
+        this.updateThinkingControls(settings);
     }
 
     resizeModelSelect() {
@@ -138,8 +151,88 @@ export class UIController {
         syncModelPicker(this.modelSelect);
     }
 
-    updateWebThinkingToggle(settings = this.settings?.connectionData || {}) {
-        syncWebThinkingToggle(this.webThinkingToggle, settings, this.modelSelect?.value);
+    getConnectionProvider(settings = this.settings?.connectionData || {}) {
+        return (
+            settings.provider || (settings.useOfficialApi === true ? 'official' : DEFAULT_PROVIDER)
+        );
+    }
+
+    getProviderThinkingState(settings = this.settings?.connectionData || {}) {
+        const provider = this.getConnectionProvider(settings);
+        const model = this.modelSelect?.value || '';
+        const levels = getProviderThinkingLevels(provider, model);
+        const rawLevel = getProviderThinkingLevel(settings, provider);
+        const value = normalizeThinkingLevelForProvider(provider, model, rawLevel) || rawLevel;
+        return { provider, model, levels, value };
+    }
+
+    updateThinkingControls(settings = this.settings?.connectionData || {}) {
+        const { levels, value } = this.getProviderThinkingState(settings);
+        this.modelPicker?.setThinking({
+            options: levels.map((level) => ({ value: level, label: level })),
+            value,
+            visible: levels.length > 0,
+        });
+    }
+
+    syncThinkingForModel(model = this.modelSelect?.value || '', { saveIfChanged = false } = {}) {
+        const settings = this.settings?.connectionData;
+        if (!settings) return null;
+
+        const provider = this.getConnectionProvider(settings);
+        const levels = getProviderThinkingLevels(provider, model);
+        if (levels.length === 0) {
+            this.updateThinkingControls(settings);
+            return null;
+        }
+
+        const previousLevel = getProviderThinkingLevel(settings, provider);
+        const nextLevel = normalizeThinkingLevelForProvider(provider, model, previousLevel);
+        if (!nextLevel) return null;
+
+        setProviderThinkingLevel(settings, provider, nextLevel);
+        this.updateThinkingControls(settings);
+
+        if (saveIfChanged && previousLevel !== nextLevel) {
+            this.saveThinkingLevel(provider, nextLevel);
+        }
+
+        return nextLevel;
+    }
+
+    saveThinkingLevel(provider, level) {
+        window.parent.postMessage(
+            {
+                action: 'SAVE_THINKING_LEVEL',
+                payload: { provider, level },
+            },
+            '*'
+        );
+    }
+
+    setThinkingLevel(level) {
+        const settings = this.settings?.connectionData;
+        if (!settings) return null;
+
+        const { provider, model } = this.getProviderThinkingState(settings);
+        const nextLevel = normalizeThinkingLevelForProvider(provider, model, level);
+        if (!nextLevel) return null;
+
+        setProviderThinkingLevel(settings, provider, nextLevel);
+        this.saveThinkingLevel(provider, nextLevel);
+        this.updateThinkingControls(settings);
+        return nextLevel;
+    }
+
+    cycleThinkingLevel() {
+        const settings = this.settings?.connectionData;
+        if (!settings) return null;
+
+        const { levels, value } = this.getProviderThinkingState(settings);
+        if (levels.length === 0) return null;
+
+        const index = Math.max(0, levels.indexOf(value));
+        return this.setThinkingLevel(levels[(index + 1) % levels.length]);
     }
 
     updateStatus(text) {
@@ -156,6 +249,9 @@ export class UIController {
     }
     scrollToBottom(options) {
         this.chat.scrollToBottom(options);
+    }
+    followBottom(options) {
+        this.chat.followBottom(options);
     }
     resetInput() {
         this.chat.resetInput();

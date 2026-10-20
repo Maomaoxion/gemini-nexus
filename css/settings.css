@@ -188,6 +188,95 @@
     padding: 6px 10px;
 }
 
+.settings-icon-button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-icon-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+.settings-model-picker {
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-modal);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-model-picker[hidden] {
+    display: none !important;
+}
+
+.settings-model-picker-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.settings-model-picker-search {
+    flex: 1 1 140px;
+    min-width: 0;
+    min-height: 30px;
+    font-size: 12px;
+}
+
+.settings-model-picker-list {
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.settings-model-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.settings-model-picker-row:hover {
+    background: var(--btn-hover);
+}
+
+.settings-model-picker-row input {
+    margin: 0;
+}
+
+.settings-model-picker-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.settings-model-picker-close {
+    margin-left: auto;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
 .settings-monospace-textarea {
     min-height: 74px;
     resize: vertical;

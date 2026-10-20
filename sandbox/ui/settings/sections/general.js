@@ -1,12 +1,8 @@
-import {
-    DEFAULT_CONTEXT_MODE,
-    DEFAULT_CONTEXT_RECENT_TURNS,
-    DEFAULT_SIDE_PANEL_SCOPE,
-} from '../../../../shared/config/constants.js';
+import { DEFAULT_SIDE_PANEL_SCOPE } from '../../../../shared/config/constants.js';
 import { normalizeCustomSelectionTools } from '../../../../shared/settings/selection_tools.js';
 import { createPrefixedId } from '../../../../shared/utils/index.js';
 import { t } from '../../../core/i18n.js';
-import { DOM_IDS, CONFIG_LIMITS } from '../constants.js';
+import { DOM_IDS } from '../constants.js';
 import { getSettingsElement } from '../dom.js';
 
 function createCustomSelectionToolId() {
@@ -33,8 +29,6 @@ export class GeneralSection {
             customSelectionToolsList: getSettingsElement(DOM_IDS.CONTAINER_SELECTION_TOOLS),
             customSelectionToolAdd: getSettingsElement(DOM_IDS.BTN_ADD_SELECTION_TOOL),
             accountIndicesInput: getSettingsElement(DOM_IDS.ACCOUNT_INDICES),
-            contextModeSelect: getSettingsElement(DOM_IDS.CONTEXT_MODE),
-            contextRecentTurnsInput: getSettingsElement(DOM_IDS.INPUT_RECENT_TURNS),
             sidebarRadios: document.querySelectorAll('input[name="sidebar-behavior"]'),
             sidePanelScopeRadios: document.querySelectorAll('input[name="sidepanel-scope"]'),
         };
@@ -49,7 +43,6 @@ export class GeneralSection {
             customSelectionToolsList,
             sidebarRadios,
             sidePanelScopeRadios,
-            contextRecentTurnsInput,
         } = this.elements;
 
         if (textSelectionToggle) {
@@ -110,18 +103,6 @@ export class GeneralSection {
                         this.fire('onSidePanelScopeChange', event.target.value);
                     }
                 });
-            });
-        }
-        if (contextRecentTurnsInput) {
-            contextRecentTurnsInput.addEventListener('input', (event) => {
-                const parsedValue = Number.parseInt(event.target.value, 10);
-                if (Number.isFinite(parsedValue)) {
-                    if (parsedValue < CONFIG_LIMITS.RECENT_TURNS.MIN) {
-                        event.target.value = CONFIG_LIMITS.RECENT_TURNS.MIN;
-                    } else if (parsedValue > CONFIG_LIMITS.RECENT_TURNS.MAX) {
-                        event.target.value = CONFIG_LIMITS.RECENT_TURNS.MAX;
-                    }
-                }
             });
         }
     }
@@ -231,20 +212,6 @@ export class GeneralSection {
         }
     }
 
-    setContextSettings(settings) {
-        const mode = settings?.mode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE;
-        const recentTurns = Number.parseInt(settings?.recentTurns, 10);
-
-        if (this.elements.contextModeSelect) {
-            this.elements.contextModeSelect.value = mode;
-        }
-        if (this.elements.contextRecentTurnsInput) {
-            this.elements.contextRecentTurnsInput.value = Number.isFinite(recentTurns)
-                ? recentTurns
-                : DEFAULT_CONTEXT_RECENT_TURNS;
-        }
-    }
-
     getData() {
         const {
             textSelectionToggle,
@@ -254,8 +221,6 @@ export class GeneralSection {
             generatedImageWatermarkToggle,
             customSelectionToolsList,
             accountIndicesInput,
-            contextModeSelect,
-            contextRecentTurnsInput,
             sidebarRadios,
             sidePanelScopeRadios,
         } = this.elements;
@@ -278,10 +243,6 @@ export class GeneralSection {
             accountIndices: accountIndicesInput ? accountIndicesInput.value : '0',
             sidebarBehavior: selectedSidebarBehavior,
             sidePanelScope: selectedScope,
-            contextMode: contextModeSelect ? contextModeSelect.value : DEFAULT_CONTEXT_MODE,
-            contextRecentTurns: contextRecentTurnsInput
-                ? contextRecentTurnsInput.value
-                : DEFAULT_CONTEXT_RECENT_TURNS,
         };
     }
 

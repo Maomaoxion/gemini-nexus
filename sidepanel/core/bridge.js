@@ -1,7 +1,4 @@
-import {
-    DEFAULT_CONTEXT_MODE,
-    normalizeContextRecentTurns,
-} from '../../shared/config/constants.js';
+import { normalizeContextWindowTokens } from '../../shared/models/context_window.js';
 import { createConnectionStorageUpdate } from '../../shared/settings/connection.js';
 import { getDedicatedApiStorageKeys } from '../../shared/settings/dedicated_providers.js';
 import {
@@ -25,6 +22,7 @@ import {
     restoreSidePanelInputDrafts,
     saveSidePanelInputDraft,
     saveSidePanelSessionBinding,
+    saveThinkingLevel as saveThinkingLevelStorage,
 } from './bridge_storage.js';
 import { getRuntimeLastError } from '../../shared/logging/runtime_error.js';
 
@@ -196,14 +194,18 @@ export class MessageBridge {
         }
     }
 
+    saveThinkingLevel(payload) {
+        saveThinkingLevelStorage(this.state, payload);
+    }
+
     saveSidePanelSessionBinding(payload) {
         saveSidePanelSessionBinding(payload);
     }
 
     saveContextSettings(payload) {
         const storageUpdate = {
-            geminiContextMode: payload?.mode === 'recent' ? 'recent' : DEFAULT_CONTEXT_MODE,
-            geminiContextRecentTurns: normalizeContextRecentTurns(payload?.recentTurns),
+            geminiContextWindowAuto: payload?.windowAuto !== false,
+            geminiContextWindowTokens: normalizeContextWindowTokens(payload?.windowTokens, 0),
         };
         if (typeof this.state.saveMany === 'function') {
             this.state.saveMany(storageUpdate);

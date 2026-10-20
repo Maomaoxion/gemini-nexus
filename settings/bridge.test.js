@@ -30,6 +30,7 @@ function createController() {
         updateSidePanelScope: vi.fn(),
         updateAccountIndices: vi.fn(),
         updateContextSettings: vi.fn(),
+        setContextWindowHooks: vi.fn(),
         updateConnectionSettings: vi.fn(),
         updateAppVersion: vi.fn(),
         refreshGithubMetadata: vi.fn(),
@@ -77,8 +78,8 @@ describe('StandaloneSettingsBridge', () => {
                             geminiSidebarBehavior: 'restore',
                             geminiSidePanelScope: 'global',
                             geminiAccountIndices: '0,1',
-                            geminiContextMode: 'recent',
-                            geminiContextRecentTurns: 5,
+                            geminiContextWindowAuto: false,
+                            geminiContextWindowTokens: 200000,
                             geminiProvider: 'openai',
                             geminiWebTemporaryChat: true,
                             geminiOpenaiModel: 'gpt-5',
@@ -177,8 +178,8 @@ describe('StandaloneSettingsBridge', () => {
         expect(controller.updateSidebarBehavior).toHaveBeenCalledWith('restore');
         expect(controller.updateSidePanelScope).toHaveBeenCalledWith('global');
         expect(controller.updateContextSettings).toHaveBeenCalledWith({
-            mode: 'recent',
-            recentTurns: 5,
+            windowAuto: false,
+            windowTokens: 200000,
         });
         expect(controller.updateConnectionSettings).toHaveBeenCalledWith(
             expect.objectContaining({
