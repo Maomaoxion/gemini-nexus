@@ -360,6 +360,46 @@ describe('MessageBridge model persistence', () => {
         );
     });
 
+    it('forwards the worker run probe result back to the sandbox', async () => {
+        const frame = createFrame();
+        const state = createState();
+        chrome.runtime.sendMessage.mockResolvedValueOnce({
+            action: 'ACTIVE_RUN_STATE',
+            active: true,
+            sessionId: 'session-1',
+        });
+        const bridge = new MessageBridge(frame, state);
+
+        bridge.forwardToBackground({ action: 'GET_ACTIVE_RUN_STATE' });
+
+        await vi.waitFor(() =>
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'ACTIVE_RUN_STATE',
+                    active: true,
+                    sessionId: 'session-1',
+                },
+            })
+        );
+    });
+
+    it('resolves an unreachable worker run probe as inactive', async () => {
+        const frame = createFrame();
+        const state = createState();
+        chrome.runtime.sendMessage.mockRejectedValueOnce(new Error('Background unavailable'));
+        const bridge = new MessageBridge(frame, state);
+
+        bridge.forwardToBackground({ action: 'GET_ACTIVE_RUN_STATE' });
+
+        await vi.waitFor(() =>
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'ACTIVE_RUN_STATE', active: false },
+            })
+        );
+    });
+
     it('routes browser-control prompts through the current webpage tab id', () => {
         const frame = createFrame();
         const state = createState();

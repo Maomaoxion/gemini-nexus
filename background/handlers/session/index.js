@@ -37,6 +37,14 @@ export class SessionMessageHandler {
             return true;
         }
 
+        if (request.action === 'GET_ACTIVE_RUN_STATE') {
+            sendResponse({
+                action: 'ACTIVE_RUN_STATE',
+                ...this.promptHandler.getActiveRunInfo(),
+            });
+            return false;
+        }
+
         if (request.action === 'CANCEL_PROMPT') {
             const cancelled = this.cancelSidePanelRun();
             // Page-toolbar quick asks run under their own abort bucket, so a

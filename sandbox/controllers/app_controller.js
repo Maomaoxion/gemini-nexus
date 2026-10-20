@@ -31,6 +31,8 @@ export class AppController {
         this.captureMode = 'snip';
         this.isGenerating = false;
         this.generatingSessionId = null;
+        // Session id carried by an outstanding service-worker run probe.
+        this._workerProbeSessionId = undefined;
         this.pageContextActive = false;
         this.browserControlActive = false;
         this.liveArtifactsEnabled = false;
@@ -578,13 +580,31 @@ export class AppController {
                 return;
             }
             if (payload.action === 'SERVICE_WORKER_STARTED') {
-                // Side panel can outlive a SW restart with a zombie generating flag.
+                // The worker also announces itself when a send wakes it from
+                // idle. Clearing on the bare announcement would drop that live
+                // run and its stream, so confirm it has no run for this session.
                 if (this.isGenerating) {
-                    console.warn(
-                        '[Gemini Nexus] Clearing stuck generating state after service worker start'
-                    );
-                    this.prompt.forceClearGenerating();
+                    this._workerProbeSessionId = this.generatingSessionId;
+                    sendToBackground({ action: 'GET_ACTIVE_RUN_STATE' });
                 }
+                return;
+            }
+            if (payload.action === 'ACTIVE_RUN_STATE') {
+                const probeSessionId = this._workerProbeSessionId;
+                this._workerProbeSessionId = undefined;
+                if (probeSessionId === undefined) return;
+                if (!this.isGenerating || this.generatingSessionId !== probeSessionId) return;
+
+                const ownsRun =
+                    payload.active === true &&
+                    (payload.sessionId == null || payload.sessionId === probeSessionId);
+                if (ownsRun) return;
+
+                // Side panel outlived a SW restart with a zombie generating flag.
+                console.warn(
+                    '[Gemini Nexus] Clearing stuck generating state: service worker has no active run'
+                );
+                this.prompt.forceClearGenerating();
                 return;
             }
             if (payload.action === 'OPEN_TABS_RESULT') {

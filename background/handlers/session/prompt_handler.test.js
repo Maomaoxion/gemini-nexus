@@ -119,6 +119,35 @@ describe('PromptHandler concurrency', () => {
         expect(secondResponse).toHaveBeenCalledWith({ status: 'completed' });
     });
 
+    it('reports the live run so the panel can verify it after a worker wake', async () => {
+        const pending = deferred();
+        const sessionManager = {
+            handleSendPrompt: vi.fn(() => pending.promise),
+        };
+        const handler = new PromptHandler(sessionManager, null, null);
+
+        expect(handler.getActiveRunInfo()).toEqual({ active: false, sessionId: null });
+
+        handler.handle(
+            {
+                action: 'SEND_PROMPT',
+                text: 'hello',
+                model: 'gemini-test',
+                sessionId: 'session-1',
+            },
+            vi.fn()
+        );
+        expect(handler.getActiveRunInfo()).toEqual({ active: true, sessionId: 'session-1' });
+
+        pending.resolve({
+            action: 'GEMINI_REPLY',
+            sessionId: 'session-1',
+            status: 'success',
+            text: 'done',
+        });
+        await vi.waitFor(() => expect(handler.getActiveRunInfo().active).toBe(false));
+    });
+
     it('uses the user browser-control prompt as the native tab group title', async () => {
         globalThis.chrome = {
             runtime: {

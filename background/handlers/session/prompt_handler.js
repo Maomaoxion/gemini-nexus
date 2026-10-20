@@ -110,6 +110,15 @@ export class PromptHandler {
         return !run || run.cancelled || this.activeRun !== run;
     }
 
+    /** Whether a prompt run is still alive, and which session it belongs to. */
+    getActiveRunInfo() {
+        const run = this.activeRun;
+        return {
+            active: Boolean(run),
+            sessionId: run?.request?.sessionId || null,
+        };
+    }
+
     handle(request, sendResponse) {
         this.cancelActiveRun({ notify: true });
 

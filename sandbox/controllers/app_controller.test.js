@@ -409,6 +409,59 @@ describe('AppController session restore behavior', () => {
         expect(ui.updateStatus).toHaveBeenCalledWith('Side panel unavailable');
     });
 
+    it('probes the service worker instead of dropping a run it just woke', async () => {
+        const { app, ui } = createAppHarness();
+        app.isGenerating = true;
+        app.generatingSessionId = 'session-live';
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'SERVICE_WORKER_STARTED', ts: 1 },
+            },
+        });
+
+        expect(sendToBackground).toHaveBeenCalledWith({ action: 'GET_ACTIVE_RUN_STATE' });
+        expect(app.isGenerating).toBe(true);
+        expect(ui.setLoading).not.toHaveBeenCalledWith(false);
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'ACTIVE_RUN_STATE',
+                    active: true,
+                    sessionId: 'session-live',
+                },
+            },
+        });
+
+        expect(app.isGenerating).toBe(true);
+        expect(ui.setLoading).not.toHaveBeenCalledWith(false);
+    });
+
+    it('clears a zombie generating state when the worker has no active run', async () => {
+        const { app, ui } = createAppHarness();
+        app.isGenerating = true;
+        app.generatingSessionId = 'session-zombie';
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'SERVICE_WORKER_STARTED', ts: 1 },
+            },
+        });
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'ACTIVE_RUN_STATE', active: false },
+            },
+        });
+
+        expect(app.isGenerating).toBe(false);
+        expect(ui.setLoading).toHaveBeenLastCalledWith(false);
+    });
+
     it('registers chat storage hooks for the settings panel', () => {
         const { sessionManager, ui } = createAppHarness();
         sessionManager.setSessions([realSession()]);

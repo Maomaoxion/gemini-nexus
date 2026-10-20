@@ -2,6 +2,7 @@ const FORWARDED_RESPONSE_ACTIONS = new Set([
     'FETCH_IMAGE',
     'FETCH_GENERATED_IMAGE',
     'GET_LOGS',
+    'GET_ACTIVE_RUN_STATE',
     'CHECK_PAGE_CONTEXT',
     'MCP_TEST_CONNECTION',
     'MCP_LIST_TOOLS',
@@ -114,6 +115,12 @@ export function forwardToBackground(bridge, payload) {
                     status: 'error',
                     error: error?.message || String(error),
                 });
+                return;
+            }
+            if (scopedPayload?.action === 'GET_ACTIVE_RUN_STATE') {
+                // An unreachable worker cannot own a live run; resolve the probe
+                // so the panel unsticks instead of surfacing a transport error.
+                bridge.postBackgroundMessage({ action: 'ACTIVE_RUN_STATE', active: false });
                 return;
             }
             postBackgroundRequestError(bridge, scopedPayload, error);
