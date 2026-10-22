@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     COMPOSER_DRAFT_MAX_BYTES,
     COMPOSER_DRAFT_MAX_FILES,
+    COMPOSER_DRAFT_MAX_TABS,
     getComposerDraftKey,
     isEmptyComposerDraft,
     normalizeComposerDraft,
@@ -17,13 +18,13 @@ function dataUrl(bytes) {
 
 describe('composer draft normalization', () => {
     it('accepts a legacy bare string as text-only draft', () => {
-        expect(normalizeComposerDraft('hello')).toEqual({ text: 'hello', files: [] });
+        expect(normalizeComposerDraft('hello')).toEqual({ text: 'hello', files: [], tabs: [] });
     });
 
     it('drops values that are not draft-shaped', () => {
-        expect(normalizeComposerDraft(null)).toEqual({ text: '', files: [] });
-        expect(normalizeComposerDraft([1, 2])).toEqual({ text: '', files: [] });
-        expect(normalizeComposerDraft(42)).toEqual({ text: '', files: [] });
+        expect(normalizeComposerDraft(null)).toEqual({ text: '', files: [], tabs: [] });
+        expect(normalizeComposerDraft([1, 2])).toEqual({ text: '', files: [], tabs: [] });
+        expect(normalizeComposerDraft(42)).toEqual({ text: '', files: [], tabs: [] });
     });
 
     it('keeps well-formed attachments and defaults missing metadata', () => {
@@ -80,6 +81,52 @@ describe('composer draft normalization', () => {
         expect(draft.files.map((file) => file.name)).toEqual(['small.png']);
     });
 
+    it('keeps referenced tabs and drops malformed or duplicate entries', () => {
+        const draft = normalizeComposerDraft({
+            text: '',
+            tabs: [
+                {
+                    id: 3,
+                    title: 'GitHub',
+                    url: 'https://github.com/',
+                    favIconUrl: 'https://x/f.png',
+                },
+                { id: '3', title: 'duplicate id as string' },
+                { id: 0, title: 'invalid id' },
+                { id: -1, title: 'invalid id' },
+                { id: 7 },
+                null,
+                'nope',
+            ],
+        });
+
+        expect(draft.tabs).toEqual([
+            {
+                id: 3,
+                title: 'GitHub',
+                url: 'https://github.com/',
+                favIconUrl: 'https://x/f.png',
+            },
+            { id: 7, title: '', url: '', favIconUrl: '' },
+        ]);
+        expect(isEmptyComposerDraft(draft)).toBe(false);
+    });
+
+    it('caps the referenced tab count', () => {
+        const tabs = Array.from({ length: COMPOSER_DRAFT_MAX_TABS + 3 }, (_, index) => ({
+            id: index + 1,
+            title: `Tab ${index + 1}`,
+        }));
+
+        expect(normalizeComposerDraft({ text: '', tabs }).tabs).toHaveLength(
+            COMPOSER_DRAFT_MAX_TABS
+        );
+    });
+
+    it('treats a draft with only referenced tabs as non-empty', () => {
+        expect(isEmptyComposerDraft({ text: '', files: [], tabs: [{ id: 5 }] })).toBe(false);
+    });
+
     it('treats whitespace-only text without attachments as empty', () => {
         expect(isEmptyComposerDraft({ text: '', files: [] })).toBe(true);
         expect(isEmptyComposerDraft({ text: ' ', files: [] })).toBe(false);
@@ -105,7 +152,7 @@ describe('composer draft normalization', () => {
         });
 
         expect(Object.keys(drafts).sort()).toEqual(['draft:1', 'draft:3']);
-        expect(drafts['draft:3']).toEqual({ text: 'legacy text', files: [] });
+        expect(drafts['draft:3']).toEqual({ text: 'legacy text', files: [], tabs: [] });
     });
 
     it('returns an empty map for non-object storage values', () => {

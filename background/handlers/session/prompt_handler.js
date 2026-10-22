@@ -134,6 +134,9 @@ export class PromptHandler {
             model: request?.model || null,
             enableBrowserControl: request?.enableBrowserControl === true,
             textLen: typeof request?.text === 'string' ? request.text.length : 0,
+            referencedTabs: Array.isArray(request?.referencedTabs)
+                ? request.referencedTabs.length
+                : 0,
         });
 
         (async () => {

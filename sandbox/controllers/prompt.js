@@ -95,7 +95,7 @@ export class PromptController {
                       // catalog; the background's stored list can lag that write.
                       configuredModels: getConfiguredModels(conn, provider).join(', '),
                   }),
-            includePageContext: this.app.pageContextActive,
+            referencedTabs: this.app.getReferencedTabs?.() || [],
             enableBrowserControl: this.app.browserControlActive,
             hostIsTab: this.app.hostIsTab === true,
             enableMcpTools,
@@ -416,6 +416,9 @@ export class PromptController {
             enableBrowserControl: payload.enableBrowserControl,
             textLen: (text || '').length,
             files: Array.isArray(files) ? files.length : 0,
+            referencedTabs: Array.isArray(payload.referencedTabs)
+                ? payload.referencedTabs.length
+                : 0,
         });
         sendToBackground(payload);
     }

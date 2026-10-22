@@ -9,9 +9,13 @@ export const FooterTemplate = `
             <!-- Dynamic Image Preview Container -->
             <div id="image-preview" class="image-preview"></div>
 
+            <div id="tab-reference-bar" class="tab-reference-bar" aria-live="polite" hidden></div>
+
             <div class="composer-textarea-shell">
                 <textarea id="prompt" data-i18n-placeholder="askPlaceholder" rows="1"></textarea>
             </div>
+
+            <div id="tab-mention-menu" class="tab-mention-menu" role="listbox" hidden></div>
 
             <div class="composer-actions">
                 <div class="composer-actions-left">
@@ -27,10 +31,6 @@ export const FooterTemplate = `
                     <div class="tools-container">
                         <!-- Primary toggles: always visible, no horizontal scroll -->
                         <div class="tools-primary" id="tools-row">
-                            <button id="page-context-btn" class="tool-btn tool-toggle" data-i18n-title="pageContextTooltip" title="Toggle chat with page content" aria-pressed="false">
-                                ${TemplateIcons.PAGE_CONTEXT}
-                                <span data-i18n="pageContext">Page</span>
-                            </button>
                             <button id="browser-control-btn" class="tool-btn tool-toggle" data-i18n-title="browserControlTooltip" title="Allow model to control browser" aria-pressed="false">
                                 ${TemplateIcons.BROWSER_CONTROL}
                                 <span data-i18n="browserControl">Control</span>

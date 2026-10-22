@@ -38,7 +38,6 @@ function createPromptHarness({ text = 'Hello', files = [], liveArtifactsEnabled 
     };
 
     const app = {
-        pageContextActive: false,
         browserControlActive: false,
         hostIsTab: false,
         isGenerating: false,
@@ -48,6 +47,7 @@ function createPromptHarness({ text = 'Hello', files = [], liveArtifactsEnabled 
         // Mirrors AppController.getConnectionProvider(), which PromptController now defers to.
         getConnectionProvider: () => ui.settings?.connectionData?.provider || 'web',
         getSelectedModel: vi.fn(() => 'gemini-test'),
+        getReferencedTabs: vi.fn(() => []),
         saveCurrentTabSessionBinding: vi.fn(),
         sessionFlow: {
             refreshHistoryUI: vi.fn(),
@@ -75,6 +75,23 @@ describe('PromptController generation recovery', () => {
         expect(app.generatingSessionId).toBeNull();
         expect(ui.setLoading).toHaveBeenCalledWith(false);
         expect(ui.updateStatus).toHaveBeenCalledWith('cleared');
+    });
+
+    it('sends referenced tabs with the prompt payload', async () => {
+        const { app, controller } = createPromptHarness({ text: 'Summarize' });
+        const tabs = [{ id: 3, title: 'GitHub', url: 'https://github.com/', favIconUrl: '' }];
+        app.getReferencedTabs.mockReturnValue(tabs);
+
+        await controller.send();
+
+        expect(sendToBackground).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: 'SEND_PROMPT',
+                text: 'Summarize',
+                referencedTabs: tabs,
+            })
+        );
+        expect(app.getReferencedTabs).toHaveBeenCalled();
     });
 
     it('regenerates a reply by resending the user turn above it', async () => {

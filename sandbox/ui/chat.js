@@ -10,7 +10,6 @@ export class ChatController {
         this.statusDiv = elements.statusDiv;
         this.inputFn = elements.inputFn;
         this.sendBtn = elements.sendBtn;
-        this.pageContextBtn = document.getElementById('page-context-btn');
         this.liveArtifactsBtn = document.getElementById('live-artifacts-btn');
         this.imagePreview = elements.imagePreview || document.getElementById('image-preview');
         this.footerEl = document.querySelector('.footer');
@@ -36,12 +35,16 @@ export class ChatController {
             const trigger = event.target.closest('[data-empty-action]');
             if (!trigger) return;
             const action = trigger.getAttribute('data-empty-action');
-            if (action === 'page-context') {
-                const button = document.getElementById('page-context-btn');
-                if (button) {
-                    if (button.getAttribute('aria-pressed') !== 'true') button.click();
-                    else this.inputFn?.focus();
-                }
+            if (action === 'mention-tab') {
+                const input = this.inputFn;
+                if (!input) return;
+                // The @ mention only triggers at a word boundary, so keep the
+                // trigger separated from text the user already typed.
+                const prefix = input.value && !/\s$/.test(input.value) ? ' ' : '';
+                input.value += `${prefix}@`;
+                input.setSelectionRange?.(input.value.length, input.value.length);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.focus();
             } else if (action === 'capture') {
                 const button = document.getElementById('capture-menu-btn');
                 // Open the Capture dropdown directly — tool_button_events handles toggleMenu
@@ -406,13 +409,6 @@ export class ChatController {
         this.sendBtn.disabled = false;
         this.sendBtn.setAttribute('aria-disabled', canSend ? 'false' : 'true');
         this.sendBtn.classList.toggle('is-empty', !canSend);
-    }
-
-    togglePageContext(isActive) {
-        if (this.pageContextBtn) {
-            this.pageContextBtn.classList.toggle('active', isActive);
-            this.pageContextBtn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        }
     }
 
     toggleLiveArtifacts(isActive) {

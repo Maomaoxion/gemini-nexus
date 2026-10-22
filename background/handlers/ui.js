@@ -14,7 +14,7 @@ import {
     handleMcpTestConnection,
     handleMcpDisconnect,
 } from './ui_mcp_tools.js';
-import { handleCheckPageContext, handleGetActiveSelection } from './ui_page_context.js';
+import { handleGetActiveSelection } from './ui_page_context.js';
 import { handleProviderModelList } from './ui_provider_models.js';
 import { handleContextWindow } from './ui_context_window.js';
 import {
@@ -23,6 +23,7 @@ import {
     handleToggleSidePanelControl,
 } from './ui_sidepanel.js';
 import { handleGetOpenTabs, handleSwitchTab } from './ui_tab_actions.js';
+import { handleGetMentionTabs } from './ui_tab_mentions.js';
 import { createUiMessageContext } from './ui_context.js';
 
 export class UIMessageHandler {
@@ -99,11 +100,6 @@ export class UIMessageHandler {
             return true;
         }
 
-        if (request.action === 'CHECK_PAGE_CONTEXT') {
-            handleCheckPageContext(context, request, sender, sendResponse);
-            return true;
-        }
-
         if (request.action === 'MCP_TEST_CONNECTION') {
             handleMcpTestConnection(this.mcpManager, request, sendResponse);
             return true;
@@ -131,6 +127,11 @@ export class UIMessageHandler {
 
         if (request.action === 'GET_OPEN_TABS') {
             handleGetOpenTabs(context, request, sender, sendResponse);
+            return true;
+        }
+
+        if (request.action === 'GET_MENTION_TABS') {
+            handleGetMentionTabs(context, request, sender, sendResponse);
             return true;
         }
 

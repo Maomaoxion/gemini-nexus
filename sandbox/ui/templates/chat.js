@@ -12,9 +12,9 @@ export const ChatTemplate = `
             <div class="chat-empty-hint" data-i18n="chatEmptyHint">Ready when you are.</div>
             <ul class="chat-empty-tips">
                 <li>
-                    <button type="button" class="chat-empty-tip" data-empty-action="page-context">
+                    <button type="button" class="chat-empty-tip" data-empty-action="mention-tab">
                         <span class="chat-empty-tip-icon" aria-hidden="true">${TemplateIcons.PAGE_CONTEXT}</span>
-                        <span class="chat-empty-tip-text" data-i18n="chatEmptyTip1">Turn on Page to chat with this website</span>
+                        <span class="chat-empty-tip-text" data-i18n="chatEmptyTip1">Type @ to reference a tab</span>
                     </button>
                 </li>
                 <li>

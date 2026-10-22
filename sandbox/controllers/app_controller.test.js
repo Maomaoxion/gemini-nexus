@@ -33,7 +33,14 @@ function createUi() {
     inputFn.focus = vi.fn();
 
     return {
-        chat: { togglePageContext: vi.fn(), toggleLiveArtifacts: vi.fn() },
+        chat: { toggleLiveArtifacts: vi.fn() },
+        tabMention: {
+            getReferences: vi.fn(() => []),
+            setCandidates: vi.fn(),
+            setCurrentTabId: vi.fn(),
+        },
+        setTabMentionCallbacks: vi.fn(),
+        setReferencedTabs: vi.fn(),
         clearChatHistory: vi.fn(),
         historyDiv: document.createElement('div'),
         inputFn,
@@ -181,7 +188,7 @@ describe('AppController session restore behavior', () => {
         expect(sessionManager.currentSessionId).toBe('real');
     });
 
-    it('updates page-context availability from restored tab context', async () => {
+    it('updates page-context availability and current tab marker from restored tab context', async () => {
         const { app, ui } = createAppHarness();
 
         await app.handleIncomingMessage({
@@ -191,8 +198,8 @@ describe('AppController session restore behavior', () => {
             },
         });
         expect(ui.setPageContextAvailable).toHaveBeenCalledWith(true);
+        expect(ui.tabMention.setCurrentTabId).toHaveBeenCalledWith(123);
 
-        app.pageContextActive = true;
         await app.handleIncomingMessage({
             data: {
                 action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT',
@@ -200,8 +207,49 @@ describe('AppController session restore behavior', () => {
             },
         });
         expect(ui.setPageContextAvailable).toHaveBeenCalledWith(false);
-        expect(app.pageContextActive).toBe(false);
-        expect(ui.chat.togglePageContext).toHaveBeenCalledWith(false);
+        expect(ui.tabMention.setCurrentTabId).toHaveBeenCalledWith(null);
+    });
+
+    it('forwards tab mention candidates to the composer reference picker', async () => {
+        const { app, ui } = createAppHarness();
+        const tabs = [{ id: 2, title: 'Docs', url: 'https://docs.test/' }];
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: { action: 'MENTION_TABS_RESULT', tabs, currentTabId: 2 },
+            },
+        });
+
+        expect(ui.tabMention.setCandidates).toHaveBeenCalledWith(tabs, 2);
+    });
+
+    it('requests tab mention candidates from the background', () => {
+        const { app } = createAppHarness();
+
+        app.handleRequestMentionTabs();
+
+        expect(sendToBackground).toHaveBeenCalledWith({ action: 'GET_MENTION_TABS' });
+    });
+
+    it('keeps referenced tabs in the saved draft after sending', () => {
+        const { app, ui } = createAppHarness();
+        const tabs = [{ id: 4, title: 'Tab', url: 'https://t.test/', favIconUrl: '' }];
+        ui.tabMention.getReferences.mockReturnValue(tabs);
+        const postMessage = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {});
+
+        app.clearComposerDraftAfterSend();
+
+        expect(postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: 'SAVE_SIDE_PANEL_INPUT_DRAFT',
+                payload: expect.objectContaining({
+                    value: expect.objectContaining({ text: '', files: [], tabs }),
+                }),
+            }),
+            '*'
+        );
+        postMessage.mockRestore();
     });
 
     it('restores saved groups and rerenders history after sessions are loaded', async () => {
@@ -603,6 +651,7 @@ describe('AppController composer drafts', () => {
         expect(harness.app.inputDrafts.get('draft:1')).toEqual({
             text: 'half-written question',
             files: [],
+            tabs: [],
         });
         expect(harness.getText()).toBe('');
     });
@@ -633,6 +682,18 @@ describe('AppController composer drafts', () => {
         await harness.app.handleIncomingMessage(tabContext(1));
 
         expect(harness.imageManager.setFiles).toHaveBeenLastCalledWith([attachment]);
+    });
+
+    it('restores referenced tabs together with the draft text', async () => {
+        const harness = createComposerHarness();
+        const tabs = [{ id: 4, title: 'Docs', url: 'https://docs.test/', favIconUrl: '' }];
+
+        await harness.app.handleIncomingMessage(
+            restoreDrafts({ 'draft:1': { text: 'use this', files: [], tabs } })
+        );
+        await harness.app.handleIncomingMessage(tabContext(1));
+
+        expect(harness.ui.setReferencedTabs).toHaveBeenCalledWith(tabs, { silent: true });
     });
 
     it('hydrates persisted drafts and restores them for the active tab', async () => {

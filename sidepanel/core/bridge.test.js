@@ -1525,4 +1525,29 @@ describe('MessageBridge model persistence', () => {
             })
         );
     });
+
+    it('forwards mention tab candidates from the background to the sandbox', async () => {
+        const frame = createFrame();
+        const state = createState();
+        const bridge = new MessageBridge(frame, state);
+        chrome.runtime.sendMessage.mockResolvedValueOnce({
+            action: 'MENTION_TABS_RESULT',
+            currentTabId: 2,
+            tabs: [{ id: 2, title: 'Docs', url: 'https://docs.test/' }],
+        });
+
+        bridge.forwardToBackground({ action: 'GET_MENTION_TABS' });
+
+        await vi.waitFor(() =>
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'MENTION_TABS_RESULT',
+                    currentTabId: 2,
+                    tabs: [{ id: 2, title: 'Docs', url: 'https://docs.test/' }],
+                },
+            })
+        );
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'GET_MENTION_TABS' });
+    });
 });

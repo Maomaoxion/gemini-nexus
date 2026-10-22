@@ -61,6 +61,35 @@ describe('ChatController footer spacing', () => {
     });
 });
 
+describe('ChatController empty-state mention tip', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('inserts the @ trigger at a word boundary', () => {
+        document.body.innerHTML = `
+            <div class="footer"></div>
+            <div id="chat-empty">
+                <button class="chat-empty-tip" data-empty-action="mention-tab"></button>
+            </div>
+        `;
+        const inputFn = document.createElement('textarea');
+        inputFn.value = 'draft text';
+        const controller = new ChatController({
+            historyDiv: document.createElement('div'),
+            inputFn,
+            sendBtn: document.createElement('button'),
+            statusDiv: document.createElement('div'),
+        });
+
+        document.querySelector('[data-empty-action="mention-tab"]').click();
+
+        expect(inputFn.value).toBe('draft text @');
+        expect(inputFn.selectionStart).toBe('draft text @'.length);
+        expect(controller).toBeTruthy();
+    });
+});
+
 describe('ChatController send enablement', () => {
     beforeEach(() => {
         document.body.innerHTML = '';

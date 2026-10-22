@@ -1,4 +1,3 @@
-import { getActiveTabContent } from './session/active_tab_content.js';
 import { respondWithUiTask } from './ui_async.js';
 import { getRequestTab } from '../control/tabs.js';
 
@@ -15,17 +14,6 @@ export function handleGetActiveSelection(context, request, sender, sendResponse)
         },
         { errorLabel: 'Active selection lookup error' }
     );
-}
-
-export function handleCheckPageContext(context, request, sender, sendResponse) {
-    respondWithUiTask(sendResponse, async () => {
-        const tab = await getRequestTab(context, request, sender);
-        const content = await getActiveTabContent(tab?.id || null);
-        return {
-            action: 'PAGE_CONTEXT_RESULT',
-            length: content ? content.length : 0,
-        };
-    });
 }
 
 async function sendSelectionResult(context, request, sender, tabId) {

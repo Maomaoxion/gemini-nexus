@@ -15,7 +15,6 @@ function installFooterDom() {
         <button id="open-full-page-btn"></button>
         <div class="tools-container">
             <div class="tools-primary" id="tools-row">
-                <button id="page-context-btn" class="tool-toggle" aria-pressed="false"></button>
                 <button id="browser-control-btn" class="tool-toggle" aria-pressed="false"></button>
                 <button id="live-artifacts-btn" class="tool-toggle" aria-pressed="false"></button>
             </div>
@@ -75,7 +74,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -102,7 +100,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -128,7 +125,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -157,7 +153,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -179,7 +174,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -206,7 +200,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -233,7 +226,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -259,7 +251,6 @@ describe('app events', () => {
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -285,7 +276,6 @@ describe('app events', () => {
             toggleBrowserControl: vi.fn(),
             toggleLiveArtifacts: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,
@@ -310,7 +300,6 @@ describe('app events', () => {
             toggleLiveArtifacts: vi.fn(),
             handleLiveArtifactFollowUp: vi.fn(),
             setCaptureMode: vi.fn(),
-            togglePageContext: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
             isGenerating: false,

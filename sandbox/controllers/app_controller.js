@@ -29,7 +29,6 @@ export class AppController {
         this.generatingSessionId = null;
         // Session id carried by an outstanding service-worker run probe.
         this._workerProbeSessionId = undefined;
-        this.pageContextActive = false;
         this.browserControlActive = false;
         this.liveArtifactsEnabled = false;
         this.sidePanelScope = DEFAULT_SIDE_PANEL_SCOPE;
@@ -60,6 +59,13 @@ export class AppController {
             this.ui.setBrowserControlCallbacks({
                 onChoose: () => this.handleTabSwitcher(),
                 onStop: () => this.toggleBrowserControl(false),
+            });
+        }
+
+        if (this.ui.setTabMentionCallbacks) {
+            this.ui.setTabMentionCallbacks({
+                onRequestTabs: () => this.handleRequestMentionTabs(),
+                onChange: () => this.scheduleInputDraftSave(),
             });
         }
 
@@ -96,6 +102,7 @@ export class AppController {
         return {
             text: this.ui?.chat?.getInputValue?.() || '',
             files: this.imageManager?.getFiles?.() || [],
+            tabs: this.getReferencedTabs(),
         };
     }
 
@@ -111,6 +118,7 @@ export class AppController {
 
         this.ui?.chat?.setInputValue?.(draft.text);
         this.imageManager?.setFiles?.(draft.files);
+        this.ui?.setReferencedTabs?.(draft.tabs, { silent: true });
     }
 
     postInputDraftToHost(tabId, value) {
@@ -163,26 +171,30 @@ export class AppController {
             this.inputDraftSaveTimer = null;
         }
         const key = this.getInputDraftKey();
-        this.inputDrafts.delete(key);
-        this.postInputDraftToHost(this.currentTabId, null);
+        const tabs = this.getReferencedTabs();
+        if (tabs.length === 0) {
+            this.inputDrafts.delete(key);
+            this.postInputDraftToHost(this.currentTabId, null);
+            return;
+        }
+
+        // Referenced tabs survive a send: keep them in the draft so a tab
+        // switch or panel reload still has the same context selected.
+        const draft = { text: '', files: [], tabs };
+        this.inputDrafts.set(key, draft);
+        this.postInputDraftToHost(this.currentTabId, draft);
+    }
+
+    getReferencedTabs() {
+        return this.ui?.tabMention?.getReferences?.() || [];
     }
 
     setCaptureMode(mode) {
         this.captureMode = mode;
     }
 
-    togglePageContext() {
-        this.pageContextActive = !this.pageContextActive;
-        this.ui.chat.togglePageContext(this.pageContextActive);
-
-        if (this.pageContextActive) {
-            this._checkPageContent();
-        }
-    }
-
-    _checkPageContent() {
-        this.ui.updateStatus(t('readingPage'));
-        sendToBackground({ action: 'CHECK_PAGE_CONTEXT' });
+    handleRequestMentionTabs() {
+        sendToBackground({ action: 'GET_MENTION_TABS' });
     }
 
     toggleLiveArtifacts(forceState = null) {
@@ -407,12 +419,7 @@ export class AppController {
             const pageContextAvailable =
                 Number.isInteger(this.currentTabId) && this.currentTabId > 0;
             this.ui.setPageContextAvailable?.(pageContextAvailable);
-            // When no webpage is bound the toggle is disabled — clear sticky "on"
-            // so UI and SEND_PROMPT includePageContext stay consistent.
-            if (!pageContextAvailable && this.pageContextActive) {
-                this.pageContextActive = false;
-                this.ui.chat?.togglePageContext?.(false);
-            }
+            this.ui.tabMention?.setCurrentTabId?.(this.currentTabId);
             if (this.sessionsRestored && this.sidePanelScope === DEFAULT_SIDE_PANEL_SCOPE) {
                 this.restoreRememberedTabSession();
             }
@@ -592,14 +599,8 @@ export class AppController {
                 }, 4000);
                 return;
             }
-            if (payload.action === 'PAGE_CONTEXT_RESULT') {
-                const pageContentLength = payload.length;
-                const formattedLength = new Intl.NumberFormat().format(pageContentLength);
-                const statusMessage = t('pageReadSuccess').replace('{count}', formattedLength);
-                this.ui.updateStatus(statusMessage);
-                setTimeout(() => {
-                    if (!this.isGenerating) this.ui.updateStatus('');
-                }, 3000);
+            if (payload.action === 'MENTION_TABS_RESULT') {
+                this.ui.tabMention?.setCandidates?.(payload.tabs, payload.currentTabId);
                 return;
             }
 

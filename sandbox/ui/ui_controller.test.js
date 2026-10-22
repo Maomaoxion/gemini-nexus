@@ -32,20 +32,12 @@ describe('UIController host context', () => {
 
     it('marks whether the chat has a real webpage context', () => {
         const controller = Object.create(UIController.prototype);
-        document.body.innerHTML =
-            '<button id="page-context-btn" class="active" aria-pressed="true" title="Toggle"></button>';
-        const btn = document.getElementById('page-context-btn');
 
         controller.setPageContextAvailable(true);
         expect(document.body.classList.contains('has-page-context')).toBe(true);
-        expect(btn.disabled).toBe(false);
 
         controller.setPageContextAvailable(false);
         expect(document.body.classList.contains('has-page-context')).toBe(false);
-        expect(btn.disabled).toBe(true);
-        expect(btn.dataset.i18nTitle).toBe('pageContextUnavailableTooltip');
-        expect(btn.classList.contains('active')).toBe(false);
-        expect(btn.getAttribute('aria-pressed')).toBe('false');
     });
 });
 

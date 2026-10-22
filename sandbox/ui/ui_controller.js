@@ -3,6 +3,7 @@ import { SidebarController } from './sidebar.js';
 import { SettingsController } from './settings/index.js';
 import { ViewerController } from './viewer.js';
 import { TabSelectorController } from './tab_selector.js';
+import { TabMentionController } from './tab_mention.js';
 import { createModelOptions, getPreferredModel } from './model_options.js';
 import { resizeSelectToSelectedOption } from './model_select_width.js';
 import { initModelPicker, syncModelPicker } from './model_picker.js';
@@ -13,7 +14,6 @@ import {
     setProviderThinkingLevel,
 } from '../../shared/models/thinking_levels.js';
 import { DEFAULT_PROVIDER } from '../../shared/config/constants.js';
-import { t } from '../core/i18n.js';
 
 export class UIController {
     constructor(elements) {
@@ -21,6 +21,12 @@ export class UIController {
         this.checkLayout();
 
         this.chat = new ChatController(elements);
+
+        this.tabMention = new TabMentionController({
+            inputFn: this.chat.inputFn,
+            referenceBar: document.getElementById('tab-reference-bar'),
+            menu: document.getElementById('tab-mention-menu'),
+        });
 
         this.sidebar = new SidebarController(elements, {
             onOverlayClick: () => this.settings.close(),
@@ -88,24 +94,19 @@ export class UIController {
     }
 
     setPageContextAvailable(isAvailable) {
-        const available = isAvailable === true;
-        document.body.classList.toggle('has-page-context', available);
+        document.body.classList.toggle('has-page-context', isAvailable === true);
+    }
 
-        // Always visible so the tool is discoverable; disabled when no webpage is bound.
-        const pageContextBtn = document.getElementById('page-context-btn');
-        if (pageContextBtn) {
-            pageContextBtn.disabled = !available;
-            if (available) {
-                pageContextBtn.dataset.i18nTitle = 'pageContextTooltip';
-                pageContextBtn.title = t('pageContextTooltip');
-            } else {
-                pageContextBtn.dataset.i18nTitle = 'pageContextUnavailableTooltip';
-                pageContextBtn.title = t('pageContextUnavailableTooltip');
-                // Visual off when the control cannot be toggled.
-                pageContextBtn.classList.remove('active');
-                pageContextBtn.setAttribute('aria-pressed', 'false');
-            }
-        }
+    setTabMentionCallbacks(callbacks) {
+        if (this.tabMention) this.tabMention.setCallbacks(callbacks);
+    }
+
+    setReferencedTabs(tabs, options) {
+        if (this.tabMention) this.tabMention.setReferences(tabs, options);
+    }
+
+    getReferencedTabs() {
+        return this.tabMention ? this.tabMention.getReferences() : [];
     }
 
     scheduleLayoutCheck() {

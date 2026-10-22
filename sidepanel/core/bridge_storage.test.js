@@ -37,7 +37,7 @@ describe('side panel input draft storage', () => {
         saveSidePanelInputDraft({ tabId: 5, value: { text: 'hi', files: [] } });
 
         expect(storage.snapshot().geminiSidePanelInputDrafts).toEqual({
-            'draft:5': { text: 'hi', files: [] },
+            'draft:5': { text: 'hi', files: [], tabs: [] },
         });
     });
 
@@ -53,8 +53,27 @@ describe('side panel input draft storage', () => {
         saveSidePanelInputDraft({ tabId: 2, value: { text: 'two', files: [] } });
 
         expect(storage.snapshot().geminiSidePanelInputDrafts).toEqual({
-            'draft:1': { text: 'one', files: [] },
-            'draft:2': { text: 'two', files: [] },
+            'draft:1': { text: 'one', files: [], tabs: [] },
+            'draft:2': { text: 'two', files: [], tabs: [] },
+        });
+    });
+
+    it('keeps referenced tabs in the stored draft', () => {
+        saveSidePanelInputDraft({
+            tabId: 8,
+            value: {
+                text: '',
+                files: [],
+                tabs: [{ id: 2, title: 'Docs', url: 'https://docs.test/' }],
+            },
+        });
+
+        expect(storage.snapshot().geminiSidePanelInputDrafts).toEqual({
+            'draft:8': {
+                text: '',
+                files: [],
+                tabs: [{ id: 2, title: 'Docs', url: 'https://docs.test/', favIconUrl: '' }],
+            },
         });
     });
 
@@ -66,7 +85,7 @@ describe('side panel input draft storage', () => {
 
         expect(frame.postMessage).toHaveBeenCalledWith({
             action: 'RESTORE_INPUT_DRAFTS',
-            payload: { 'draft:3': { text: 'restored', files: [] } },
+            payload: { 'draft:3': { text: 'restored', files: [], tabs: [] } },
         });
     });
 

@@ -5,9 +5,34 @@ import { estimateDataUrlBytes } from '../attachments/index.js';
 // keeps only the attachments that fit the budget; text is never dropped.
 export const COMPOSER_DRAFT_MAX_FILES = 10;
 export const COMPOSER_DRAFT_MAX_BYTES = 2 * 1024 * 1024;
+export const COMPOSER_DRAFT_MAX_TABS = 50;
 
 function isPlainObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function normalizeComposerDraftTabs(value, limits = {}) {
+    const maxTabs = Number.isInteger(limits.maxTabs) ? limits.maxTabs : COMPOSER_DRAFT_MAX_TABS;
+    const tabs = [];
+    const seen = new Set();
+
+    for (const tab of Array.isArray(value) ? value : []) {
+        if (tabs.length >= maxTabs) break;
+        if (!isPlainObject(tab)) continue;
+
+        const id = Number(tab.id);
+        if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+
+        seen.add(id);
+        tabs.push({
+            id,
+            title: typeof tab.title === 'string' ? tab.title : '',
+            url: typeof tab.url === 'string' ? tab.url : '',
+            favIconUrl: typeof tab.favIconUrl === 'string' ? tab.favIconUrl : '',
+        });
+    }
+
+    return tabs;
 }
 
 export function getComposerDraftKey(tabId) {
@@ -19,10 +44,10 @@ export function normalizeComposerDraft(value, limits = {}) {
     const maxBytes = Number.isInteger(limits.maxBytes) ? limits.maxBytes : COMPOSER_DRAFT_MAX_BYTES;
 
     if (typeof value === 'string') {
-        return { text: value, files: [] };
+        return { text: value, files: [], tabs: [] };
     }
     if (!isPlainObject(value)) {
-        return { text: '', files: [] };
+        return { text: '', files: [], tabs: [] };
     }
 
     const files = [];
@@ -46,12 +71,13 @@ export function normalizeComposerDraft(value, limits = {}) {
     return {
         text: typeof value.text === 'string' ? value.text : '',
         files,
+        tabs: normalizeComposerDraftTabs(value.tabs, limits),
     };
 }
 
 export function isEmptyComposerDraft(value) {
     const draft = normalizeComposerDraft(value);
-    return !draft.text && draft.files.length === 0;
+    return !draft.text && draft.files.length === 0 && draft.tabs.length === 0;
 }
 
 export function normalizeComposerDraftMap(value, limits = {}) {

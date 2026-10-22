@@ -14,6 +14,8 @@ describe('FooterTemplate', () => {
         const rightActions = actions.querySelector('.composer-actions-right');
 
         expect(inputWrapper.querySelector('#image-preview')).not.toBeNull();
+        expect(inputWrapper.querySelector('#tab-reference-bar')).not.toBeNull();
+        expect(inputWrapper.querySelector('#tab-mention-menu')).not.toBeNull();
         expect(textareaShell.querySelector('#prompt')).not.toBeNull();
         const uploadBtn = leftActions.querySelector('#upload-btn');
         expect(uploadBtn).not.toBeNull();
@@ -49,7 +51,7 @@ describe('FooterTemplate', () => {
         document.body.innerHTML = FooterTemplate;
 
         const primary = document.querySelector('.tools-primary');
-        expect(primary.querySelector('#page-context-btn')).not.toBeNull();
+        expect(primary.querySelector('#page-context-btn')).toBeNull();
         expect(primary.querySelector('#browser-control-btn')).not.toBeNull();
         expect(primary.querySelector('#live-artifacts-btn')).not.toBeNull();
 

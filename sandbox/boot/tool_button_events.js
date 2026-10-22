@@ -150,12 +150,4 @@ export function bindToolButtonEvents(app, ui) {
     }
 
     bindCaptureButton('snip-btn', app, ui, 'snip', () => t('selectSnip'));
-
-    const contextBtn = document.getElementById('page-context-btn');
-    if (contextBtn) {
-        contextBtn.addEventListener('click', () => {
-            app.togglePageContext();
-            if (ui.inputFn) ui.inputFn.focus();
-        });
-    }
 }

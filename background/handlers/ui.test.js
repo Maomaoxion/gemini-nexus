@@ -1173,4 +1173,92 @@ describe('UIMessageHandler browser control tab ownership', () => {
             })
         );
     });
+
+    it('returns mentionable tabs from the requesting tab window', async () => {
+        globalThis.chrome = {
+            tabs: {
+                get: vi.fn((tabId) =>
+                    Promise.resolve({ id: tabId, windowId: 9, url: 'https://docs.test/' })
+                ),
+                query: vi.fn(({ windowId }) => {
+                    expect(windowId).toBe(9);
+                    return Promise.resolve([
+                        {
+                            id: 1,
+                            title: 'Docs',
+                            url: 'https://docs.test/',
+                            windowId: 9,
+                            active: true,
+                        },
+                        {
+                            id: 2,
+                            title: 'Settings',
+                            url: 'chrome://settings/',
+                            windowId: 9,
+                        },
+                    ]);
+                }),
+            },
+        };
+        const sendResponse = vi.fn();
+
+        const handled = handler.handle(
+            { action: 'GET_MENTION_TABS', sidePanelTabId: 1 },
+            {},
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() =>
+            expect(sendResponse).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: 'MENTION_TABS_RESULT',
+                    currentTabId: 1,
+                })
+            )
+        );
+
+        const payload = sendResponse.mock.calls[0][0];
+        expect(payload.tabs).toEqual([
+            expect.objectContaining({ id: 1, title: 'Docs', controllable: true }),
+        ]);
+        expect(chrome.tabs.query).toHaveBeenCalledWith({ windowId: 9 });
+    });
+
+    it('falls back to the last focused window when the requesting tab is gone', async () => {
+        globalThis.chrome = {
+            tabs: {
+                get: vi.fn(() => Promise.reject(new Error('No tab with id'))),
+                query: vi.fn(({ active, lastFocusedWindow, windowId }) => {
+                    if (active === true && lastFocusedWindow === true) {
+                        return Promise.resolve([{ id: 5, windowId: 4, url: 'https://a.test/' }]);
+                    }
+                    if (windowId === 4) {
+                        return Promise.resolve([
+                            { id: 5, title: 'A', url: 'https://a.test/', windowId: 4 },
+                        ]);
+                    }
+                    return Promise.resolve([]);
+                }),
+            },
+        };
+        const sendResponse = vi.fn();
+
+        const handled = handler.handle(
+            { action: 'GET_MENTION_TABS', sidePanelTabId: 1 },
+            {},
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() =>
+            expect(sendResponse).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: 'MENTION_TABS_RESULT',
+                    currentTabId: 5,
+                })
+            )
+        );
+        expect(sendResponse.mock.calls[0][0].tabs.map((tab) => tab.id)).toEqual([5]);
+    });
 });

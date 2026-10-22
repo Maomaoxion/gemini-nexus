@@ -224,16 +224,6 @@ body:not(.has-page-context) .context-aware {
     display: none !important;
 }
 
-#page-context-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-#page-context-btn:disabled:hover {
-    background: transparent;
-    color: var(--text-secondary);
-}
-
 .tool-btn svg,
 .tool-btn .tool-icon-img {
     width: 14px;
