@@ -1,6 +1,7 @@
 import { t } from '../core/i18n.js';
 import { copyToClipboard } from '../render/clipboard.js';
 import { cleanupLiveArtifacts } from '../render/artifacts.js';
+import { createTurnMessage } from '../render/turn_message.js';
 import { TemplateIcons } from './templates/icons.js';
 import '../../shared/ui/copy_feedback.js';
 
@@ -13,12 +14,16 @@ export class ChatController {
         this.liveArtifactsBtn = document.getElementById('live-artifacts-btn');
         this.imagePreview = elements.imagePreview || document.getElementById('image-preview');
         this.footerEl = document.querySelector('.footer');
+        this.currentTurnView = null;
         this.shouldFollowBottom = true;
         this.scrollFrame = null;
+        this.scrollEventFrame = null;
         this.userScrollIntent = null;
         this.lastTouchScrollTop = null;
         this.resizeObserver = null;
         this.footerResizeObserver = null;
+        this.footerOffsetFrame = null;
+        this.lastFooterHeight = 0;
         this.observedResizeElements = new WeakSet();
         this.hasAttachments = false;
 
@@ -121,9 +126,19 @@ export class ChatController {
         }
 
         if (this.historyDiv) {
-            this.historyDiv.addEventListener('scroll', () => this.handleHistoryScroll(), {
-                passive: true,
-            });
+            this.historyDiv.addEventListener(
+                'scroll',
+                () => {
+                    // Scroll fires at frame rate while streaming; coalesce layout
+                    // reads to one per frame.
+                    if (this.scrollEventFrame !== null) return;
+                    this.scrollEventFrame = window.requestAnimationFrame(() => {
+                        this.scrollEventFrame = null;
+                        this.handleHistoryScroll();
+                    });
+                },
+                { passive: true }
+            );
             this.historyDiv.addEventListener('wheel', (event) => this.handleHistoryWheel(event), {
                 passive: true,
             });
@@ -148,7 +163,16 @@ export class ChatController {
 
         if (!this.footerEl || typeof ResizeObserver === 'undefined') return;
 
-        this.footerResizeObserver = new ResizeObserver(() => this.updateFooterOffset());
+        // Defer the read/write to the next frame: measuring inside the observer
+        // callback and immediately writing --footer-height can make Chrome emit
+        // "ResizeObserver loop completed with undelivered notifications".
+        this.footerResizeObserver = new ResizeObserver(() => {
+            if (this.footerOffsetFrame !== null) return;
+            this.footerOffsetFrame = window.requestAnimationFrame(() => {
+                this.footerOffsetFrame = null;
+                this.updateFooterOffset();
+            });
+        });
         this.footerResizeObserver.observe(this.footerEl);
     }
 
@@ -157,9 +181,10 @@ export class ChatController {
 
         const rect = this.footerEl.getBoundingClientRect();
         const height = Math.ceil(rect.height || 0);
-        if (height > 0) {
-            document.documentElement.style.setProperty('--footer-height', `${height}px`);
-        }
+        if (height <= 0 || height === this.lastFooterHeight) return;
+
+        this.lastFooterHeight = height;
+        document.documentElement.style.setProperty('--footer-height', `${height}px`);
     }
 
     updateStatus(text) {
@@ -175,6 +200,45 @@ export class ChatController {
             cleanupLiveArtifacts(this.historyDiv);
             this.historyDiv.innerHTML = '';
         }
+        this.currentTurnView = null;
+    }
+
+    beginTurn(options = {}) {
+        if (!this.historyDiv) return null;
+
+        // A user message with no reply yet leaves an empty turn behind; drop it
+        // before starting the next one.
+        if (
+            this.currentTurnView?.el &&
+            !this.currentTurnView.contentEl?.childElementCount &&
+            this.historyDiv.contains(this.currentTurnView.el)
+        ) {
+            this.currentTurnView.el.remove();
+        }
+
+        this.currentTurnView = createTurnMessage(this.historyDiv, options);
+        return this.currentTurnView;
+    }
+
+    getTurnView() {
+        return this.currentTurnView;
+    }
+
+    getTurnContainer() {
+        if (!this.historyDiv) return null;
+        if (
+            this.currentTurnView &&
+            this.currentTurnView.el &&
+            this.historyDiv.contains(this.currentTurnView.el)
+        ) {
+            return this.currentTurnView.el;
+        }
+        const view = this.beginTurn();
+        return view ? view.el : null;
+    }
+
+    setTurnView(view) {
+        this.currentTurnView = view || null;
     }
 
     isNearBottom(threshold = 120) {
@@ -256,8 +320,12 @@ export class ChatController {
         if (!this.historyDiv) return;
 
         if (typeof MutationObserver !== 'undefined') {
-            const mutationObserver = new MutationObserver(() => {
-                this.observeScrollableChildren();
+            const mutationObserver = new MutationObserver((records) => {
+                // Token updates only mutate text; only new nodes need the
+                // resize observer. Avoid rescanning the whole list per token.
+                if (records.some((record) => record.type === 'childList')) {
+                    this.observeScrollableChildren();
+                }
                 this.followStreamingContent();
             });
             mutationObserver.observe(this.historyDiv, {
@@ -349,11 +417,21 @@ export class ChatController {
             }
             if (options.force !== true && !this.shouldFollowBottom) return;
 
-            // Scroll to the start of the last message to ensure visibility from the beginning
-            const lastMsg = this.historyDiv.lastElementChild;
+            // Scroll to the start of the last message to ensure visibility from the beginning.
+            // offsetTop is relative to the nearest positioned ancestor (the turn
+            // bubble), not the scroll container, so measure with rects instead.
+            const lastChild = this.historyDiv.lastElementChild;
+            const lastMsg =
+                lastChild?.classList?.contains('turn-message') === true
+                    ? lastChild.querySelector('.turn-content > *:last-child') || lastChild
+                    : lastChild;
             if (lastMsg) {
+                const containerRect = this.historyDiv.getBoundingClientRect();
+                const targetRect = lastMsg.getBoundingClientRect();
+                const targetTop =
+                    this.historyDiv.scrollTop + targetRect.top - containerRect.top - 20;
                 this.historyDiv.scrollTo({
-                    top: lastMsg.offsetTop - 20,
+                    top: Math.max(0, targetTop),
                     behavior: 'smooth',
                 });
             } else {

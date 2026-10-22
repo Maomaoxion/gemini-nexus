@@ -169,11 +169,11 @@ html:not([data-theme='dark']) .live-artifact-header {
 }
 
 .live-artifact-title {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 0 0 auto;
+    color: var(--primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     letter-spacing: 0;
+    white-space: nowrap;
 }
 
 .live-artifact-badge {
@@ -184,6 +184,61 @@ html:not([data-theme='dark']) .live-artifact-header {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.live-artifact-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.live-artifact-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-pill);
+    background: var(--btn-hover);
+}
+
+.live-artifact-view-btn {
+    border: none;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 2px 8px;
+}
+
+.live-artifact-view-btn.is-active {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.live-artifact-view-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--border-focus);
+}
+
+/* Mermaid/graphviz: the shared header replaces the code header. */
+.code-block-wrapper[data-live-artifact-enhanced='true'] > .code-header {
+    display: none;
+}
+
+.code-block-wrapper[data-live-artifact-enhanced='true']:not(.live-artifact-show-code) > pre {
+    display: none;
+}
+
+.code-block-wrapper.live-artifact-show-code > .live-artifact-preview .live-artifact-body {
+    display: none;
+}
+
+.live-artifact-header-actions .copy-code-btn {
+    min-height: 24px;
+    padding: 2px 6px;
 }
 
 .live-artifact-body {
@@ -207,10 +262,37 @@ html:not([data-theme='dark']) .live-artifact-header {
 .live-artifact-body-mermaid,
 .live-artifact-body-graphviz {
     display: grid;
-    place-items: center;
+    place-items: safe center;
     min-height: 150px;
     max-height: none;
     padding: 16px;
+}
+
+.live-artifact-body-mermaid.live-artifact-zoom-enabled,
+.live-artifact-body-graphviz.live-artifact-zoom-enabled {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    touch-action: none;
+    cursor: grab;
+}
+
+.live-artifact-zoom-enabled.is-panning {
+    cursor: grabbing;
+}
+
+.live-artifact-zoom-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+}
+
+.live-artifact-zoom-stage svg {
+    display: block;
+    max-width: none;
+    max-height: none;
 }
 
 .live-artifact-body-mermaid svg,

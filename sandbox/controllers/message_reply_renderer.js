@@ -1,4 +1,5 @@
-import { appendMessage } from '../render/message.js';
+import { appendTextBlockToHistory } from './block_render.js';
+import { isToolOutputText } from '../../shared/text/tool_call_text.js';
 import { hasMatchingReplyMedia } from './message_matchers.js';
 
 export class MessageReplyRenderState {
@@ -80,8 +81,16 @@ export function renderGeminiReply(handler, session, request) {
     // one; retrying resends the user turn above it.
     const replyIndex = session.messages.length - 1;
     const retryHandler = handler.app?.prompt?.getMessageRetryOptions?.(replyIndex)?.onRetry || null;
+    const turnRetryHandler =
+        request.status === 'error' && request.retryable === false ? null : retryHandler;
+    const turnStartIndex = findTurnStartIndex(session.messages, replyIndex);
     const deleteHandler =
-        handler.app?.prompt?.getMessageDeleteOptions?.(replyIndex)?.onDelete || null;
+        (turnStartIndex >= 0
+            ? handler.app?.prompt?.getTurnDeleteOptions?.(turnStartIndex)?.onDelete
+            : null) ||
+        handler.app?.prompt?.getMessageDeleteOptions?.(replyIndex)?.onDelete ||
+        null;
+    const turnView = handler.ui.getTurnView?.();
 
     if (handler.streamingBubble) {
         if (handler.hasStorageRenderedAiReply(session, request)) {
@@ -99,6 +108,8 @@ export function renderGeminiReply(handler, session, request) {
                 thoughtsDurationSeconds: request.thoughtsDurationSeconds,
             });
             handler.streamingBubble.setRetryHandler?.(retryHandler);
+            turnView?.setRetryHandler?.(turnRetryHandler);
+            turnView?.setDeleteHandler?.(deleteHandler);
 
             if (request.status === 'success') {
                 if (request.images && request.images.length > 0) {
@@ -115,7 +126,7 @@ export function renderGeminiReply(handler, session, request) {
                 request.status === 'error' &&
                 typeof handler.streamingBubble.markError === 'function'
             ) {
-                handler.streamingBubble.markError();
+                handler.streamingBubble.markError(request.errorKind, request.retryable);
             }
 
             handler.streamingBubble = null;
@@ -132,21 +143,39 @@ export function renderGeminiReply(handler, session, request) {
         return;
     }
 
-    appendMessage(
-        handler.ui.historyDiv,
-        request.text,
-        'ai',
-        request.images,
-        request.thoughts,
-        request.sources,
-        {
-            isFinal: true,
-            thoughtsDurationSeconds: request.thoughtsDurationSeconds,
-            isError: request.status === 'error',
-            errorKind: request.status === 'error' ? request.errorKind : undefined,
-            retryable: request.status === 'error' ? request.retryable : undefined,
-            onRetry: retryHandler,
-            onDelete: deleteHandler,
-        }
-    );
+    const textBlockOptions = {
+        text: request.text,
+        attachment: request.images,
+        thoughts: request.thoughts,
+        sources: request.sources,
+        isFinal: true,
+        thoughtsDurationSeconds: request.thoughtsDurationSeconds,
+        isError: request.status === 'error',
+        errorKind: request.status === 'error' ? request.errorKind : undefined,
+        retryable: request.status === 'error' ? request.retryable : undefined,
+        onRetry: retryHandler,
+        onDelete: deleteHandler,
+    };
+    const hasTurnTextBlock = typeof turnView?.appendTextBlock === 'function';
+    const textBlockContainer = hasTurnTextBlock
+        ? null
+        : handler.ui.getTurnContainer?.() || handler.ui.historyDiv;
+    appendTextBlockToHistory(turnView, textBlockContainer, textBlockOptions);
+    if (hasTurnTextBlock) {
+        turnView.setRetryHandler(turnRetryHandler);
+        turnView.setDeleteHandler(deleteHandler);
+    }
+}
+
+function findTurnStartIndex(messages, endIndex) {
+    if (!Array.isArray(messages)) return -1;
+
+    for (let index = endIndex - 1; index >= 0; index--) {
+        const message = messages[index];
+        if (!message || message.role !== 'user') continue;
+        if (message.kind === 'tool-output' || isToolOutputText(message.text)) continue;
+        return index;
+    }
+
+    return -1;
 }

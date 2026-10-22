@@ -179,6 +179,7 @@ function setPreviewSvg(body, svg) {
     body.classList.remove('live-artifact-body-loading', 'live-artifact-body-error');
     body.removeAttribute('aria-busy');
     body.innerHTML = svg;
+    body.__refreshPreviewZoom?.();
 }
 
 function renderMermaidPreview(body, code, renderMermaid = renderMermaidToSvg, options = {}) {
@@ -243,6 +244,165 @@ function renderGraphvizPreview(body, code, renderGraphviz = renderGraphvizToSvg,
         });
 }
 
+const PREVIEW_MIN_ZOOM = 0.5;
+const PREVIEW_MAX_ZOOM = 3;
+const PREVIEW_ZOOM_STEP = 0.1;
+
+function attachPreviewZoom(body) {
+    let zoom = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let stage = null;
+    let svgElement = null;
+    let baseWidth = 0;
+    let baseHeight = 0;
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragStartTranslateX = 0;
+    let dragStartTranslateY = 0;
+    let retryCount = 0;
+
+    const applyTransform = () => {
+        if (!stage) return;
+        // Integer translation avoids sub-pixel resampling, which makes vector
+        // content look soft until the next forced repaint.
+        stage.style.transform = `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px)`;
+    };
+
+    const applyScale = () => {
+        if (!stage || !svgElement) return;
+
+        // Resize the SVG instead of CSS-scaling it: vector content is re-rasterized
+        // at the new size, so zoomed diagrams stay sharp.
+        const width = Math.round(baseWidth * zoom);
+        const height = Math.round(baseHeight * zoom);
+        svgElement.style.width = `${width}px`;
+        svgElement.style.height = `${height}px`;
+        stage.style.width = `${width}px`;
+        stage.style.height = `${height}px`;
+        applyTransform();
+    };
+
+    const centerContent = () => {
+        translateX = Math.max(0, (body.clientWidth - baseWidth * zoom) / 2);
+        translateY = Math.max(0, (body.clientHeight - baseHeight * zoom) / 2);
+        applyScale();
+    };
+
+    const setup = () => {
+        const svg = body.querySelector('svg');
+        if (!svg) return;
+        if (stage?.contains(svg)) return;
+
+        const rect = svg.getBoundingClientRect();
+        baseWidth = rect.width || svg.clientWidth || 0;
+        baseHeight = rect.height || svg.clientHeight || 0;
+        if (!baseWidth || !baseHeight) {
+            if (retryCount < 2) {
+                retryCount++;
+                requestAnimationFrame(() => setup());
+            }
+            return;
+        }
+        retryCount = 0;
+
+        body.classList.add('live-artifact-zoom-enabled');
+        body.style.height = `${Math.min(520, Math.max(150, baseHeight + 32))}px`;
+
+        stage = document.createElement('div');
+        stage.className = 'live-artifact-zoom-stage';
+        stage.style.width = `${baseWidth}px`;
+        stage.style.height = `${baseHeight}px`;
+
+        svg.style.maxWidth = 'none';
+        svg.style.maxHeight = 'none';
+        svg.style.width = `${baseWidth}px`;
+        svg.style.height = `${baseHeight}px`;
+        svg.setAttribute('shape-rendering', 'geometricPrecision');
+
+        body.replaceChildren(stage);
+        stage.appendChild(svg);
+        svgElement = svg;
+        zoom = 1;
+        centerContent();
+    };
+
+    // setPreviewSvg rewrites innerHTML on every render; re-wrap the new SVG.
+    body.__refreshPreviewZoom = () => {
+        stage = null;
+        svgElement = null;
+        setup();
+    };
+
+    const observer =
+        typeof MutationObserver === 'function'
+            ? new MutationObserver(() => {
+                  if (
+                      !stage ||
+                      !body.contains(stage) ||
+                      !body.querySelector('.live-artifact-zoom-stage svg')
+                  ) {
+                      setup();
+                  }
+              })
+            : null;
+    observer?.observe(body, { childList: true });
+
+    body.addEventListener(
+        'wheel',
+        (event) => {
+            if (!event.ctrlKey && !event.metaKey) return;
+            event.preventDefault();
+            if (!stage) return;
+
+            const rect = body.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            const previousZoom = zoom;
+            const direction = event.deltaY < 0 ? 1 : -1;
+            zoom = Math.min(
+                PREVIEW_MAX_ZOOM,
+                Math.max(PREVIEW_MIN_ZOOM, zoom + direction * PREVIEW_ZOOM_STEP)
+            );
+
+            // Keep the point under the cursor anchored while zooming.
+            translateX = mouseX - ((mouseX - translateX) / previousZoom) * zoom;
+            translateY = mouseY - ((mouseY - translateY) / previousZoom) * zoom;
+            applyScale();
+        },
+        { passive: false }
+    );
+
+    body.addEventListener('pointerdown', (event) => {
+        if (!stage || event.button !== 0 || event.ctrlKey || event.metaKey) return;
+        dragging = true;
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        dragStartTranslateX = translateX;
+        dragStartTranslateY = translateY;
+        body.setPointerCapture?.(event.pointerId);
+        body.classList.add('is-panning');
+        event.preventDefault();
+    });
+
+    body.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        translateX = dragStartTranslateX + (event.clientX - dragStartX);
+        translateY = dragStartTranslateY + (event.clientY - dragStartY);
+        applyTransform();
+    });
+
+    const endDrag = (event) => {
+        if (!dragging) return;
+        dragging = false;
+        body.releasePointerCapture?.(event.pointerId);
+        body.classList.remove('is-panning');
+    };
+    body.addEventListener('pointerup', endDrag);
+    body.addEventListener('pointercancel', endDrag);
+}
+
 export function createLiveArtifactPreview(kind, code, options = {}) {
     const preview = document.createElement('section');
     preview.className = 'live-artifact-preview';
@@ -254,14 +414,13 @@ export function createLiveArtifactPreview(kind, code, options = {}) {
 
         const title = document.createElement('span');
         title.className = 'live-artifact-title';
-        title.textContent = t('liveArtifactPreview');
+        title.textContent = kind.toUpperCase();
 
-        const badge = document.createElement('span');
-        badge.className = 'live-artifact-badge';
-        badge.textContent = kind.toUpperCase();
+        const actions = document.createElement('div');
+        actions.className = 'live-artifact-header-actions';
 
         header.appendChild(title);
-        header.appendChild(badge);
+        header.appendChild(actions);
         preview.appendChild(header);
     }
 
@@ -270,6 +429,7 @@ export function createLiveArtifactPreview(kind, code, options = {}) {
     preview.appendChild(body);
 
     if (kind === 'mermaid') {
+        attachPreviewZoom(body);
         renderMermaidPreview(body, code, options.renderMermaid, {
             deferErrors: options.deferMermaidErrors === true,
         });
@@ -277,6 +437,7 @@ export function createLiveArtifactPreview(kind, code, options = {}) {
     }
 
     if (kind === 'graphviz') {
+        attachPreviewZoom(body);
         renderGraphvizPreview(body, code, options.renderGraphviz, {
             deferErrors: options.deferGraphvizErrors === true,
         });
@@ -382,8 +543,56 @@ export function enhanceLiveArtifacts(root, options = {}) {
         }
 
         wrapper.dataset.liveArtifactEnhanced = 'true';
-        wrapper.appendChild(preview);
+        addArtifactViewToggle(wrapper, preview);
+        // Keep the shared header (kind + view switch) above the source block
+        // when the user switches to code.
+        wrapper.prepend(preview);
     });
+}
+
+/**
+ * Mermaid/graphviz blocks keep the source for copy/debugging but default to
+ * the preview, so the message does not take twice the vertical space.
+ */
+function addArtifactViewToggle(wrapper, preview) {
+    const actions = preview.querySelector('.live-artifact-header-actions');
+    const previewBody = preview.querySelector('.live-artifact-body');
+    if (!actions || !previewBody) return;
+
+    // The source block's own header becomes redundant once the shared header
+    // exists; keep its copy action and move it into the shared header.
+    const copyButton = wrapper.querySelector('.code-header .copy-code-btn');
+    if (copyButton) {
+        actions.appendChild(copyButton);
+    }
+
+    const toggle = document.createElement('div');
+    toggle.className = 'live-artifact-view-toggle';
+
+    const previewButton = document.createElement('button');
+    previewButton.type = 'button';
+    previewButton.className = 'live-artifact-view-btn is-active';
+    previewButton.textContent = t('liveArtifactPreview');
+
+    const codeButton = document.createElement('button');
+    codeButton.type = 'button';
+    codeButton.className = 'live-artifact-view-btn';
+    codeButton.textContent = t('liveArtifactCode');
+
+    const setView = (view) => {
+        const showCode = view === 'code';
+        wrapper.classList.toggle('live-artifact-show-code', showCode);
+        previewButton.classList.toggle('is-active', !showCode);
+        codeButton.classList.toggle('is-active', showCode);
+    };
+
+    previewButton.addEventListener('click', () => setView('preview'));
+    codeButton.addEventListener('click', () => setView('code'));
+
+    toggle.appendChild(previewButton);
+    toggle.appendChild(codeButton);
+    actions.appendChild(toggle);
+    setView('preview');
 }
 
 export function setMermaidLoaderForTest(loader) {

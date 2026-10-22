@@ -105,10 +105,12 @@ describe('MessageHandler.handleGeminiReply', () => {
             ui.historyDiv,
             'Persisted reply',
             'ai',
-            undefined,
+            null,
             'Done thinking',
-            undefined,
+            null,
             {
+                text: 'Persisted reply',
+                thoughts: 'Done thinking',
                 isFinal: true,
                 thoughtsDurationSeconds: 2,
                 isError: false,
@@ -424,6 +426,80 @@ describe('MessageHandler.handleStreamUpdate', () => {
             '需要先调用配置工具。',
             { suppressCopy: true }
         );
+    });
+
+    it('keeps native streaming prose when a tool status replaces the bubble', () => {
+        const { handler } = createMessageHandlerHarness();
+
+        handler.handleStreamUpdate({
+            action: 'GEMINI_STREAM_UPDATE',
+            sessionId: 'session-1',
+            text: `并行调用两边都成功了，继续加压测一轮。
+<||DSML|| calls>
+<||DSML|| invoke name="get_page_errors">
+</||DSML|| invoke>
+</||DSML|| calls>`,
+            thoughts: '已深度思考',
+        });
+
+        const controller = appendMessage.mock.results[0].value;
+        handler.handleToolCallStatusMessage({
+            action: 'TOOL_CALL_STATUS_MESSAGE',
+            sessionId: 'session-1',
+            toolName: 'get_page_errors',
+            status: 'running',
+            toolCallText: '{}',
+        });
+
+        expect(controller.finalize).toHaveBeenCalledWith(
+            '并行调用两边都成功了，继续加压测一轮。',
+            '已深度思考',
+            { suppressCopy: true }
+        );
+    });
+
+    it('keeps native function-call arguments when the stream has no text tool call', () => {
+        const { handler } = createMessageHandlerHarness();
+        const nativeArgs = '{\n  "level": "all",\n  "limit": 20\n}';
+
+        handler.handleToolCallStatusMessage({
+            action: 'TOOL_CALL_STATUS_MESSAGE',
+            sessionId: 'session-1',
+            toolName: 'get_console_logs',
+            status: 'running',
+            toolCallText: nativeArgs,
+        });
+
+        expect(appendMessage).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.anything(),
+            'user',
+            null,
+            null,
+            null,
+            expect.objectContaining({ toolCallText: nativeArgs })
+        );
+    });
+
+    it('stores native tool ids on the optimistic tool-output row', () => {
+        const { handler, sessionManager } = createMessageHandlerHarness();
+
+        handler.handleToolOutputMessage({
+            action: 'TOOL_OUTPUT_MESSAGE',
+            sessionId: 'session-1',
+            toolName: 'get_console_logs',
+            text: 'log line',
+            toolCallText: '{}',
+            toolCallId: 'call_1',
+            step: 1,
+        });
+
+        const row = sessionManager.getCurrentSession().messages.at(-1);
+        expect(row).toMatchObject({
+            kind: 'tool-output',
+            toolCallId: 'call_1',
+            toolOutput: 'log line',
+        });
     });
 
     it('updates an existing tool status card for progress phases instead of appending duplicates', () => {

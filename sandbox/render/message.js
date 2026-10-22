@@ -93,6 +93,18 @@ export function appendMessage(
             contentDiv.innerHTML = '';
             return;
         }
+
+        // Streaming text changes on every token; running the Markdown pipeline
+        // for each token is the dominant cost while scrolling a long reply.
+        // Render plain text until finalize() upgrades it to full Markdown.
+        const isStreamingPlain =
+            renderRole === 'ai' && options.isStreaming === true && options.isFinal !== true;
+        contentDiv.classList.toggle('msg-content-streaming', isStreamingPlain);
+        if (isStreamingPlain) {
+            contentDiv.textContent = displayText;
+            return;
+        }
+
         renderContent(contentDiv, displayText, renderRole, options);
     };
 
@@ -430,7 +442,7 @@ function createToolMessageRail() {
     return rail;
 }
 
-function createMessageActionRail(role, { onEdit } = {}) {
+export function createMessageActionRail(role, { onEdit } = {}) {
     const rail = document.createElement('div');
     rail.className = 'message-action-rail';
 

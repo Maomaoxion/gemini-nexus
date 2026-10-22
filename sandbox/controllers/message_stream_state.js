@@ -1,5 +1,5 @@
 import { appendContextCompressionNotice } from '../render/context_compression.js';
-import { appendMessage } from '../render/message.js';
+import { appendTextBlockToHistory } from './block_render.js';
 import { hasDisplayableText, hasDisplayableThoughts } from '../core/displayable_content.js';
 import { t } from '../core/i18n.js';
 import { isToolCallOnlyText, splitToolCallFromText } from '../../shared/text/tool_call_text.js';
@@ -86,12 +86,17 @@ export class MessageStreamState {
         const split = splitToolCallFromText(requestText, { allowPartial: true });
         if (split.hasToolCall) return split.toolCallText;
         if (isToolCallOnlyText(requestText, { allowPartial: true })) return requestText.trim();
-        return this.getToolCallText(sessionId);
+        const streamToolCallText = this.getToolCallText(sessionId);
+        if (streamToolCallText) return streamToolCallText;
+        // Native function calls carry their arguments directly; the stream has
+        // no text tool call to fall back to.
+        return requestText.trim();
     }
 }
 
 export function createStreamingBubble(handler, state = {}) {
-    const bubble = appendMessage(handler.ui.historyDiv, '', 'ai', null, '', null, {
+    const turnView = handler.ui.getTurnView?.();
+    const bubble = appendTextBlockToHistory(turnView, handler.ui.historyDiv, {
         isStreaming: true,
         thoughtsStartedAt: state.thoughtsStartedAt,
         thoughtsElapsedSeconds: state.thoughtsElapsedSeconds,
@@ -115,8 +120,12 @@ export function finalizeActiveStream(handler, state = {}) {
             finalText = split.displayText;
         } else if (isToolCallOnlyText(state.text, { allowPartial: true })) {
             finalText = '';
+        } else {
+            // Native function calls carry their arguments outside the text, so
+            // ordinary prose in this turn must stay visible when the tool row
+            // replaces the streaming bubble.
+            finalText = state.text || '';
         }
-        finalText = finalText || '';
     }
     if (
         state.clearToolCallJson &&

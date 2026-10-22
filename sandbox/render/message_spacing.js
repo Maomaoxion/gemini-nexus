@@ -16,11 +16,22 @@ function isCompactSpacingPair(previousKind, currentKind) {
 }
 
 function isGroupedMessagePair(previousMessage, currentMessage, currentKind) {
-    if (!previousMessage || currentKind !== 'normal') return false;
+    if (!previousMessage || !currentKind) return false;
+
+    const currentRole = currentMessage.dataset?.messageRole || '';
+    if (!currentRole) return false;
+
+    // A tool card followed by the model's continuation belongs to the same
+    // turn. Apply this before the thinking/normal branch: a continuation that
+    // starts with thoughts only must not flash a second avatar while streaming.
+    if (previousMessage.dataset?.messageSpacingKind === 'tool' && currentRole === 'model') {
+        return true;
+    }
+
+    if (currentKind !== 'normal') return false;
     if (previousMessage.dataset?.messageSpacingKind !== 'normal') return false;
 
     const previousRole = previousMessage.dataset?.messageRole || '';
-    const currentRole = currentMessage.dataset?.messageRole || '';
     return Boolean(previousRole && currentRole && previousRole === currentRole);
 }
 

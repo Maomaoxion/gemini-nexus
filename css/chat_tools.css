@@ -8,6 +8,8 @@
     background: color-mix(in srgb, var(--bg-input) 72%, transparent);
     color: var(--text-secondary);
     font-size: 13px;
+    /* Isolate card internals so streaming text below does not reflow them. */
+    contain: layout paint;
 }
 
 .tool-disclosure-toggle {
@@ -145,15 +147,6 @@
     }
 }
 
-.tool-disclosure-preview {
-    flex: 1 1 100%;
-    min-width: 0;
-    color: var(--text-tertiary);
-    font-size: 12px;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
 .tool-disclosure-body {
     margin-top: 8px;
     margin-left: 6px;
@@ -173,16 +166,43 @@
     margin-bottom: 8px;
 }
 
-.tool-call-body .code-block-wrapper,
-.tool-output-body .code-block-wrapper {
-    margin: 0;
-    max-width: 100%;
+.tool-block-label {
+    margin-bottom: 4px;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
 }
 
-.tool-call-body .code-block-wrapper pre,
-.tool-output-body .code-block-wrapper pre {
+/* Long tool-heavy turns: skip layout/paint for off-screen cards. */
+.turn-content > .msg.msg-tool-output,
+.turn-content > .msg.msg-tool-status {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 44px;
+}
+
+/* An expanded card is the one being inspected; keep its content rendered so
+ * toggling it does not re-run content-visibility layout. */
+.turn-content > .msg.msg-tool-output:has(.tool-disclosure-expanded),
+.turn-content > .msg.msg-tool-status:has(.tool-disclosure-expanded) {
+    content-visibility: visible;
+    contain-intrinsic-size: none;
+}
+
+.tool-call-code,
+.tool-output-text {
+    margin: 0;
     max-height: 220px;
-    padding: 12px;
+    overflow: auto;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 12px;
     line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    contain: layout paint;
 }

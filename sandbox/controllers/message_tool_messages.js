@@ -1,4 +1,4 @@
-import { appendMessage } from '../render/message.js';
+import { appendToolBlockToHistory } from './block_render.js';
 import {
     buildToolOutputHistoryText,
     getToolOutputKey,
@@ -54,33 +54,31 @@ export function handleToolOutputMessage(handler, request) {
             toolStep: request.step,
             toolCallIndex: request.callIndex,
             toolCallCount: request.callCount,
+            toolCallId: request.toolCallId || null,
+            toolOutput: request.text || '',
             toolStatusKey: request.statusKey || null,
         });
         session.timestamp = Date.now();
         handler.app.sessionFlow.refreshHistoryUI();
     }
 
-    appendMessage(
-        handler.ui.historyDiv,
-        request.text || '',
-        'user',
-        request.images || null,
-        null,
-        null,
-        {
-            kind: 'tool-output',
-            toolName: request.toolName || '',
-            toolStatus: request.status || getToolOutputStatus(request),
-            toolCallText,
-            toolDurationMs: request.durationMs,
-            step: request.step,
-            callIndex: request.callIndex,
-            callCount: request.callCount,
-            toolOutputKey: renderedKey,
-            autoScroll,
-        }
-    );
-    handler.ui.scrollToBottom();
+    const toolOptions = {
+        text: request.text || '',
+        attachment: request.images || null,
+        kind: 'tool-output',
+        toolName: request.toolName || '',
+        toolStatus: request.status || getToolOutputStatus(request),
+        toolCallText,
+        toolDurationMs: request.durationMs,
+        step: request.step,
+        callIndex: request.callIndex,
+        callCount: request.callCount,
+        toolOutputKey: renderedKey,
+        autoScroll,
+    };
+    const turnView = handler.ui.getTurnView?.();
+    appendToolBlockToHistory(turnView, handler.ui.historyDiv, toolOptions);
+    handler.ui.followStreamingContent?.();
 }
 
 function shouldAutoScroll(handler) {
@@ -114,31 +112,26 @@ export function handleToolCallStatusMessage(handler, request) {
             callCount: request.callCount,
             isCollapsed: true,
         });
-        handler.ui.scrollToBottom();
+        handler.ui.followStreamingContent?.();
         return;
     }
 
-    const controller = appendMessage(
-        handler.ui.historyDiv,
-        request.text || '',
-        'user',
-        null,
-        null,
-        null,
-        {
-            kind: 'tool-status',
-            toolName: request.toolName || '',
-            toolStatus: request.status || 'running',
-            toolCallText,
-            toolDurationMs: request.durationMs,
-            callIndex: request.callIndex,
-            callCount: request.callCount,
-            toolStatusKey: statusKey,
-            isCollapsed: true,
-            autoScroll,
-        }
-    );
+    const statusOptions = {
+        text: request.text || '',
+        kind: 'tool-status',
+        toolName: request.toolName || '',
+        toolStatus: request.status || 'running',
+        toolCallText,
+        toolDurationMs: request.durationMs,
+        callIndex: request.callIndex,
+        callCount: request.callCount,
+        toolStatusKey: statusKey,
+        isCollapsed: true,
+        autoScroll,
+    };
+    const turnView = handler.ui.getTurnView?.();
+    const controller = appendToolBlockToHistory(turnView, handler.ui.historyDiv, statusOptions);
 
-    handler.ui.scrollToBottom();
+    handler.ui.followStreamingContent?.();
     return controller;
 }

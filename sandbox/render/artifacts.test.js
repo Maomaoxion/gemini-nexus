@@ -26,6 +26,10 @@ function createCodeBlock(language, code) {
     label.className = 'code-lang';
     label.textContent = language;
     header.appendChild(label);
+    const copyButton = document.createElement('button');
+    copyButton.className = 'copy-code-btn';
+    copyButton.textContent = 'Copy';
+    header.appendChild(copyButton);
     wrapper.appendChild(header);
 
     const pre = document.createElement('pre');
@@ -250,6 +254,75 @@ describe('Live Artifact previews', () => {
         expect(body?.textContent).toContain('Rendered');
         expect(body?.innerHTML).not.toContain('<script');
         expect(body?.innerHTML).not.toContain('onclick');
+    });
+
+    it('defaults enhanced Mermaid blocks to the preview and toggles to code', async () => {
+        const root = document.createElement('div');
+        const wrapper = createCodeBlock('mermaid', 'graph TD\n  A --> B');
+        root.appendChild(wrapper);
+        document.body.appendChild(root);
+
+        enhanceLiveArtifacts(root, {
+            renderMermaid: vi.fn(async () => '<svg><text>Rendered</text></svg>'),
+        });
+        await flushMicrotasks();
+
+        const toggle = wrapper.querySelector('.live-artifact-view-toggle');
+        const [previewButton, codeButton] = toggle.querySelectorAll('.live-artifact-view-btn');
+
+        expect(toggle).not.toBeNull();
+        expect(wrapper.firstElementChild).toBe(wrapper.querySelector('.live-artifact-preview'));
+        expect(
+            wrapper.querySelector('.live-artifact-header-actions .copy-code-btn')
+        ).not.toBeNull();
+        expect(wrapper.querySelector('.code-header .copy-code-btn')).toBeNull();
+        expect(wrapper.classList.contains('live-artifact-show-code')).toBe(false);
+        expect(previewButton.classList.contains('is-active')).toBe(true);
+
+        codeButton.click();
+        expect(wrapper.classList.contains('live-artifact-show-code')).toBe(true);
+        expect(codeButton.classList.contains('is-active')).toBe(true);
+
+        previewButton.click();
+        expect(wrapper.classList.contains('live-artifact-show-code')).toBe(false);
+        expect(previewButton.classList.contains('is-active')).toBe(true);
+    });
+
+    it('zooms Mermaid previews with Ctrl + wheel', async () => {
+        const preview = createLiveArtifactPreview('mermaid', 'graph TD\n  A --> B', {
+            renderMermaid: vi.fn(async () => '<svg><text>Rendered</text></svg>'),
+        });
+        document.body.appendChild(preview);
+        await flushMicrotasks();
+
+        const body = preview.querySelector('.live-artifact-body-mermaid');
+        const svg = body.querySelector('svg');
+        svg.getBoundingClientRect = () => ({ width: 200, height: 100 });
+        body.__refreshPreviewZoom();
+
+        const stage = body.querySelector('.live-artifact-zoom-stage');
+        expect(stage).not.toBeNull();
+
+        body.dispatchEvent(
+            new WheelEvent('wheel', {
+                deltaY: -100,
+                ctrlKey: true,
+                cancelable: true,
+                bubbles: true,
+            })
+        );
+        expect(svg.style.width).toBe('220px');
+        expect(stage.style.transform).toContain('translate');
+
+        body.dispatchEvent(
+            new WheelEvent('wheel', {
+                deltaY: 100,
+                ctrlKey: true,
+                cancelable: true,
+                bubbles: true,
+            })
+        );
+        expect(svg.style.width).toBe('200px');
     });
 
     it('shows a compact error instead of Mermaid error SVG artwork', async () => {

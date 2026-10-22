@@ -1,8 +1,10 @@
+import { buildToolOutputText } from '../../shared/text/tool_call_text.js';
+
 export function buildToolOutputHistoryText(request) {
     const toolName = request.toolName || 'tool';
     const step = Number.isFinite(request.step) ? request.step : '';
     const suffix = step ? `\n\n[Proceeding to step ${step}]` : '';
-    return `[Tool Output: ${toolName}]\n${request.text || ''}${suffix}`;
+    return `${buildToolOutputText(toolName, request.text || '')}${suffix}`;
 }
 
 export function getToolOutputKey(request) {

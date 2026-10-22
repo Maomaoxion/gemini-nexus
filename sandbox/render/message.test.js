@@ -78,20 +78,23 @@ describe('appendMessage copy button', () => {
         });
 
         controller.update('Partial mermaid block', undefined, { isStreaming: true });
-        expect(renderContent).toHaveBeenLastCalledWith(
-            expect.any(HTMLDivElement),
-            'Partial mermaid block',
-            'ai',
-            expect.objectContaining({ isStreaming: true })
-        );
+        const contentDiv = controller.div.querySelector('.msg-content');
+        expect(contentDiv.textContent).toBe('Partial mermaid block');
+        expect(contentDiv.classList.contains('msg-content-streaming')).toBe(true);
+        // Streaming tokens use plain text; Markdown runs only at finalize.
+        // (The thoughts region renders independently of the message content.)
+        const contentCalls = () =>
+            renderContent.mock.calls.filter(([element]) => element === contentDiv);
+        expect(contentCalls()).toHaveLength(0);
 
         controller.finalize('Final mermaid block', undefined);
-        expect(renderContent).toHaveBeenLastCalledWith(
-            expect.any(HTMLDivElement),
+        expect(contentCalls()).toHaveLength(1);
+        expect(contentCalls()[0].slice(1)).toEqual([
             'Final mermaid block',
             'ai',
-            expect.objectContaining({ isStreaming: false, isFinal: true })
-        );
+            expect.objectContaining({ isStreaming: false, isFinal: true }),
+        ]);
+        expect(contentDiv.classList.contains('msg-content-streaming')).toBe(false);
     });
 
     it('uses AMC-style rows, action rails, and content containers for normal messages', () => {

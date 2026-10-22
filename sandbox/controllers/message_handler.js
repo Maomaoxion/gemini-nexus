@@ -1,5 +1,6 @@
 import { appendContextCompressionNotice } from '../render/context_compression.js';
 import { t } from '../core/i18n.js';
+import { stripToolCallMarkup } from '../../shared/text/tool_call_text.js';
 import {
     handleCropScreenshotResult,
     handleGeneratedImageFetchResult,
@@ -258,7 +259,13 @@ export class MessageHandler {
         }
 
         const session = this.sessionManager.getCurrentSession();
-        renderGeminiReply(this, session, request);
+        // A reply may still carry raw tool-call markup (e.g. DSML from a
+        // gateway); strip it before matching, persisting, and rendering.
+        const renderRequest =
+            typeof request.text === 'string'
+                ? { ...request, text: stripToolCallMarkup(request.text) }
+                : request;
+        renderGeminiReply(this, session, renderRequest);
     }
 
     handleToolOutputMessage(request) {

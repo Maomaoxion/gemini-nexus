@@ -734,6 +734,29 @@ body.layout-wide .msg.ai .message-content-container {
     color: var(--text-primary);
 }
 
+.msg-content.msg-content-streaming {
+    white-space: pre-wrap;
+}
+
+/* A user turn renders as one AI message; the blocks inside stack tightly. */
+.turn-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+}
+
+.turn-content > .msg {
+    width: 100%;
+    margin: 0;
+}
+
+/* The turn itself owns the avatar and action rail. */
+.turn-content > .msg > .msg-row > .message-action-rail {
+    display: none;
+}
+
 #chat-history > :not([hidden]) + :not([hidden]) {
     margin-top: 24px;
 }

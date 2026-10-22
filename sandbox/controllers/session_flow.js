@@ -1,4 +1,5 @@
 import { appendMessage } from '../render/message.js';
+import { appendTextBlockToHistory, appendToolBlockToHistory } from './block_render.js';
 import { appendContextCompressionNotice } from '../render/context_compression.js';
 import { copyToClipboard } from '../render/clipboard.js';
 import {
@@ -8,12 +9,14 @@ import {
     saveSessionsToStorage,
 } from '../../shared/messaging/index.js';
 import { hasDisplayableText, hasDisplayableThoughts } from '../core/displayable_content.js';
+import { stripToolCallMarkup } from '../../shared/text/tool_call_text.js';
 import { t } from '../core/i18n.js';
 import {
     buildSessionExportFilename,
     buildSessionTextExport,
     serializeSessionForExport,
 } from '../core/session_export.js';
+import { isToolOutputText, parseToolOutputHeader } from '../../shared/text/tool_call_text.js';
 
 export class SessionFlowController {
     constructor(sessionManager, uiController, appController) {
@@ -61,26 +64,65 @@ export class SessionFlowController {
             }
         };
         const compressionNoticeIndex = this.getCompressionNoticeIndex(session);
+        let turnView = null;
+        let turnStartIndex = -1;
         try {
             session.messages.forEach((message, index) => {
                 if (this.shouldSkipRestoredMessage(message)) return;
 
-                if (index === compressionNoticeIndex) {
-                    this.appendRestoredCompressionNotice();
+                const kind = this.getMessageKind(message);
+                const startsUserTurn = message.role === 'user' && kind !== 'tool-output';
+
+                if (startsUserTurn) {
+                    if (turnView?.el && !turnView.contentEl?.childElementCount) {
+                        turnView.el.remove();
+                    }
+
+                    if (index === compressionNoticeIndex) {
+                        this.appendRestoredCompressionNotice(this.ui.historyDiv);
+                    }
+
+                    turnStartIndex = index;
+                    const attachment = message.attachments || message.image;
+                    appendMessage(
+                        this.ui.historyDiv,
+                        message.text,
+                        'user',
+                        attachment,
+                        message.thoughts,
+                        message.sources,
+                        {
+                            onEdit: this.app.prompt.getMessageEditOptions(index).onEdit,
+                            onRetry: null,
+                            onDelete:
+                                this.app.prompt?.getTurnDeleteOptions?.(index)?.onDelete ||
+                                this.app.prompt?.getMessageDeleteOptions?.(index)?.onDelete ||
+                                null,
+                            autoScroll: false,
+                        }
+                    );
+                    turnView =
+                        this.ui.chat?.beginTurn?.({
+                            onDelete:
+                                this.app.prompt?.getTurnDeleteOptions?.(turnStartIndex)?.onDelete ||
+                                null,
+                        }) || null;
+                    return;
                 }
 
-                let attachment = null;
-                if (message.role === 'user') attachment = message.attachments || message.image;
-                if (message.role === 'ai') attachment = message.generatedImages;
-                appendMessage(
-                    this.ui.historyDiv,
-                    message.text,
-                    message.role,
-                    attachment,
-                    message.thoughts,
-                    message.sources,
-                    {
-                        kind: this.getMessageKind(message),
+                if (!turnView) {
+                    turnView = this.ui.chat?.beginTurn?.() || null;
+                }
+
+                if (index === compressionNoticeIndex) {
+                    this.appendRestoredCompressionNotice(this.ui.historyDiv);
+                }
+
+                if (kind === 'tool-output' || kind === 'tool-status') {
+                    const toolBlockOptions = {
+                        text: message.text,
+                        attachment: message.attachments || message.image || null,
+                        kind,
                         toolName: this.getRestoredToolName(message),
                         step: this.getRestoredToolStep(message),
                         toolStatus: this.getRestoredToolStatus(message),
@@ -88,39 +130,54 @@ export class SessionFlowController {
                         callIndex: this.getRestoredToolCallIndex(message),
                         callCount: this.getRestoredToolCallCount(message),
                         toolDurationMs: this.getRestoredToolDurationMs(message),
+                        isCollapsed: true,
+                        autoScroll: false,
+                    };
+                    appendToolBlockToHistory(turnView, this.ui.historyDiv, toolBlockOptions);
+                    return;
+                }
+
+                if (message.role === 'ai') {
+                    const textBlockOptions = {
+                        text: stripToolCallMarkup(message.text),
+                        attachment: message.generatedImages,
+                        thoughts: message.thoughts,
+                        sources: message.sources,
                         suppressCopy: message.suppressCopy === true,
                         isCollapsed: true,
                         thoughtsDurationSeconds: message.thoughtsDurationSeconds,
                         autoScroll: false,
-                        onEdit:
-                            message.role === 'user' &&
-                            this.getMessageKind(message) !== 'tool-output'
-                                ? this.app.prompt.getMessageEditOptions(index).onEdit
-                                : null,
                         onRetry:
-                            message.role === 'ai' && message.kind !== 'tool-status'
+                            message.kind !== 'tool-status'
                                 ? this.app.prompt?.getMessageRetryOptions?.(index)?.onRetry || null
                                 : null,
                         onDelete:
-                            this.getMessageKind(message) === 'tool-output' ||
-                            message.kind === 'tool-status'
-                                ? null
-                                : this.app.prompt?.getMessageDeleteOptions?.(index)?.onDelete ||
-                                  null,
-                    }
-                );
+                            this.app.prompt?.getMessageDeleteOptions?.(index)?.onDelete || null,
+                    };
+                    appendTextBlockToHistory(turnView, this.ui.historyDiv, textBlockOptions);
+                    turnView?.setRetryHandler?.(
+                        this.app.prompt?.getMessageRetryOptions?.(index)?.onRetry || null
+                    );
+                }
             });
             if (compressionNoticeIndex === session.messages.length) {
-                this.appendRestoredCompressionNotice();
+                this.appendRestoredCompressionNotice(this.ui.historyDiv);
             }
         } finally {
             finishRestore();
         }
+        this.ui.setTurnView?.(turnView);
         this.app.messageHandler.restoreStreamForSession(sessionId);
         if (options.restoreScrollState && this.ui.restoreChatScrollState) {
             this.ui.restoreChatScrollState(options.restoreScrollState);
         } else {
-            this.ui.scrollToBottom({ ...(options.scrollOptions || {}), force: true });
+            // Opening a conversation should land on the newest content, not the
+            // start of the final (possibly very long) turn.
+            this.ui.scrollToBottom({
+                ...(options.scrollOptions || {}),
+                mode: 'bottom',
+                force: true,
+            });
         }
 
         this.app.boundSessionId = sessionId;
@@ -185,7 +242,7 @@ export class SessionFlowController {
             Array.isArray(message.generatedImages) && message.generatedImages.length > 0;
         const hasSources = Array.isArray(message.sources) && message.sources.length > 0;
         return (
-            hasDisplayableText(message.text) ||
+            hasDisplayableText(stripToolCallMarkup(message.text)) ||
             hasDisplayableThoughts(message.thoughts) ||
             hasGeneratedImages ||
             hasSources
@@ -197,14 +254,13 @@ export class SessionFlowController {
             return null;
         }
         if (message.kind === 'tool-output') return 'tool-output';
-        return message.text.startsWith('[Tool Output:') ? 'tool-output' : null;
+        return isToolOutputText(message.text) ? 'tool-output' : null;
     }
 
     getRestoredToolName(message) {
         if (this.getMessageKind(message) !== 'tool-output') return '';
         if (message.toolName) return message.toolName;
-        const match = message.text.match(/^\[Tool Output:\s*([^\]]+)\]/);
-        return match ? match[1].trim() : '';
+        return parseToolOutputHeader(message.text).toolName;
     }
 
     getRestoredToolStep(message) {
@@ -246,8 +302,8 @@ export class SessionFlowController {
         return Math.min(sourceMessageCount, messageCount);
     }
 
-    appendRestoredCompressionNotice() {
-        appendContextCompressionNotice(this.ui.historyDiv, t('contextCompressed'), {
+    appendRestoredCompressionNotice(container = this.ui.historyDiv) {
+        appendContextCompressionNotice(container || this.ui.historyDiv, t('contextCompressed'), {
             complete: true,
             scroll: false,
         });

@@ -157,7 +157,7 @@ describe('SessionFlowController', () => {
         expect(appendMessage).toHaveBeenCalledTimes(2);
         expect(appendMessage).toHaveBeenNthCalledWith(
             1,
-            ui.historyDiv,
+            expect.any(HTMLElement),
             'Hello',
             'user',
             undefined,
@@ -167,12 +167,12 @@ describe('SessionFlowController', () => {
         );
         expect(appendMessage).toHaveBeenNthCalledWith(
             2,
-            ui.historyDiv,
+            expect.any(HTMLElement),
             'Hi there',
             'ai',
-            undefined,
+            null,
             'thinking',
-            undefined,
+            null,
             expect.objectContaining({ autoScroll: false })
         );
         expect(app.boundSessionId).toBe('session-1');
@@ -182,8 +182,50 @@ describe('SessionFlowController', () => {
             context: ['conversation', 'response', 'choice'],
             model: 'gemini-test',
         });
-        expect(ui.scrollToBottom).toHaveBeenCalled();
+        expect(ui.scrollToBottom).toHaveBeenCalledWith({
+            mode: 'bottom',
+            force: true,
+        });
         expect(ui.resetInput).toHaveBeenCalled();
+    });
+
+    it('renders a user turn and its tool output into one turn message view', () => {
+        const { controller, sessionManager, ui } = createSessionFlowHarness();
+        const textBlocks = [];
+        const toolBlocks = [];
+        const turnView = {
+            appendTextBlock: vi.fn((options) => textBlocks.push(options)),
+            appendToolBlock: vi.fn((options) => toolBlocks.push(options)),
+            setRetryHandler: vi.fn(),
+            setDeleteHandler: vi.fn(),
+        };
+        ui.chat = { beginTurn: vi.fn(() => turnView) };
+        sessionManager.setSessions([
+            realSession({
+                messages: [
+                    { role: 'user', text: 'Check errors' },
+                    { role: 'ai', text: 'Calling tool' },
+                    {
+                        role: 'user',
+                        text: '[Tool Output: get_page_errors]',
+                        kind: 'tool-output',
+                        toolName: 'get_page_errors',
+                    },
+                    { role: 'ai', text: 'Here is the result' },
+                    { role: 'user', text: 'Next question' },
+                ],
+            }),
+        ]);
+
+        controller.switchToSession('session-1');
+
+        expect(ui.chat.beginTurn).toHaveBeenCalledTimes(2);
+        expect(textBlocks.map((block) => block.text)).toEqual([
+            'Calling tool',
+            'Here is the result',
+        ]);
+        expect(toolBlocks).toHaveLength(1);
+        expect(toolBlocks[0].toolName).toBe('get_page_errors');
     });
 
     it('does not RESET_CONTEXT when re-selecting the already-current session', () => {
@@ -247,12 +289,12 @@ describe('SessionFlowController', () => {
 
         expect(appendMessage).toHaveBeenNthCalledWith(
             2,
-            ui.historyDiv,
+            expect.any(HTMLElement),
             '我来检查一下配置状态。',
             'ai',
-            undefined,
+            null,
             '需要调用工具。',
-            undefined,
+            null,
             expect.objectContaining({
                 suppressCopy: true,
                 autoScroll: false,
@@ -285,12 +327,12 @@ describe('SessionFlowController', () => {
         expect(appendMessage).toHaveBeenCalledTimes(2);
         expect(appendMessage).toHaveBeenNthCalledWith(
             2,
-            ui.historyDiv,
+            expect.any(HTMLElement),
             '',
             'ai',
             generatedImages,
-            undefined,
-            undefined,
+            '',
+            null,
             expect.objectContaining({ autoScroll: false })
         );
     });
@@ -321,7 +363,7 @@ describe('SessionFlowController', () => {
         controller.switchToSession('session-1');
 
         expect(appendMessage).toHaveBeenCalledWith(
-            ui.historyDiv,
+            expect.any(HTMLElement),
             'Review this file',
             'user',
             attachments,

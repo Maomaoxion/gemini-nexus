@@ -58,6 +58,14 @@ describe('renderContent tool disclosure', () => {
         });
 
         expect(contentDiv.querySelector('.tool-disclosure-meta')?.textContent).toContain('1.5s');
+        expect(contentDiv.querySelector('.tool-call-code')?.textContent).toContain(
+            '"tool": "click"'
+        );
+        expect(contentDiv.querySelector('.tool-output-text')?.textContent).toContain('"ok": true');
+        expect(contentDiv.querySelector('.code-block-wrapper')).toBeNull();
+        expect(contentDiv.querySelector('.tool-disclosure-meta')?.textContent).not.toContain(
+            'Raw tool'
+        );
     });
 
     it('renders the Control button icon for every browser-control tool card', () => {
@@ -102,6 +110,27 @@ describe('renderContent tool disclosure', () => {
             expect(icon?.querySelector('.tool-icon-browser-control'), toolName).not.toBeNull();
             expect(icon?.querySelector('svg'), toolName).toBeNull();
         }
+    });
+
+    it('keeps an expanded card open when progress updates re-render it', () => {
+        const contentDiv = document.createElement('div');
+        const options = {
+            toolName: 'click',
+            toolStatus: 'running',
+            toolCallText: '{"uid":"1_2"}',
+        };
+
+        renderContent(contentDiv, 'Running click...', 'tool-status', options);
+        contentDiv.querySelector('.tool-disclosure-toggle').click();
+
+        renderContent(contentDiv, 'Running click (step 2)...', 'tool-status', {
+            ...options,
+            isCollapsed: true,
+        });
+
+        const wrapper = contentDiv.querySelector('.tool-disclosure');
+        expect(wrapper.classList.contains('tool-disclosure-expanded')).toBe(true);
+        expect(wrapper.querySelector('.tool-disclosure-body')?.hidden).toBe(false);
     });
 
     it('uses keyword icons for routed MCP tools and a plug fallback for unknown tools', () => {

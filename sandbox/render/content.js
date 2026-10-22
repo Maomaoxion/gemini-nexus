@@ -4,11 +4,10 @@ import { escapeHtml } from '../../shared/utils/escape.js';
 import { formatT, t } from '../core/i18n.js';
 import { TemplateIcons } from '../ui/templates/icons.js';
 import { createPrefixedId } from '../../shared/utils/index.js';
+import { parseToolOutputHeader } from '../../shared/text/tool_call_text.js';
 
-const TOOL_OUTPUT_HEADER_PATTERN = /^\[Tool Output:\s*([^\]]+)\]\n?/;
 const TOOL_STEP_FOOTER_PATTERN = /\n\n\[Proceeding to step\s+(\d+)\]\s*$/;
 const TOOL_DISCLOSURE_PREFIX = 'tool-disclosure';
-const TOOL_PREVIEW_KEYS = ['summary', 'message', 'error', 'result', 'text', 'title', 'name', 'url'];
 // Browser-control actions share the input "Control" button glyph (cursor-chat mask).
 const BROWSER_CONTROL_TOOL_ICON = {
     id: 'browser-control',
@@ -104,10 +103,6 @@ function formatToolJsonBody(text) {
     }
 }
 
-function escapeFenceContent(text) {
-    return (text || '').replace(/```/g, '``\\`');
-}
-
 function sanitizeToolName(toolName) {
     const raw = typeof toolName === 'string' ? toolName.trim() : '';
     if (!raw) return t('toolFallbackName');
@@ -186,128 +181,15 @@ function formatDurationMs(durationMs) {
 
 function parseToolOutputText(text) {
     const value = typeof text === 'string' ? text : '';
-    const headerMatch = value.match(TOOL_OUTPUT_HEADER_PATTERN);
-    const stepMatch = value.match(TOOL_STEP_FOOTER_PATTERN);
-    const bodyStart = headerMatch ? headerMatch[0].length : 0;
-    const bodyEnd = stepMatch ? value.length - stepMatch[0].length : value.length;
+    const { toolName, body } = parseToolOutputHeader(value);
+    const stepMatch = body.match(TOOL_STEP_FOOTER_PATTERN);
+    const bodyEnd = stepMatch ? body.length - stepMatch[0].length : body.length;
 
     return {
-        toolName: headerMatch ? headerMatch[1].trim() : '',
-        body: value.slice(bodyStart, bodyEnd),
+        toolName,
+        body: body.slice(0, bodyEnd),
         step: stepMatch ? stepMatch[1] : '',
     };
-}
-
-function getOutputPreview(text) {
-    const trimmed = stripOuterMarkdownFence(text);
-    if (!trimmed) return '';
-
-    try {
-        const parsed = JSON.parse(trimmed);
-        const found = getStructuredPreviewValue(parsed);
-        if (found !== undefined) {
-            return truncatePreview(String(found));
-        }
-        if (parsed !== null && typeof parsed === 'object') {
-            return getReadableJsonFallbackPreview(trimmed);
-        }
-    } catch {
-        // Invalid JSON-like output is handled below.
-    }
-
-    if (looksLikeJsonStructure(trimmed)) {
-        const looseField = getLooseJsonFieldPreview(trimmed);
-        if (looseField) {
-            return truncatePreview(looseField);
-        }
-
-        return getReadableJsonFallbackPreview(trimmed);
-    }
-
-    return truncatePreview(trimmed);
-}
-
-function getStructuredPreviewValue(value) {
-    if (value === undefined || value === null) return undefined;
-    if (typeof value !== 'object') return value;
-
-    if (Array.isArray(value)) {
-        for (const entry of value) {
-            const preview = getStructuredPreviewValue(entry);
-            if (preview !== undefined) return preview;
-        }
-        return undefined;
-    }
-
-    for (const key of TOOL_PREVIEW_KEYS) {
-        if (!(key in value)) continue;
-        const candidate = value[key];
-        if (typeof candidate === 'string' && candidate.trim()) return candidate;
-        if (candidate !== undefined && candidate !== null && typeof candidate !== 'object')
-            return candidate;
-    }
-
-    return undefined;
-}
-
-function looksLikeJsonStructure(text) {
-    const trimmed = (text || '').trim();
-    return trimmed.startsWith('{') || trimmed.startsWith('[');
-}
-
-function getLooseJsonFieldPreview(text) {
-    const candidates = [text, text.replace(/\\"/g, '"')];
-    for (const key of TOOL_PREVIEW_KEYS) {
-        const pattern = new RegExp(
-            `["']${escapeRegExp(key)}["']\\s*:\\s*(["'])([\\s\\S]*?)\\1`,
-            'i'
-        );
-        for (const candidate of candidates) {
-            const match = candidate.match(pattern);
-            if (match && match[2].trim()) {
-                return decodeJsonLikeString(match[2].trim());
-            }
-        }
-    }
-
-    return '';
-}
-
-function getReadableJsonFallbackPreview(text) {
-    const readable = (text || '')
-        .replace(/^[\s,[{\]}:"]+/, '')
-        .split('\n')
-        .map((line) => line.replace(/^[\s,[{\]}:"]+/, '').trim())
-        .find((line) => /[A-Za-z0-9\u4e00-\u9fff]/.test(line));
-
-    if (!readable || /^[\s,[{\]}:,"]*$/.test(readable)) {
-        return '';
-    }
-
-    return truncatePreview(readable);
-}
-
-function decodeJsonLikeString(value) {
-    try {
-        return JSON.parse(`"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
-    } catch {
-        return value;
-    }
-}
-
-function escapeRegExp(value) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function truncatePreview(text) {
-    const collapsed = (text || '')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .slice(0, 2)
-        .join(' ');
-    if (collapsed.length <= 180) return collapsed;
-    return `${collapsed.slice(0, 177).trimEnd()}...`;
 }
 
 function createToolDisclosure(contentDiv, text, options = {}) {
@@ -320,10 +202,15 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     const outputText = options.kind === 'tool-status' ? text || '' : parsed.body;
     const formattedBody = formatToolJsonBody(outputText);
     const formattedToolCall = formatToolJsonBody(options.toolCallText);
-    const preview = getOutputPreview(formattedBody);
     const displayName = sanitizeToolName(rawToolName);
     const regionId = createPrefixedId(TOOL_DISCLOSURE_PREFIX);
-    const expanded = options.isCollapsed === false;
+    // Progress updates re-render the card; keep the user's expanded state
+    // instead of collapsing it under them.
+    const wasExpanded =
+        contentDiv
+            .querySelector(':scope > .tool-disclosure')
+            ?.classList.contains('tool-disclosure-expanded') === true;
+    const expanded = wasExpanded || options.isCollapsed === false;
     const hasOutput = formattedBody.trim().length > 0;
     const durationText = formatDurationMs(options.toolDurationMs);
 
@@ -357,13 +244,6 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     main.appendChild(title);
     main.appendChild(badge);
 
-    if (preview) {
-        const previewSpan = document.createElement('span');
-        previewSpan.className = 'tool-disclosure-preview';
-        previewSpan.textContent = preview;
-        main.appendChild(previewSpan);
-    }
-
     toggle.appendChild(arrow);
     toggle.appendChild(createToolIcon(rawToolName));
     toggle.appendChild(main);
@@ -372,10 +252,14 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     body.id = regionId;
     body.className = 'tool-disclosure-body';
 
-    if (rawToolName) {
+    if (
+        step ||
+        durationText ||
+        (Number.isFinite(callIndex) && Number.isFinite(callCount) && callCount > 1)
+    ) {
         const meta = document.createElement('div');
         meta.className = 'tool-disclosure-meta';
-        const metaParts = [`${t('rawTool')}: ${rawToolName}`];
+        const metaParts = [];
         if (step) metaParts.push(formatT('stepLabel', { step }));
         if (Number.isFinite(callIndex) && Number.isFinite(callCount) && callCount > 1) {
             metaParts.push(formatT('callLabel', { index: callIndex, count: callCount }));
@@ -388,18 +272,28 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     if (formattedToolCall) {
         const call = document.createElement('div');
         call.className = 'tool-call-body';
-        call.innerHTML = transformMarkdown(
-            `\`\`\`json\n${escapeFenceContent(formattedToolCall)}\n\`\`\``
-        );
+        const label = document.createElement('div');
+        label.className = 'tool-block-label';
+        label.textContent = t('toolCallLabel');
+        const pre = document.createElement('pre');
+        pre.className = 'tool-call-code';
+        pre.textContent = formattedToolCall;
+        call.appendChild(label);
+        call.appendChild(pre);
         body.appendChild(call);
     }
 
     if (hasOutput) {
         const output = document.createElement('div');
         output.className = 'tool-output-body';
-        output.innerHTML = transformMarkdown(
-            `\`\`\`json\n${escapeFenceContent(formattedBody)}\n\`\`\``
-        );
+        const label = document.createElement('div');
+        label.className = 'tool-block-label';
+        label.textContent = t('toolOutputLabel');
+        const pre = document.createElement('pre');
+        pre.className = 'tool-output-text';
+        pre.textContent = formattedBody;
+        output.appendChild(label);
+        output.appendChild(pre);
         body.appendChild(output);
     }
 

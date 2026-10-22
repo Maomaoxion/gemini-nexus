@@ -43,6 +43,40 @@ function createController() {
     return { controller, historyDiv };
 }
 
+describe('ChatController turn messages', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('creates one turn message per turn and reuses it', () => {
+        const { controller, historyDiv } = createController();
+
+        const first = controller.beginTurn();
+        expect(first.el.className).toContain('turn-message');
+        first.appendTextBlock({ text: 'First answer' });
+        expect(historyDiv.lastElementChild).toBe(first.el);
+        expect(controller.getTurnView()).toBe(first);
+
+        const second = controller.beginTurn();
+        expect(second).not.toBe(first);
+        expect(historyDiv.children).toHaveLength(2);
+    });
+
+    it('creates a turn lazily and resets it on clear', () => {
+        const { controller, historyDiv } = createController();
+
+        const container = controller.getTurnContainer();
+        expect(container.className).toContain('turn-message');
+        expect(historyDiv.children).toHaveLength(1);
+
+        controller.clear();
+
+        expect(controller.getTurnView()).toBeNull();
+        controller.getTurnContainer();
+        expect(historyDiv.children).toHaveLength(1);
+    });
+});
+
 describe('ChatController footer spacing', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -272,6 +306,35 @@ describe('ChatController streaming scroll following', () => {
         vi.advanceTimersByTime(50);
 
         expect(historyDiv.scrollTop).toBe(1400);
+    });
+
+    it('measures the last block relative to the scroll container', () => {
+        const { controller, historyDiv } = createController();
+        setScrollMetrics(historyDiv, {
+            scrollHeight: 2000,
+            clientHeight: 400,
+            scrollTop: 500,
+        });
+        historyDiv.getBoundingClientRect = () => ({ top: 100 });
+
+        const turn = document.createElement('div');
+        turn.className = 'msg ai turn-message';
+        const content = document.createElement('div');
+        content.className = 'turn-content';
+        const block = document.createElement('div');
+        block.className = 'msg ai';
+        block.getBoundingClientRect = () => ({ top: 900 });
+        content.appendChild(block);
+        turn.appendChild(content);
+        historyDiv.appendChild(turn);
+
+        controller.scrollToBottom({ force: true });
+        vi.advanceTimersByTime(50);
+
+        expect(historyDiv.scrollTo).toHaveBeenCalledWith({
+            top: 1280,
+            behavior: 'smooth',
+        });
     });
 
     it('follows the stream again after the user sends a new message', () => {
