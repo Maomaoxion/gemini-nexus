@@ -1,5 +1,28 @@
 # Changelog
 
+## v5.8.0 - 2026-10-22
+
+### Features
+
+- **浏览器调试工具**：输入框新增 **调试 (Debug)** 开关，AI 可通过 Chrome DevTools Protocol 检查当前标签页——Console 日志与未捕获异常、Network 请求与响应详情、localStorage / sessionStorage / Cookie、DOM 与计算样式、脚本源码，也可临时执行 JavaScript。调试范围从开启时开始采集，页面导航后自动清空缓冲；与浏览器控制共用同一 debugger 会话，二者自动互斥。
+- **@ 引用标签页**：输入框输入 `@` 即可引用一个或多个已打开标签页，被引用页面的内容会作为上下文带入对话，无需切换当前标签页。
+- **原生工具调用**：Gemini API、OpenAI Chat Completions / Responses 与 Anthropic 均使用原生 function calling，工具调用直接嵌入回答并支持多轮连续执行；Control、调试与 MCP 工具共用同一套工具 Schema。
+- **回合化回答与工具卡片**：一次回答渲染为一个回合，正文与可折叠工具卡片按顺序堆叠；工具卡片展示状态、步骤、耗时以及可展开的参数与输出，复制、重试、删除均作用于整个回合。
+- **图表预览**：Mermaid 与 Graphviz 默认以预览展示，可切换代码；预览支持 Ctrl/Cmd + 滚轮缩放、拖动平移，并保持矢量清晰度。
+- **思考强度 Auto**：模型选择器的思考强度新增 `Auto`，由渠道使用自身默认预算；仍保留各渠道支持的 `low`、`medium`、`high`、`xhigh`、`max` 等级。
+
+### Changed
+
+- 优化长会话与多工具调用场景的滚动和渲染：流式阶段减少重复 Markdown 解析，滚动跟随按帧合并，屏外工具卡片延迟布局与绘制。
+
+### Models
+
+- Anthropic 原生工具调用支持在多轮工具回合中保留并回放 extended thinking 内容（含签名与 redacted thinking）。
+
+### Chore
+
+- 版本号升级至 `5.8.0`。
+
 ## v5.7.5 - 2026-10-20
 
 > v5.7.4 构建未通过、未发布，其改动全部包含在本版本中。
