@@ -33,7 +33,7 @@
 
 ### 项目简介
 
-**Gemini Nexus** 赋予浏览器原生 AI 灵魂,是一款集成 Gemini Web、Google Gemini API、OpenAI Compatible API 以及多个第三方专门 API 渠道的 Chrome 扩展程序。它不仅仅是一个侧边栏插件,而是通过注入式的**悬浮工具栏**、图像与截图输入、基于 Chrome DevTools Protocol 的**浏览器控制工具**以及可选的**外部 MCP 工具**,将 AI 的触角伸向网页浏览的每一个交互细节。
+**Gemini Nexus** 赋予浏览器原生 AI 灵魂,是一款集成 Gemini Web、Google Gemini API、OpenAI Compatible API 以及多个第三方专门 API 渠道的 Chrome 扩展程序。它不仅仅是一个侧边栏插件,而是通过注入式的**悬浮工具栏**、图像与截图输入、基于 Chrome DevTools Protocol 的**浏览器控制与浏览器调试工具**、把已打开标签页带入对话的 **@ 引用**，以及可选的**外部 MCP 工具**,将 AI 的触角伸向网页浏览的每一个交互细节。
 
 ### 逆向工程与数据流向披露
 
@@ -55,6 +55,10 @@ Gemini Nexus 当前围绕浏览器内 AI 工作流提供以下能力：
 - **OpenAI Compatible API 联网搜索** 支持，可按当前接口使用 Responses API `web_search` 或 Chat Completions `web_search_options`。
 - **侧边栏按标签页显示范围控制**，支持减少在不需要标签页中的干扰。
 - **历史用户消息编辑**，支持从历史位置重新编辑并继续对话；该能力仅在 API 渠道启用。
+- **@ 引用标签页**：在输入框输入 `@` 即可引用一个或多个已打开标签页，把页面内容作为上下文带入当前对话，无需切换当前标签页。
+- **原生工具调用**：Gemini API、OpenAI Chat Completions / Responses 与 Anthropic 均通过原生 function calling 调用工具，工具调用直接嵌入回答并支持多轮连续执行，不设固定轮数上限。
+- **浏览器调试工具**：AI 可检查当前标签页的 Console 日志、未捕获异常、Network 请求、Storage、DOM、计算样式与脚本源码，也可临时执行 JavaScript。
+- **按模型选择思考强度**：支持 **Auto**（由渠道使用默认预算）以及各渠道提供的 `low`、`medium`、`high`、`xhigh`、`max` 等级。
 - **上下文管理**，支持摘要压缩和最近 N 轮裁剪，降低长会话超过模型上下文的风险。
 - **浏览器控制受控标签组**，会用 Chrome 原生标签组标识当前任务，并让 `list_pages` / `select_page` 等工具聚焦在受控范围内。
 - 外部链接统一在浏览器新标签页打开，避免在侧边栏中加载外站失败。
@@ -89,6 +93,21 @@ Gemini Nexus 当前围绕浏览器内 AI 工作流提供以下能力：
 
 浏览器控制启用后会锁定一个目标标签页，并用 Chrome 原生标签组展示当前任务标题。`select_page` 默认只在受控标签组内切换；`new_page` 的普通标签页会加入该组，`background: true` 则会打开独立 popup 窗口以减少焦点干扰。
 
+### 浏览器调试能力集
+
+在输入框开启 **调试 (Debug)** 后，AI 可以通过 Chrome DevTools Protocol 检查当前标签页。调试范围只覆盖该标签页，从开启时开始采集；页面导航后会清空 Console 与 Network 缓冲。
+
+| 分类     | 工具                                                       | 能回答的问题                                         |
+| :------- | :--------------------------------------------------------- | :--------------------------------------------------- |
+| 运行时   | `get_page_info`, `get_console_logs`, `get_page_errors`     | 页面 URL/标题、Console 输出、带堆栈的未捕获异常      |
+| 网络     | `get_network_requests`, `get_network_detail`               | 请求列表、状态码/请求头，以及仍可读取的响应体        |
+| 页面结构 | `get_dom_html`, `get_element_styles`, `get_script_sources` | DOM 结构、计算样式、已加载脚本源码                   |
+| 存储     | `get_storage`                                              | localStorage、sessionStorage 与 Cookie（敏感值脱敏） |
+| 脚本     | `evaluate_script`                                          | 临时执行 JavaScript，支持最长 30 秒的异步任务        |
+| 清理     | `clear_debug_logs`                                         | 在复现操作前清空 Console / Network 缓冲              |
+
+浏览器控制与浏览器调试共用同一标签页的 debugger 会话，开启其中一个会自动关闭另一个。调试工具偏向读取与排查，不替代浏览器控制能力。
+
 ### 外部 MCP 工具
 
 Gemini Nexus 可以选择连接到一个或多个外部 MCP 服务器（通过 **SSE**、**可流式传输的 HTTP** 或 **WebSocket**），并在现有的工具循环（Tool Loop）中执行其工具。
@@ -122,6 +141,9 @@ Gemini Nexus 可以选择连接到一个或多个外部 MCP 服务器（通过 *
 ### 核心功能亮点
 
 - **智能侧边栏**：基于 `sidePanel` API，提供毫秒级唤起的对话空间，支持全文搜索历史记录。
+- **@ 引用标签页**：输入框输入 `@` 即可引用已打开页面，支持一次引用多个标签页，无需切换当前页面。
+- **回合化工具展示**：一次回答保持为一个回合，正文与可折叠工具卡片顺序堆叠；复制、重试、删除均作用于整个回合。
+- **图表预览**：Mermaid 与 Graphviz 默认以预览展示，可切换代码，支持 Ctrl/Cmd + 滚轮缩放与拖动平移。
 - **划词工具栏**：注入 Content Script，选中文字即刻进行**翻译、总结、解释、语法修正**，支持一键回填表单。
 - **图像与截图输入**：
     - **OCR & 截图翻译**：集成 Canvas 裁剪技术，框选图片区域即刻提取文字并翻译。

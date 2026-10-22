@@ -33,7 +33,7 @@
 
 ### Project Overview
 
-**Gemini Nexus** gives your browser a native AI layer by combining Gemini Web, the Google Gemini API, OpenAI-compatible APIs, and dedicated third-party API providers in one Chrome extension. It is more than a side panel: the extension includes an injected floating toolbar, image and screenshot input, Chrome DevTools Protocol based browser-control tools, and optional external MCP tools for browser-native AI workflows.
+**Gemini Nexus** gives your browser a native AI layer by combining Gemini Web, the Google Gemini API, OpenAI-compatible APIs, and dedicated third-party API providers in one Chrome extension. It is more than a side panel: the extension includes an injected floating toolbar, image and screenshot input, Chrome DevTools Protocol based browser-control and browser-debugging tools, tab references for bringing open pages into a conversation, and optional external MCP tools for browser-native AI workflows.
 
 ### Reverse Engineering & Data Flow Disclosure
 
@@ -55,6 +55,10 @@ Gemini Nexus currently focuses on these browser AI workflows:
 - Use OpenAI-compatible web search through Responses API `web_search` or Chat Completions `web_search_options`, depending on the current endpoint.
 - Limit side-panel scope by tab to reduce distraction on pages where the assistant is not needed.
 - Re-edit historical user messages and continue from that point; this feature is enabled for API providers only.
+- Reference one or more open tabs from the composer with `@`, so their page content becomes conversation context without switching the active tab.
+- Use native function calling across Gemini API, OpenAI Chat Completions / Responses, and Anthropic: tool calls run inline in the answer and continue across turns without a fixed step limit.
+- Inspect the current tab with AI-driven debugging tools for console logs, uncaught errors, network requests, storage, DOM, computed styles, script sources, and ad-hoc JavaScript evaluation.
+- Choose a thinking effort per model, including **Auto** to let the provider use its default budget, plus provider-specific levels such as `low`, `medium`, `high`, `xhigh`, and `max`.
 - Manage context with summary compression and recent-turn trimming to reduce the risk of exceeding model context limits.
 - Mark browser-control tasks with Chrome native tab groups and keep `list_pages` / `select_page` focused on the controlled scope.
 - Open external links in new browser tabs to avoid failed third-party loading inside the side panel.
@@ -89,6 +93,21 @@ Built on `background/control/` and Chrome DevTools Protocol, Gemini Nexus lets A
 
 After browser control is enabled, Gemini Nexus locks onto a target tab and uses a Chrome native tab group to show the current task title. `select_page` switches inside the controlled tab group by default; regular `new_page` tabs join the group, while `background: true` opens a separate popup window to reduce focus interruption.
 
+### Browser Debugging
+
+Turn on **Debug** in the composer to let the assistant inspect the current tab through Chrome DevTools Protocol. Debugging is scoped to that tab and starts from the moment you enable it; console and network buffers are cleared on navigation.
+
+| Category       | Tools                                                      | What it answers                                                          |
+| :------------- | :--------------------------------------------------------- | :----------------------------------------------------------------------- |
+| Runtime        | `get_page_info`, `get_console_logs`, `get_page_errors`     | Page URL/title, console output, uncaught exceptions with stack traces    |
+| Network        | `get_network_requests`, `get_network_detail`               | Request list, status/headers, response bodies when still available       |
+| Page structure | `get_dom_html`, `get_element_styles`, `get_script_sources` | DOM markup, computed CSS, loaded script sources                          |
+| Storage        | `get_storage`                                              | localStorage, sessionStorage, and cookies with sensitive values redacted |
+| Script         | `evaluate_script`                                          | Ad-hoc JavaScript evaluation, including async work up to 30 seconds      |
+| Cleanup        | `clear_debug_logs`                                         | Reset the console/network buffers before reproducing an action           |
+
+Browser control and browser debugging share the tab's single debugger session, so enabling one turns the other off. Debugging is read-oriented and does not replace the browser-control tools.
+
 ### External MCP Tools
 
 Gemini Nexus can connect to one or more external MCP servers through **SSE**, **streamable HTTP**, or **WebSocket**, then expose their tools to the existing tool loop.
@@ -122,6 +141,9 @@ Common proxy endpoints:
 ### Key Features
 
 - **Smart side panel**: Built on the `sidePanel` API for fast conversation access and full-text history search.
+- **Tab references**: Type `@` in the composer to reference open tabs; add one or several pages as context without leaving the current tab.
+- **Inline tool turns**: One answer stays one turn. Text and collapsible tool cards are stacked together, the whole turn can be copied, and retry/delete act on the turn as a unit.
+- **Diagram previews**: Mermaid and Graphviz blocks open as previews by default, with code/preview switching, Ctrl/Cmd + wheel zoom, and drag-to-pan.
 - **Selection toolbar**: Injected content scripts let selected text be translated, summarized, explained, grammar-fixed, or inserted back into forms.
 - **Image and screenshot input**:
     - **OCR and screenshot translation**: Canvas cropping extracts and translates selected image regions.
