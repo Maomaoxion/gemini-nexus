@@ -89,7 +89,7 @@
             defaultModel: 'gpt-6-astra',
             transport: 'openai-responses',
             supportsWebSearch: true,
-            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh']),
+            thinkingLevels: Object.freeze(['auto', 'low', 'medium', 'high', 'xhigh']),
         }),
         deepseek: Object.freeze({
             id: 'deepseek',
@@ -100,7 +100,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'reasoning_effort',
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'max']),
+            thinkingLevels: Object.freeze(['auto', 'low', 'medium', 'high', 'max']),
         }),
         openrouter: Object.freeze({
             id: 'openrouter',
@@ -118,7 +118,7 @@
                 'X-Title': 'Gemini Nexus',
             }),
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']),
+            thinkingLevels: Object.freeze(['auto', 'low', 'medium', 'high', 'xhigh', 'max']),
         }),
         dashscope: Object.freeze({
             id: 'dashscope',
@@ -129,7 +129,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'dashscope_enable_thinking',
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['off', 'on']),
+            thinkingLevels: Object.freeze(['auto', 'off', 'on']),
         }),
         anthropic: Object.freeze({
             id: 'anthropic',
@@ -139,7 +139,7 @@
             defaultModel: 'claude-sonnet-5-5',
             transport: 'anthropic-messages',
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']),
+            thinkingLevels: Object.freeze(['auto', 'low', 'medium', 'high', 'xhigh', 'max']),
         }),
         zhipu: Object.freeze({
             id: 'zhipu',
@@ -150,7 +150,7 @@
             transport: 'openai-chat',
             reasoningAdapter: 'zhipu_thinking',
             supportsWebSearch: false,
-            thinkingLevels: Object.freeze(['off', 'on']),
+            thinkingLevels: Object.freeze(['auto', 'off', 'on']),
         }),
     });
 

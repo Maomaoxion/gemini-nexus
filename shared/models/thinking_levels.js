@@ -5,8 +5,15 @@ import {
 } from '../settings/dedicated_providers.js';
 import { normalizeWebThinkingLevel, supportsWebThinking } from './web_thinking.js';
 
-const OFFICIAL_THINKING_LEVELS = Object.freeze(['low', 'medium', 'high']);
-const CUSTOM_OPENAI_THINKING_LEVELS = Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']);
+const OFFICIAL_THINKING_LEVELS = Object.freeze(['auto', 'low', 'medium', 'high']);
+const CUSTOM_OPENAI_THINKING_LEVELS = Object.freeze([
+    'auto',
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+]);
 
 // Providers whose API exposes a plain on/off switch: every enabled level means
 // the same thing, so the picker only offers two states.
@@ -104,6 +111,7 @@ export function normalizeThinkingLevelForProvider(provider, model, level) {
         .toLowerCase();
 
     if (TOGGLE_STYLE_PROVIDERS.has(provider)) {
+        if (normalized === 'auto') return 'auto';
         return normalized === 'off' ? 'off' : 'on';
     }
 

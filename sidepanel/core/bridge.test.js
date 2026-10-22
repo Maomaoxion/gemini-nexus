@@ -325,6 +325,63 @@ describe('MessageBridge model persistence', () => {
         );
     });
 
+    it('forwards debug tools toggle results back to the sandbox', async () => {
+        const frame = createFrame();
+        const state = createState();
+        state.getCurrentTabId.mockReturnValue(55);
+        chrome.runtime.sendMessage.mockResolvedValueOnce({
+            action: 'DEBUG_TOOLS_RESULT',
+            enabled: true,
+            tabId: 55,
+            status: 'started',
+        });
+        const bridge = new MessageBridge(frame, state);
+
+        bridge.forwardToBackground({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: true,
+        });
+
+        await vi.waitFor(() =>
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'DEBUG_TOOLS_RESULT',
+                    enabled: true,
+                    tabId: 55,
+                    status: 'started',
+                    error: null,
+                },
+            })
+        );
+    });
+
+    it('forwards debug tools toggle rejections as error results', async () => {
+        const frame = createFrame();
+        const state = createState();
+        state.getCurrentTabId.mockReturnValue(55);
+        chrome.runtime.sendMessage.mockRejectedValueOnce(new Error('Background unavailable'));
+        const bridge = new MessageBridge(frame, state);
+
+        bridge.forwardToBackground({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: false,
+        });
+
+        await vi.waitFor(() =>
+            expect(frame.postMessage).toHaveBeenCalledWith({
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'DEBUG_TOOLS_RESULT',
+                    enabled: false,
+                    tabId: null,
+                    status: 'error',
+                    error: 'Background unavailable',
+                },
+            })
+        );
+    });
+
     it('forwards generic background request errors back to the sandbox', async () => {
         const frame = createFrame();
         const state = createState();

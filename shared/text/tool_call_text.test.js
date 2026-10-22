@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { parseToolCommand, splitToolCallFromText } from './tool_call_text.js';
+import {
+    TOOL_OUTPUT_TEXT_PREFIX,
+    buildToolOutputText,
+    isToolCallOnlyText,
+    isToolOutputText,
+    parseToolCommand,
+    parseToolOutputHeader,
+    splitToolCallFromText,
+    stripToolCallMarkup,
+} from './tool_call_text.js';
 
 const adjacentToolCalls = `{
   "tool": "fill",
@@ -176,6 +185,91 @@ describe('tool call text utilities', () => {
             displayText: text,
             toolCallText: '',
             hasToolCall: false,
+        });
+    });
+
+    it('parses native model tool-call tokens with a plain tool name', () => {
+        const text = 'Checking now.\n<|tool_call_begin|>get_page_errors<|tool_call_end|>';
+
+        expect(parseToolCommand(text)).toEqual({ name: 'get_page_errors', args: {} });
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: 'Checking now.',
+            toolCallText: '<|tool_call_begin|>get_page_errors<|tool_call_end|>',
+            hasToolCall: true,
+        });
+    });
+
+    it('parses native model tool-call tokens with JSON arguments', () => {
+        const text =
+            '<|tool_call_begin|>function<|tool_sep|>{"name":"get_dom_html","arguments":{"selector":"#app"}}<|tool_call_end|>';
+
+        expect(parseToolCommand(text)).toEqual({
+            name: 'get_dom_html',
+            args: { selector: '#app' },
+        });
+    });
+
+    it('parses double-pipe native tool-call token variants', () => {
+        const text = '<||tool_call_begin||>get_network_requests<||tool_call_end||>';
+
+        expect(parseToolCommand(text)).toEqual({ name: 'get_network_requests', args: {} });
+    });
+
+    it('hides DSML tool-call markup while keeping the prose before it', () => {
+        const text = `好的，我再压一轮。这次加大力度。
+<||DSML|| calls>
+<||DSML|| invoke name="get_page_info">
+</||DSML|| invoke>
+<||DSML|| invoke name="get_page_errors">
+</||DSML|| invoke>
+</||DSML|| calls>`;
+
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: '好的，我再压一轮。这次加大力度。',
+            toolCallText: expect.stringContaining('<||DSML|| calls>'),
+            hasToolCall: true,
+        });
+        expect(stripToolCallMarkup(text)).toBe('好的，我再压一轮。这次加大力度。');
+    });
+
+    it('hides a streaming DSML block before its closing tag arrives', () => {
+        const text = `Checking now.
+<||DSML|| calls>
+<||DSML|| invoke name="get_page_info">`;
+
+        expect(splitToolCallFromText(text, { allowPartial: true })).toEqual({
+            displayText: 'Checking now.',
+            toolCallText: expect.stringContaining('<||DSML|| calls>'),
+            hasToolCall: true,
+        });
+    });
+
+    it('treats DSML-only text as a tool call', () => {
+        const text =
+            '<||DSML|| calls><||DSML|| invoke name="get_page_info"></||DSML|| invoke></||DSML|| calls>';
+
+        expect(isToolCallOnlyText(text)).toBe(true);
+    });
+});
+
+describe('tool output text helpers', () => {
+    it('builds the stored tool-output history text', () => {
+        expect(buildToolOutputText('search', 'Found docs')).toBe(
+            '[Tool Output: search]\nFound docs'
+        );
+        expect(buildToolOutputText('', null)).toBe('[Tool Output: tool]\n');
+    });
+
+    it('detects and parses the tool-output header', () => {
+        expect(isToolOutputText(`${TOOL_OUTPUT_TEXT_PREFIX} search]`)).toBe(true);
+        expect(isToolOutputText('plain answer')).toBe(false);
+        expect(parseToolOutputHeader('[Tool Output: search]\nFound docs')).toEqual({
+            toolName: 'search',
+            body: 'Found docs',
+        });
+        expect(parseToolOutputHeader('plain answer')).toEqual({
+            toolName: '',
+            body: 'plain answer',
         });
     });
 });

@@ -70,6 +70,16 @@ function postBrowserControlToggleResult(bridge, payload, response = {}) {
     });
 }
 
+function postDebugToolsResult(bridge, response = {}) {
+    bridge.postBackgroundMessage({
+        action: 'DEBUG_TOOLS_RESULT',
+        enabled: response.enabled === true,
+        tabId: response.tabId ?? null,
+        status: response.status || 'error',
+        error: response.error || null,
+    });
+}
+
 export function isMessageForCurrentTab(state, message) {
     if (!message || !Object.prototype.hasOwnProperty.call(message, 'tabId')) {
         return true;
@@ -97,6 +107,10 @@ export function forwardToBackground(bridge, payload) {
                 postBrowserControlToggleResult(bridge, scopedPayload, response);
                 return;
             }
+            if (scopedPayload.action === 'TOGGLE_DEBUG_TOOLS') {
+                postDebugToolsResult(bridge, response || {});
+                return;
+            }
             if (response?.status === 'error') {
                 postBackgroundRequestError(bridge, scopedPayload, response.error);
                 return;
@@ -113,6 +127,13 @@ export function forwardToBackground(bridge, payload) {
             );
             if (scopedPayload?.action === 'TOGGLE_BROWSER_CONTROL') {
                 postBrowserControlToggleResult(bridge, scopedPayload, {
+                    status: 'error',
+                    error: error?.message || String(error),
+                });
+                return;
+            }
+            if (scopedPayload?.action === 'TOGGLE_DEBUG_TOOLS') {
+                postDebugToolsResult(bridge, {
                     status: 'error',
                     error: error?.message || String(error),
                 });

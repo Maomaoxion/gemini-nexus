@@ -39,6 +39,7 @@ function createPromptHarness({ text = 'Hello', files = [], liveArtifactsEnabled 
 
     const app = {
         browserControlActive: false,
+        debugToolsActive: false,
         hostIsTab: false,
         isGenerating: false,
         generatingSessionId: null,
@@ -77,6 +78,28 @@ describe('PromptController generation recovery', () => {
         expect(ui.updateStatus).toHaveBeenCalledWith('cleared');
     });
 
+    it('deletes a whole turn including tool output rows', async () => {
+        const { controller, sessionManager } = createPromptHarness();
+        const session = sessionManager.createSession();
+        sessionManager.addMessage(session.id, 'user', 'Check errors');
+        sessionManager.addMessage(session.id, 'ai', 'Calling tool');
+        session.messages.push({
+            role: 'user',
+            text: '[Tool Output: get_page_errors]',
+            kind: 'tool-output',
+            toolName: 'get_page_errors',
+        });
+        sessionManager.addMessage(session.id, 'ai', 'Result');
+        sessionManager.addMessage(session.id, 'user', 'Next question');
+
+        const result = await controller.deleteTurnFrom(0);
+
+        expect(result).toBe(true);
+        const messages = sessionManager.getCurrentSession().messages;
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatchObject({ role: 'user', text: 'Next question' });
+    });
+
     it('sends referenced tabs with the prompt payload', async () => {
         const { app, controller } = createPromptHarness({ text: 'Summarize' });
         const tabs = [{ id: 3, title: 'GitHub', url: 'https://github.com/', favIconUrl: '' }];
@@ -92,6 +115,20 @@ describe('PromptController generation recovery', () => {
             })
         );
         expect(app.getReferencedTabs).toHaveBeenCalled();
+    });
+
+    it('sends the debug tools flag when the debug toggle is on', async () => {
+        const { app, controller } = createPromptHarness({ text: 'Why did it fail?' });
+        app.debugToolsActive = true;
+
+        await controller.send();
+
+        expect(sendToBackground).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: 'SEND_PROMPT',
+                enableDebugTools: true,
+            })
+        );
     });
 
     it('regenerates a reply by resending the user turn above it', async () => {

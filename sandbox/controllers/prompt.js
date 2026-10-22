@@ -8,6 +8,7 @@ import {
 import { getLiveArtifactsSystemInstruction } from '../core/live_artifacts.js';
 import { getProviderThinkingLevel } from '../../shared/models/thinking_levels.js';
 import { getConfiguredModels } from '../../shared/settings/model_selection.js';
+import { isToolOutputText } from '../../shared/text/tool_call_text.js';
 
 // Idle (no stream / tool activity) budget before the UI treats a run as stuck.
 // Browser-control tool loops may legitimately run longer between model turns.
@@ -22,7 +23,7 @@ const CANCELLATION_RECENT_MS = 2000;
 function isToolHistoryRow(message) {
     if (!message) return true;
     if (message.kind === 'tool-output' || message.kind === 'tool-status') return true;
-    return typeof message.text === 'string' && message.text.startsWith('[Tool Output:');
+    return isToolOutputText(message.text);
 }
 
 export class PromptController {
@@ -80,6 +81,7 @@ export class PromptController {
 
         const enableMcpTools = conn.mcpEnabled === true && mcpServers.length > 0;
         const firstServer = mcpServers[0] || null;
+        const nativeTools = provider !== 'web';
 
         return {
             action: 'SEND_PROMPT',
@@ -96,6 +98,8 @@ export class PromptController {
                       configuredModels: getConfiguredModels(conn, provider).join(', '),
                   }),
             referencedTabs: this.app.getReferencedTabs?.() || [],
+            enableDebugTools: this.app.debugToolsActive === true,
+            nativeTools,
             enableBrowserControl: this.app.browserControlActive,
             hostIsTab: this.app.hostIsTab === true,
             enableMcpTools,
@@ -155,6 +159,62 @@ export class PromptController {
         };
     }
 
+    /** Delete control for a whole user turn (user message + all replies/tools). */
+    getTurnDeleteOptions(startIndex) {
+        return {
+            onDelete: () => this.deleteTurnFrom(startIndex),
+        };
+    }
+
+    async deleteTurnFrom(startIndex) {
+        if (this.app.isGenerating) return false;
+
+        if (!this.canEditHistory()) {
+            this.ui.updateStatus(t('editNotSupportedForWeb'));
+            setTimeout(() => {
+                if (!this.app.isGenerating) this.ui.updateStatus('');
+            }, 3000);
+            return false;
+        }
+
+        const currentId = this.sessionManager.currentSessionId;
+        const session = this.sessionManager.getCurrentSession();
+        if (!session || !Array.isArray(session.messages)) return false;
+
+        const start = Number.isInteger(startIndex) ? startIndex : -1;
+        if (start < 0 || start >= session.messages.length) return false;
+
+        const end = this.findTurnEndIndex(session.messages, start);
+        if (end <= start) return false;
+
+        // Remove back-to-front so earlier indices stay valid.
+        for (let index = end - 1; index >= start; index--) {
+            this.sessionManager.removeMessage(currentId, index);
+        }
+        session.contextSummary = null;
+
+        saveSessionsToStorage(this.sessionManager.getPersistableSessions(), {
+            type: 'replaceSession',
+            sessionId: currentId,
+        });
+        this.app.sessionFlow.refreshHistoryUI();
+        this.app.rerender();
+        return true;
+    }
+
+    findTurnEndIndex(messages, startIndex) {
+        for (let index = startIndex + 1; index < messages.length; index++) {
+            const message = messages[index];
+            if (!message || message.role !== 'user') continue;
+            if (message.kind === 'tool-output' || isToolOutputText(message.text)) {
+                continue;
+            }
+            return index;
+        }
+
+        return messages.length;
+    }
+
     async deleteMessageAt(messageIndex) {
         if (this.app.isGenerating) return false;
 
@@ -208,9 +268,7 @@ export class PromptController {
         for (let index = messageIndex - 1; index >= 0; index--) {
             const message = messages[index];
             if (!message || message.role !== 'user') continue;
-            if (message.kind === 'tool-output') continue;
-            if (typeof message.text === 'string' && message.text.startsWith('[Tool Output:'))
-                continue;
+            if (message.kind === 'tool-output' || isToolOutputText(message.text)) continue;
             return index;
         }
 
@@ -366,15 +424,13 @@ export class PromptController {
 
         const messageIndex = session.messages.length;
 
-        appendMessage(
-            this.ui.historyDiv,
-            text,
-            'user',
-            displayAttachments,
-            null,
-            null,
-            this.getMessageEditOptions(messageIndex)
-        );
+        appendMessage(this.ui.historyDiv, text, 'user', displayAttachments, null, null, {
+            ...this.getMessageEditOptions(messageIndex),
+            onDelete: () => this.deleteTurnFrom(messageIndex),
+        });
+        this.ui.beginTurn?.({
+            onDelete: () => this.deleteTurnFrom(messageIndex),
+        });
         // Sending is an explicit return to the live edge, even after the user
         // had scrolled up to read earlier messages.
         this.ui.followBottom?.();

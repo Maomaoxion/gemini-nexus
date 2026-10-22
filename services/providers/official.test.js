@@ -183,6 +183,33 @@ describe('extractOfficialResponseData', () => {
         expect(payload.generationConfig.thinkingConfig.thinkingLevel).toBe('minimal');
     });
 
+    it('keeps thoughts but omits the thinking level when the level is auto', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeSseStream('done'),
+        });
+
+        await sendOfficialMessage(
+            'Hello',
+            '',
+            [],
+            {
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+                apiKey: 'key',
+                model: 'gemini-3.8-flash',
+            },
+            'auto',
+            [],
+            false,
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.generationConfig.thinkingConfig).toEqual({ includeThoughts: true });
+    });
+
     it('throws a blocked error on SAFETY finish instead of an empty success', async () => {
         const encoder = new TextEncoder();
         global.fetch = vi.fn().mockResolvedValue({
@@ -248,5 +275,46 @@ describe('extractOfficialResponseData', () => {
                 vi.fn()
             )
         ).rejects.toThrow('API Error (400): API key not valid. Please pass a valid API key.');
+    });
+});
+
+describe('sendOfficialMessage native tools', () => {
+    it('sends functionDeclarations when native tools are configured', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeSseStream('done'),
+        });
+        global.fetch = fetchMock;
+
+        await sendOfficialMessage(
+            'Check errors',
+            '',
+            [],
+            {
+                baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+                apiKey: 'key',
+                model: 'gemini-test',
+                functionDeclarations: [
+                    {
+                        name: 'get_page_errors',
+                        description: 'Read errors',
+                        parameters: { type: 'OBJECT', properties: {} },
+                    },
+                ],
+            },
+            null,
+            [],
+            false,
+            null,
+            vi.fn()
+        );
+
+        const [, init] = fetchMock.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.tools).toEqual([
+            {
+                functionDeclarations: [expect.objectContaining({ name: 'get_page_errors' })],
+            },
+        ]);
     });
 });

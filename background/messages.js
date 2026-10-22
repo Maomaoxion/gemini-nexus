@@ -9,6 +9,7 @@ import { UIMessageHandler } from './handlers/ui.js';
  * @param {McpRemoteManager} mcpManager
  * @param {LogManager} logManager
  * @param {SidePanelScopeManager} sidePanelScopeManager
+ * @param {DebugCaptureManager} debugManager
  */
 export function setupMessageListener(
     sessionManager,
@@ -16,20 +17,23 @@ export function setupMessageListener(
     controlManager,
     mcpManager,
     logManager,
-    sidePanelScopeManager
+    sidePanelScopeManager,
+    debugManager = null
 ) {
     const sessionHandler = new SessionMessageHandler(
         sessionManager,
         imageHandler,
         controlManager,
-        mcpManager
+        mcpManager,
+        debugManager
     );
     const uiHandler = new UIMessageHandler(
         imageHandler,
         controlManager,
         mcpManager,
         sidePanelScopeManager,
-        sessionHandler
+        sessionHandler,
+        debugManager
     );
 
     // Abort any in-flight quick-ask when its content-script tab is closed,

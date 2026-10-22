@@ -16,6 +16,7 @@ function installFooterDom() {
         <div class="tools-container">
             <div class="tools-primary" id="tools-row">
                 <button id="browser-control-btn" class="tool-toggle" aria-pressed="false"></button>
+                <button id="debug-tools-btn" class="tool-toggle" aria-pressed="false"></button>
                 <button id="live-artifacts-btn" class="tool-toggle" aria-pressed="false"></button>
             </div>
             <div class="tools-more-dropdown" id="tools-more-dropdown">
@@ -73,6 +74,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -99,6 +101,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -124,6 +127,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -152,6 +156,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -173,6 +178,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -199,6 +205,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -225,6 +232,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -250,6 +258,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
             handleSendMessage: vi.fn(),
@@ -274,6 +283,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             toggleLiveArtifacts: vi.fn(),
             setCaptureMode: vi.fn(),
             handleModelChange: vi.fn(),
@@ -297,6 +307,7 @@ describe('app events', () => {
             handleNewChat: vi.fn(),
             handleTabSwitcher: vi.fn(),
             toggleBrowserControl: vi.fn(),
+            toggleDebugTools: vi.fn(),
             toggleLiveArtifacts: vi.fn(),
             handleLiveArtifactFollowUp: vi.fn(),
             setCaptureMode: vi.fn(),

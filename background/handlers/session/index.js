@@ -4,9 +4,14 @@ import { ContextHandler } from './context_handler.js';
 import { TtsHandler } from './tts_handler.js';
 
 export class SessionMessageHandler {
-    constructor(sessionManager, imageHandler, controlManager, mcpManager) {
+    constructor(sessionManager, imageHandler, controlManager, mcpManager, debugManager = null) {
         this.sessionManager = sessionManager;
-        this.promptHandler = new PromptHandler(sessionManager, controlManager, mcpManager);
+        this.promptHandler = new PromptHandler(
+            sessionManager,
+            controlManager,
+            mcpManager,
+            debugManager
+        );
         this.quickAskHandler = new QuickAskHandler(sessionManager, imageHandler);
         this.contextHandler = new ContextHandler(sessionManager);
         this.ttsHandler = new TtsHandler(sessionManager);

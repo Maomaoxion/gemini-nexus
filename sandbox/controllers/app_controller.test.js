@@ -59,6 +59,8 @@ function createUi() {
         },
         setBrowserControlVisible: vi.fn(),
         setPageContextAvailable: vi.fn(),
+        setDebugToolsActive: vi.fn(),
+        setDebugToolsAvailable: vi.fn(),
         setLoading: vi.fn(),
         updateBrowserControlState: vi.fn(),
         syncThinkingForModel: vi.fn(),
@@ -222,6 +224,111 @@ describe('AppController session restore behavior', () => {
         });
 
         expect(ui.tabMention.setCandidates).toHaveBeenCalledWith(tabs, 2);
+    });
+
+    it('enables debug tools and releases browser control first', () => {
+        const { app, ui } = createAppHarness();
+        app.browserControlActive = true;
+        const toggleBrowserControl = vi.spyOn(app, 'toggleBrowserControl');
+
+        app.toggleDebugTools();
+
+        expect(toggleBrowserControl).toHaveBeenCalledWith(false);
+        expect(app.debugToolsActive).toBe(true);
+        expect(ui.setDebugToolsActive).toHaveBeenCalledWith(true);
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: true,
+        });
+    });
+
+    it('disables debug tools when browser control is enabled', () => {
+        const { app } = createAppHarness();
+        app.setDebugToolsActiveState(true);
+        sendToBackground.mockClear();
+
+        app.setBrowserControlActiveState(true);
+
+        expect(app.debugToolsActive).toBe(false);
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: false,
+        });
+    });
+
+    it('rolls back the debug toggle when the background reports an error', async () => {
+        const { app, ui } = createAppHarness();
+        app.setDebugToolsActiveState(true);
+
+        await app.handleIncomingMessage({
+            data: {
+                action: 'BACKGROUND_MESSAGE',
+                payload: {
+                    action: 'DEBUG_TOOLS_RESULT',
+                    enabled: false,
+                    status: 'error',
+                    error: 'Debug failed',
+                },
+            },
+        });
+
+        expect(app.debugToolsActive).toBe(false);
+        expect(ui.setDebugToolsActive).toHaveBeenLastCalledWith(false);
+        expect(ui.updateStatus).toHaveBeenCalledWith('Debug failed');
+    });
+
+    it('migrates debug capture when the side panel switches tabs', async () => {
+        const { app } = createAppHarness();
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: 1 } },
+        });
+        app.setDebugToolsActiveState(true);
+        sendToBackground.mockClear();
+
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: 2 } },
+        });
+
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: true,
+        });
+    });
+
+    it('does not restart debug capture when the tab context message repeats', async () => {
+        const { app } = createAppHarness();
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: 1 } },
+        });
+        app.setDebugToolsActiveState(true);
+        sendToBackground.mockClear();
+
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: 1, title: 'New' } },
+        });
+
+        expect(sendToBackground).not.toHaveBeenCalledWith(
+            expect.objectContaining({ action: 'TOGGLE_DEBUG_TOOLS' })
+        );
+    });
+
+    it('stops debug capture when the side panel has no bound tab', async () => {
+        const { app } = createAppHarness();
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: 1 } },
+        });
+        app.setDebugToolsActiveState(true);
+        sendToBackground.mockClear();
+
+        await app.handleIncomingMessage({
+            data: { action: 'RESTORE_SIDE_PANEL_TAB_CONTEXT', payload: { tabId: null } },
+        });
+
+        expect(app.debugToolsActive).toBe(false);
+        expect(sendToBackground).toHaveBeenCalledWith({
+            action: 'TOGGLE_DEBUG_TOOLS',
+            enabled: false,
+        });
     });
 
     it('requests tab mention candidates from the background', () => {

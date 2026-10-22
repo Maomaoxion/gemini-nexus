@@ -272,8 +272,18 @@ export async function sendOfficialMessage(
         },
     };
 
+    const functionDeclarations = Array.isArray(config?.functionDeclarations)
+        ? config.functionDeclarations
+        : [];
+    const tools = [];
+    if (functionDeclarations.length > 0) {
+        tools.push({ functionDeclarations });
+    }
     if (enableWebSearch) {
-        payload.tools = [{ google_search: {} }];
+        tools.push({ google_search: {} });
+    }
+    if (tools.length > 0) {
+        payload.tools = tools;
     }
 
     // Apply Thinking Config if requested or user has configured it level
@@ -281,8 +291,11 @@ export async function sendOfficialMessage(
     if (thinkingLevel) {
         payload.generationConfig.thinkingConfig = {
             includeThoughts: true, // Ensure thoughts are returned in response
-            thinkingLevel,
         };
+        // "auto" keeps the API's default budget instead of pinning a level.
+        if (String(thinkingLevel).toLowerCase() !== 'auto') {
+            payload.generationConfig.thinkingConfig.thinkingLevel = thinkingLevel;
+        }
     }
 
     if (systemInstruction) {

@@ -47,6 +47,10 @@ describe('history_manager', () => {
                 thoughts: 'thinking',
                 images: [{ url: 'https://lh3.googleusercontent.com/generated' }],
                 context: null,
+                anthropicContent: [
+                    { type: 'thinking', thinking: 'check', signature: 'sig-1' },
+                    { type: 'tool_use', id: 'toolu_1', name: 'get_page_errors', input: {} },
+                ],
             },
             [{ base64: 'data:image/png;base64,AAAA' }]
         );
@@ -76,6 +80,11 @@ describe('history_manager', () => {
                 generatedImages: [{ url: 'https://lh3.googleusercontent.com/generated' }],
                 thoughtSignature: undefined,
                 officialContent: null,
+                anthropicContent: [
+                    { type: 'thinking', thinking: 'check', signature: 'sig-1' },
+                    { type: 'tool_use', id: 'toolu_1', name: 'get_page_errors', input: {} },
+                ],
+                toolCalls: null,
                 suppressCopy: false,
             },
         ]);
@@ -185,6 +194,8 @@ describe('history_manager', () => {
             generatedImages: [{ url: 'https://lh3.googleusercontent.com/generated' }],
             thoughtSignature: undefined,
             officialContent: null,
+            anthropicContent: null,
+            toolCalls: null,
             suppressCopy: false,
         });
         expect(chrome.storage.local.set).toHaveBeenCalledWith({

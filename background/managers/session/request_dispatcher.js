@@ -25,6 +25,7 @@ import {
     isDedicatedApiProvider,
 } from '../../../shared/settings/dedicated_providers.js';
 import { getHistory } from './history_store.js';
+import { toGeminiFunctionDeclarations } from '../../tools/tool_schemas.js';
 import { prepareManagedContext } from './context_manager.js';
 import {
     isRefreshableWebAuthError,
@@ -360,6 +361,11 @@ export class RequestDispatcher {
                         model: targetModel,
                         configuredModels: settings.officialModel,
                         officialUserParts: request.officialUserParts,
+                        ...(request.nativeTools === true
+                            ? {
+                                  functionDeclarations: toGeminiFunctionDeclarations(request.tools),
+                              }
+                            : {}),
                     },
                     thinkingLevel,
                     files,
@@ -397,6 +403,7 @@ export class RequestDispatcher {
             ),
             useResponsesApi: settings.openaiUseResponsesApi === true,
             webSearch: settings.openaiWebSearch === true,
+            ...(request.nativeTools === true ? { toolSchemas: request.tools } : {}),
         };
 
         if (config.webSearch) {
@@ -431,6 +438,7 @@ export class RequestDispatcher {
 
         return createSuccessReply(request, response, {
             context: null,
+            functionCalls: Array.isArray(response.functionCalls) ? response.functionCalls : [],
         });
     }
 
@@ -470,6 +478,7 @@ export class RequestDispatcher {
                             apiKey: providerSettings.apiKey,
                             model: targetModel,
                             thinkingLevel,
+                            ...(request.nativeTools === true ? { toolSchemas: request.tools } : {}),
                         },
                         files,
                         signal,
@@ -478,7 +487,11 @@ export class RequestDispatcher {
                 { signal }
             );
 
-            return createSuccessReply(request, response, { context: null });
+            return createSuccessReply(request, response, {
+                context: null,
+                functionCalls: Array.isArray(response.functionCalls) ? response.functionCalls : [],
+                anthropicContent: response.anthropicContent || null,
+            });
         }
 
         const useResponsesApi = providerConfig?.transport === 'openai-responses';
@@ -494,6 +507,7 @@ export class RequestDispatcher {
                 thinkingLevel,
             }),
             headers: getDedicatedApiHeaders(provider),
+            ...(request.nativeTools === true ? { toolSchemas: request.tools } : {}),
         };
 
         if (config.webSearch) {
@@ -514,7 +528,10 @@ export class RequestDispatcher {
             { signal }
         );
 
-        return createSuccessReply(request, response, { context: null });
+        return createSuccessReply(request, response, {
+            context: null,
+            functionCalls: Array.isArray(response.functionCalls) ? response.functionCalls : [],
+        });
     }
 
     async _handleWebRequest(request, settings, files, onUpdate, signal) {

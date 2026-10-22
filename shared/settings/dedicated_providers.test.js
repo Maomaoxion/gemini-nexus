@@ -98,6 +98,23 @@ describe('dedicated API provider settings', () => {
         expect(getDedicatedApiReasoningEffort('dashscope', 'medium')).toBeNull();
     });
 
+    it('omits thinking fields when the level is auto', () => {
+        expect(
+            createDedicatedApiChatPayload('openrouter', {
+                providerRouting: '{"order":["openai"]}',
+                thinkingLevel: 'auto',
+            })
+        ).toEqual({ provider: { order: ['openai'] } });
+        expect(createDedicatedApiChatPayload('dashscope', { thinkingLevel: 'auto' })).toEqual({
+            stream_options: {
+                include_usage: true,
+            },
+        });
+        expect(createDedicatedApiChatPayload('zhipu', { thinkingLevel: 'auto' })).toBeNull();
+        expect(getDedicatedApiReasoningEffort('deepseek', 'auto')).toBeNull();
+        expect(getDedicatedApiReasoningEffort('openai_official', 'auto')).toBeNull();
+    });
+
     it('rejects invalid OpenRouter provider routing JSON', () => {
         expect(() =>
             createDedicatedApiChatPayload('openrouter', {

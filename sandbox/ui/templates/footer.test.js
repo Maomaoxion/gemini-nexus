@@ -53,6 +53,7 @@ describe('FooterTemplate', () => {
         const primary = document.querySelector('.tools-primary');
         expect(primary.querySelector('#page-context-btn')).toBeNull();
         expect(primary.querySelector('#browser-control-btn')).not.toBeNull();
+        expect(primary.querySelector('#debug-tools-btn')).not.toBeNull();
         expect(primary.querySelector('#live-artifacts-btn')).not.toBeNull();
 
         // Mode toggles expose aria-pressed for unified on/off affordance.

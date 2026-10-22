@@ -11,6 +11,7 @@ import {
 } from '../../../shared/models/context_window.js';
 import { resolveContextWindow } from './context_window_resolver.js';
 import { describeMessageAttachmentMarkers } from '../../../shared/attachments/index.js';
+import { isToolOutputText } from '../../../shared/text/tool_call_text.js';
 import {
     createDedicatedApiChatPayload,
     getDedicatedApiDefaultModel,
@@ -70,10 +71,7 @@ function isHiddenCompressedMessage(message) {
 }
 
 function isToolOutputMessage(message) {
-    return (
-        message?.kind === 'tool-output' ||
-        (typeof message?.text === 'string' && message.text.startsWith('[Tool Output:'))
-    );
+    return message?.kind === 'tool-output' || isToolOutputText(message?.text);
 }
 
 function isOfficialFunctionResponseMessage(message) {

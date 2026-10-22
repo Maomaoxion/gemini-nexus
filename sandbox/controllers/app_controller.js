@@ -30,6 +30,7 @@ export class AppController {
         // Session id carried by an outstanding service-worker run probe.
         this._workerProbeSessionId = undefined;
         this.browserControlActive = false;
+        this.debugToolsActive = false;
         this.liveArtifactsEnabled = false;
         this.sidePanelScope = DEFAULT_SIDE_PANEL_SCOPE;
         this.currentTabId = null;
@@ -219,6 +220,10 @@ export class AppController {
     setBrowserControlActiveState(active) {
         this.browserControlActive = active === true;
 
+        if (this.browserControlActive && this.debugToolsActive) {
+            this.toggleDebugTools(false);
+        }
+
         const browserControlButton = document.getElementById('browser-control-btn');
         if (browserControlButton) {
             browserControlButton.classList.toggle('active', this.browserControlActive);
@@ -249,6 +254,25 @@ export class AppController {
 
     handleTabSwitcher() {
         sendToBackground({ action: 'GET_OPEN_TABS' });
+    }
+
+    setDebugToolsActiveState(active) {
+        this.debugToolsActive = active === true;
+        this.ui.setDebugToolsActive?.(this.debugToolsActive);
+    }
+
+    toggleDebugTools(forceState = null) {
+        const nextState = forceState === null ? !this.debugToolsActive : forceState === true;
+        if (nextState === this.debugToolsActive) return;
+
+        // Browser control and debug tools share the tab's single debugger
+        // session; enabling one must release the other.
+        if (nextState && this.browserControlActive) {
+            this.toggleBrowserControl(false);
+        }
+
+        this.setDebugToolsActiveState(nextState);
+        sendToBackground({ action: 'TOGGLE_DEBUG_TOOLS', enabled: nextState });
     }
 
     handleTabSelected(tabId, shouldSwitch = true) {
@@ -419,7 +443,17 @@ export class AppController {
             const pageContextAvailable =
                 Number.isInteger(this.currentTabId) && this.currentTabId > 0;
             this.ui.setPageContextAvailable?.(pageContextAvailable);
+            this.ui.setDebugToolsAvailable?.(pageContextAvailable);
             this.ui.tabMention?.setCurrentTabId?.(this.currentTabId);
+            // Only migrate on an actual tab change: title/url updates also post
+            // this message, and re-sending the toggle would restart capture.
+            if (this.debugToolsActive && (tabChanged || !pageContextAvailable)) {
+                if (pageContextAvailable) {
+                    sendToBackground({ action: 'TOGGLE_DEBUG_TOOLS', enabled: true });
+                } else {
+                    this.toggleDebugTools(false);
+                }
+            }
             if (this.sessionsRestored && this.sidePanelScope === DEFAULT_SIDE_PANEL_SCOPE) {
                 this.restoreRememberedTabSession();
             }
@@ -601,6 +635,27 @@ export class AppController {
             }
             if (payload.action === 'MENTION_TABS_RESULT') {
                 this.ui.tabMention?.setCandidates?.(payload.tabs, payload.currentTabId);
+                return;
+            }
+            if (payload.action === 'DEBUG_TOOLS_RESULT') {
+                const enabled = payload.enabled === true && payload.status !== 'error';
+                this.setDebugToolsActiveState(enabled);
+
+                const statusText = payload.error
+                    ? payload.error
+                    : enabled
+                      ? t('debugToolsEnabled')
+                      : '';
+                if (statusText) {
+                    this.ui.updateStatus(statusText);
+                    setTimeout(() => {
+                        if (!this.isGenerating) this.ui.updateStatus('');
+                    }, 3000);
+                }
+                return;
+            }
+            if (payload.action === 'DEBUG_TOOLS_STOPPED') {
+                this.setDebugToolsActiveState(false);
                 return;
             }
 

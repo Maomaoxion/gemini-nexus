@@ -28,6 +28,7 @@ export function createUiMessageContext(handler) {
         imageHandler: handler.imageHandler,
         controlManager: handler.controlManager,
         sidePanelScopeManager: handler.sidePanelScopeManager,
+        debugManager: handler.debugManager,
         getTargetSidePanelTabId,
         sendToRequestSource,
     };

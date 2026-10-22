@@ -1,4 +1,3 @@
-import { handleToggleBrowserControl } from './ui_browser_control.js';
 import {
     handleAreaSelected,
     handleInitiateCapture,
@@ -24,15 +23,24 @@ import {
 } from './ui_sidepanel.js';
 import { handleGetOpenTabs, handleSwitchTab } from './ui_tab_actions.js';
 import { handleGetMentionTabs } from './ui_tab_mentions.js';
+import { handleToolToggleAction } from './ui_browser_control.js';
 import { createUiMessageContext } from './ui_context.js';
 
 export class UIMessageHandler {
-    constructor(imageHandler, controlManager, mcpManager, sidePanelScopeManager, sessionHandler) {
+    constructor(
+        imageHandler,
+        controlManager,
+        mcpManager,
+        sidePanelScopeManager,
+        sessionHandler,
+        debugManager = null
+    ) {
         this.imageHandler = imageHandler;
         this.controlManager = controlManager;
         this.mcpManager = mcpManager;
         this.sidePanelScopeManager = sidePanelScopeManager;
         this.sessionHandler = sessionHandler;
+        this.debugManager = debugManager;
     }
 
     handle(request, sender, sendResponse) {
@@ -140,8 +148,7 @@ export class UIMessageHandler {
             return true;
         }
 
-        if (request.action === 'TOGGLE_BROWSER_CONTROL') {
-            handleToggleBrowserControl(context, request, sender, sendResponse);
+        if (handleToolToggleAction(context, request, sender, sendResponse)) {
             return true;
         }
 

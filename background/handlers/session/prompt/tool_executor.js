@@ -1,10 +1,12 @@
 import { parseToolCommand } from '../../../../shared/text/tool_call_text.js';
 import { ToolDispatcher } from '../../../control/dispatcher.js';
+import { isDebugTool } from '../../../debug/debug_tools.js';
 
 export class ToolExecutor {
-    constructor(controlManager, mcpManager) {
+    constructor(controlManager, mcpManager, debugManager = null) {
         this.controlManager = controlManager;
         this.mcpManager = mcpManager;
+        this.debugManager = debugManager;
         this.invocationCounter = 0;
     }
 
@@ -67,7 +69,20 @@ export class ToolExecutor {
         let status = 'completed';
 
         try {
-            if (ToolDispatcher.isLocalTool(toolName) && request.enableBrowserControl === true) {
+            if (request.enableDebugTools === true && isDebugTool(toolName)) {
+                if (!this.debugManager) {
+                    throw new Error('Debug tools are unavailable.');
+                }
+
+                source = 'debug_tools';
+                output = await this.debugManager.execute(toolName, toolCommand.args || {});
+                if (isFailedToolOutput(output)) {
+                    status = 'failed';
+                }
+            } else if (
+                ToolDispatcher.isLocalTool(toolName) &&
+                request.enableBrowserControl === true
+            ) {
                 if (!this.controlManager) {
                     throw new Error('Browser control is unavailable.');
                 }
@@ -249,16 +264,9 @@ export class ToolExecutor {
     formatFunctionCallText(call) {
         if (!call || typeof call.name !== 'string') return '';
         try {
-            return JSON.stringify(
-                {
-                    tool: call.name,
-                    args: isPlainObject(call.args) ? call.args : {},
-                },
-                null,
-                2
-            );
+            return JSON.stringify(isPlainObject(call.args) ? call.args : {}, null, 2);
         } catch {
-            return call.name;
+            return '';
         }
     }
 

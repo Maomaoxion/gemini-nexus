@@ -1,6 +1,7 @@
 import { GeminiSessionManager } from './managers/session_manager.js';
 import { ImageManager } from './managers/image_manager.js';
 import { BrowserControlManager } from './managers/control_manager.js';
+import { DebugCaptureManager } from './debug/debug_capture_manager.js';
 import { McpRemoteManager } from './managers/mcp_remote_manager.js';
 import { LogManager, setupConsoleInterception } from './managers/log_manager.js';
 import { NativeLoggerSink } from './managers/native_logger_sink.js';
@@ -131,6 +132,7 @@ try {
 const sessionManager = new GeminiSessionManager();
 const imageManager = new ImageManager();
 const controlManager = new BrowserControlManager();
+const debugCaptureManager = new DebugCaptureManager();
 const sidePanelScopeManager = new SidePanelScopeManager();
 const mcpManager = new McpRemoteManager({
     clientName: 'gemini-nexus',
@@ -200,7 +202,8 @@ setupMessageListener(
     controlManager,
     mcpManager,
     logManager,
-    sidePanelScopeManager
+    sidePanelScopeManager,
+    debugCaptureManager
 );
 
 // Keep-alive 401/403 must invalidate AuthManager memory as well as storage;

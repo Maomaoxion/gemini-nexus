@@ -1,4 +1,5 @@
 import { generateUUID } from '../../shared/utils/index.js';
+import { stripToolCallMarkup } from '../../shared/text/tool_call_text.js';
 import {
     getImageAttachmentDataUrls,
     normalizeUserAttachments,
@@ -52,13 +53,22 @@ function normalizeStoredAttachments(filesObj = null) {
 function createAiHistoryMessage(result) {
     return {
         role: 'ai',
-        text: result.text,
+        text: typeof result.text === 'string' ? stripToolCallMarkup(result.text) : result.text,
         thoughts: result.thoughts,
         thoughtsDurationSeconds: result.thoughtsDurationSeconds,
         sources: result.sources || null,
         generatedImages: result.images,
         thoughtSignature: result.thoughtSignature, // Save context signature for Gemini 3
         officialContent: result.officialContent || null,
+        anthropicContent:
+            Array.isArray(result.anthropicContent) && result.anthropicContent.length > 0
+                ? result.anthropicContent
+                : null,
+        toolCalls: Array.isArray(result.toolCalls)
+            ? result.toolCalls
+            : Array.isArray(result.functionCalls)
+              ? result.functionCalls
+              : null,
         suppressCopy: result.suppressCopy === true,
     };
 }

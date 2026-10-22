@@ -199,6 +199,7 @@ describe('RequestDispatcher response mapping', () => {
             images: [],
             status: 'success',
             context: null,
+            functionCalls: [],
         });
         expect(prepareManagedContext).toHaveBeenCalled();
     });
@@ -669,6 +670,7 @@ describe('RequestDispatcher response mapping', () => {
             thoughts: 'claude thoughts',
             sources: [],
             images: [],
+            anthropicContent: [{ type: 'thinking', thinking: 'hmm', signature: 'sig-1' }],
         });
         const dispatcher = new RequestDispatcher({});
 
@@ -690,7 +692,12 @@ describe('RequestDispatcher response mapping', () => {
                 vi.fn(),
                 null
             )
-        ).resolves.toEqual(expect.objectContaining({ text: 'claude text' }));
+        ).resolves.toEqual(
+            expect.objectContaining({
+                text: 'claude text',
+                anthropicContent: [{ type: 'thinking', thinking: 'hmm', signature: 'sig-1' }],
+            })
+        );
 
         expect(sendAnthropicMessage).toHaveBeenCalledWith(
             'hello',
@@ -1572,5 +1579,57 @@ describe('RequestDispatcher response mapping', () => {
         ).rejects.toThrow('API Error (400): Bad Request');
 
         expect(sendOfficialMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps OpenAI tool-output history rows when no official function response batch is set', async () => {
+        const historyRows = [
+            {
+                role: 'ai',
+                text: '',
+                toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+            },
+            {
+                role: 'user',
+                kind: 'tool-output',
+                toolName: 'get_page_errors',
+                toolCallId: 'call_1',
+                toolOutput: 'no errors',
+                text: '[Tool Output: get_page_errors]\nno errors\n\n[Proceeding to step 1]',
+                officialFunctionResponseBatchId: 'official-tools|session-1|123|1|1|rand',
+            },
+        ];
+        getHistory.mockResolvedValue(historyRows);
+        prepareManagedContext.mockImplementation(async (request, settings, history) => ({
+            history,
+            systemInstruction: 'system',
+        }));
+        sendOpenAIMessage.mockResolvedValue({
+            text: 'openai text',
+            thoughts: null,
+            sources: [],
+            images: [],
+        });
+        const dispatcher = new RequestDispatcher({});
+
+        await dispatcher.dispatch(
+            {
+                text: 'continue',
+                model: 'deepseek-chat',
+                sessionId: 'session-1',
+                nativeTools: true,
+            },
+            {
+                provider: 'openai',
+                openaiBaseUrl: 'https://api.deepseek.com/v1',
+                openaiApiKey: 'key',
+                openaiModel: 'deepseek-chat',
+            },
+            [],
+            vi.fn(),
+            null
+        );
+
+        const passedHistory = sendOpenAIMessage.mock.calls[0][2];
+        expect(passedHistory).toEqual(historyRows);
     });
 });

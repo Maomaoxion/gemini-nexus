@@ -339,4 +339,68 @@ describe('ToolExecutor routing', () => {
             now.mockRestore();
         }
     });
+
+    it('routes debug tools to the debug manager when debug tools are enabled', async () => {
+        const debugManager = {
+            execute: vi.fn(async () => 'console output'),
+        };
+        const executor = new ToolExecutor(null, null, debugManager);
+
+        const result = await executor.executeCommand(
+            { name: 'get_console_logs', args: { level: 'error' } },
+            {
+                sessionId: 'session-1',
+                enableDebugTools: true,
+            },
+            '{"tool":"get_console_logs","args":{"level":"error"}}'
+        );
+
+        expect(debugManager.execute).toHaveBeenCalledWith('get_console_logs', { level: 'error' });
+        expect(result).toEqual(
+            expect.objectContaining({
+                source: 'debug_tools',
+                output: 'console output',
+                status: 'completed',
+            })
+        );
+    });
+
+    it('marks debug tool error output as failed', async () => {
+        const debugManager = {
+            execute: vi.fn(async () => 'Error: Debug tools are not enabled for this tab.'),
+        };
+        const executor = new ToolExecutor(null, null, debugManager);
+
+        const result = await executor.executeCommand(
+            { name: 'get_page_errors', args: {} },
+            {
+                sessionId: 'session-1',
+                enableDebugTools: true,
+            },
+            '{"tool":"get_page_errors","args":{}}'
+        );
+
+        expect(result).toEqual(
+            expect.objectContaining({ source: 'debug_tools', status: 'failed' })
+        );
+    });
+
+    it('does not route debug tools when debug tools are disabled', async () => {
+        const debugManager = {
+            execute: vi.fn(async () => 'should not be used'),
+        };
+        const executor = new ToolExecutor(null, null, debugManager);
+
+        const result = await executor.executeCommand(
+            { name: 'get_console_logs', args: {} },
+            {
+                sessionId: 'session-1',
+                enableDebugTools: false,
+            },
+            '{"tool":"get_console_logs","args":{}}'
+        );
+
+        expect(debugManager.execute).not.toHaveBeenCalled();
+        expect(result).toEqual(expect.objectContaining({ source: 'unknown', status: 'failed' }));
+    });
 });

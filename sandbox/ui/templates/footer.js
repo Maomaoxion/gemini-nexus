@@ -35,6 +35,10 @@ export const FooterTemplate = `
                                 ${TemplateIcons.BROWSER_CONTROL}
                                 <span data-i18n="browserControl">Control</span>
                             </button>
+                            <button id="debug-tools-btn" class="tool-btn tool-toggle" data-i18n-title="debugToolsTooltip" title="Toggle browser debugging tools" aria-pressed="false" disabled>
+                                ${TemplateIcons.TERMINAL}
+                                <span data-i18n="debugTools">Debug</span>
+                            </button>
                             <button id="live-artifacts-btn" class="tool-btn tool-toggle" data-i18n-title="liveArtifactsTooltip" title="Toggle Live Artifacts responses" aria-pressed="false">
                                 ${TemplateIcons.ARTIFACTS}
                                 <span data-i18n="liveArtifacts">Live Artifacts</span>

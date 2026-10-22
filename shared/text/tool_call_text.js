@@ -1,12 +1,116 @@
 const TOOL_KEY_PATTERN = /"tool"\s*:/g;
+// Tool results are stored as user rows whose text starts with this header.
+// Background replay and sandbox rendering must agree on the exact shape.
+export const TOOL_OUTPUT_TEXT_PREFIX = '[Tool Output:';
+const TOOL_OUTPUT_HEADER_PATTERN = /^\[Tool Output:\s*([^\]]*)\]\n?/;
 const FENCE_LINE_PATTERN = /`{3,}[ \t]*(?:json)?[ \t]*/iy;
 const FENCE_OPEN_PATTERN = /^`{3,}[ \t]*(?:json)?\s*/i;
 const FENCE_CLOSE_PATTERN = /\s*`{3,}\s*$/;
 const PLACEHOLDER_TOOL_NAMES = new Set(['tool', 'tool_name', 'name', 'example_tool']);
 const DEFAULT_MAX_UNCERTAIN_PREFIX_LENGTH = 160;
+// Some models emit their native tool-call tokens instead of the JSON block
+// requested in the prompt: <|tool_call_begin|>name<|tool_call_end|>.
+const SPECIAL_TOOL_CALL_PATTERN =
+    /<\|{1,2}\s*tool[\s_▁-]*call[\s_▁-]*begin\s*\|{1,2}>([\s\S]*?)<\|{1,2}\s*tool[\s_▁-]*call[\s_▁-]*end\s*\|{1,2}>/i;
+
+// DeepSeek gateways may stream tool calls as DSML markup inside the text:
+// <||DSML|| calls><||DSML|| invoke name="x">...</||DSML|| invoke></||DSML|| calls>
+const DSML_TAG = String.raw`<\|{1,2}\s*DSML\s*\|{1,2}`;
+const DSML_CONTAINER_PATTERN = new RegExp(
+    `${DSML_TAG}\\s*calls\\s*>[\\s\\S]*?</\\|{1,2}\\s*DSML\\s*\\|{1,2}\\s*calls\\s*>`,
+    'i'
+);
+const DSML_CONTAINER_OPEN_PATTERN = new RegExp(`${DSML_TAG}\\s*calls\\s*>`, 'i');
+const DSML_INVOKE_PATTERN = new RegExp(
+    `${DSML_TAG}\\s*invoke\\s+name="([^"]+)"\\s*>([\\s\\S]*?)</\\|{1,2}\\s*DSML\\s*\\|{1,2}\\s*invoke\\s*>`,
+    'gi'
+);
+const DSML_INVOKE_OPEN_PATTERN = new RegExp(`${DSML_TAG}\\s*invoke\\s+name=`, 'i');
+
+function findDsmlBlock(text, options = {}) {
+    const value = typeof text === 'string' ? text : '';
+    const container = DSML_CONTAINER_PATTERN.exec(value);
+    if (container) {
+        return {
+            start: container.index,
+            end: container.index + container[0].length,
+            raw: container[0],
+        };
+    }
+
+    let firstInvokeStart = -1;
+    let lastInvokeEnd = -1;
+    const invokeRegex = new RegExp(DSML_INVOKE_PATTERN.source, 'gi');
+    for (const match of value.matchAll(invokeRegex)) {
+        if (firstInvokeStart === -1) firstInvokeStart = match.index;
+        lastInvokeEnd = match.index + match[0].length;
+    }
+    if (firstInvokeStart !== -1) {
+        return {
+            start: firstInvokeStart,
+            end: lastInvokeEnd,
+            raw: value.slice(firstInvokeStart, lastInvokeEnd),
+        };
+    }
+
+    if (options.allowPartial !== true) return null;
+
+    const openMatch =
+        DSML_CONTAINER_OPEN_PATTERN.exec(value) || DSML_INVOKE_OPEN_PATTERN.exec(value);
+    if (!openMatch) return null;
+    return {
+        start: openMatch.index,
+        end: value.length,
+        raw: value.slice(openMatch.index),
+    };
+}
+
+/**
+ * Removes tool-call markup (JSON blocks, special tokens, DSML) from text
+ * before it is displayed or persisted.
+ * @param {unknown} text
+ * @returns {string}
+ */
+export function stripToolCallMarkup(text) {
+    const value = typeof text === 'string' ? text : '';
+    const split = splitToolCallFromText(value, { allowPartial: true });
+    return split.hasToolCall ? split.displayText : value;
+}
 
 function isPlainObject(value) {
     return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * @param {unknown} text
+ * @returns {boolean}
+ */
+export function isToolOutputText(text) {
+    return typeof text === 'string' && text.startsWith(TOOL_OUTPUT_TEXT_PREFIX);
+}
+
+/**
+ * Splits a tool-output history row into the tool name and the output body.
+ * @param {unknown} text
+ * @returns {{ toolName: string, body: string }}
+ */
+export function parseToolOutputHeader(text) {
+    const value = typeof text === 'string' ? text : '';
+    const match = value.match(TOOL_OUTPUT_HEADER_PATTERN);
+    if (!match) return { toolName: '', body: value };
+    return { toolName: match[1].trim(), body: value.slice(match[0].length) };
+}
+
+/**
+ * Builds the history text stored for one tool result.
+ * @param {unknown} toolName
+ * @param {unknown} output
+ * @returns {string}
+ */
+export function buildToolOutputText(toolName, output) {
+    const name = typeof toolName === 'string' && toolName.trim() ? toolName.trim() : 'tool';
+    const body = typeof output === 'string' ? output : String(output ?? '');
+    return `${TOOL_OUTPUT_TEXT_PREFIX} ${name}]\n${body}`;
 }
 
 function parseJsonObject(text) {
@@ -36,6 +140,50 @@ function isCompleteToolCallObject(value) {
         !isPlaceholderToolName(value.tool) &&
         isPlainObject(value.args)
     );
+}
+
+function stripSpecialToolPayload(payload) {
+    return String(payload || '')
+        .trim()
+        .replace(/^function\s*<\|[^>]*\|>\s*/i, '')
+        .replace(/^function\s+/i, '')
+        .trim();
+}
+
+function parseSpecialToolCallPayload(payload) {
+    const cleaned = stripSpecialToolPayload(payload);
+    if (!cleaned) return null;
+
+    const parsed = parseJsonObject(cleaned);
+    if (parsed) {
+        const name = typeof parsed.name === 'string' ? parsed.name : parsed.tool;
+        const args = isPlainObject(parsed.arguments) ? parsed.arguments : parsed.args;
+        if (typeof name === 'string' && name.trim() && !isPlaceholderToolName(name)) {
+            return { name: name.trim(), args: isPlainObject(args) ? args : {} };
+        }
+    }
+
+    const nameMatch = cleaned.match(/^([a-zA-Z_][\w.-]*)/);
+    if (nameMatch && !isPlaceholderToolName(nameMatch[1])) {
+        return { name: nameMatch[1], args: {} };
+    }
+
+    return null;
+}
+
+function findSpecialToolCall(text) {
+    const value = typeof text === 'string' ? text : '';
+    const match = SPECIAL_TOOL_CALL_PATTERN.exec(value);
+    if (!match) return null;
+
+    const command = parseSpecialToolCallPayload(match[1]);
+    if (!command) return null;
+
+    return {
+        start: match.index,
+        end: match.index + match[0].length,
+        command,
+    };
 }
 
 function stripJsonFence(text) {
@@ -113,7 +261,12 @@ function isToolCallCandidate(text, options = {}) {
 }
 
 export function isToolCallOnlyText(text, options = {}) {
-    return isToolCallCandidate(text, options);
+    const value = typeof text === 'string' ? text : '';
+    const dsml = findDsmlBlock(value, options);
+    if (dsml) {
+        return !`${value.slice(0, dsml.start)}${value.slice(dsml.end)}`.trim();
+    }
+    return isToolCallCandidate(value, options);
 }
 
 function skipWhitespace(text, start) {
@@ -376,11 +529,29 @@ export function splitToolCallFromText(text, options = {}) {
         };
     }
 
+    const dsml = findDsmlBlock(value, options);
+    if (dsml) {
+        return {
+            displayText: `${value.slice(0, dsml.start)}${value.slice(dsml.end)}`.trim(),
+            toolCallText: dsml.raw.trim(),
+            hasToolCall: true,
+        };
+    }
+
     const leading = consumeLeadingToolCallSequence(value, options);
     if (leading) {
         return {
             displayText: value.slice(leading.end).trimStart(),
             toolCallText: leading.toolCallText,
+            hasToolCall: true,
+        };
+    }
+
+    const special = findSpecialToolCall(value);
+    if (special) {
+        return {
+            displayText: `${value.slice(0, special.start)}${value.slice(special.end)}`.trim(),
+            toolCallText: value.slice(special.start, special.end),
             hasToolCall: true,
         };
     }
@@ -441,6 +612,9 @@ function findLastBareToolCall(text) {
 }
 
 export function parseToolCommand(responseText) {
+    const special = findSpecialToolCall(responseText);
+    if (special) return special.command;
+
     const command = findFirstFencedToolCall(responseText) || findLastBareToolCall(responseText);
     if (!command) return null;
     return {

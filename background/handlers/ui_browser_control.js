@@ -1,4 +1,38 @@
+import { handleToggleDebugTools } from './ui_debug_tools.js';
+
+/**
+ * Dispatches the composer tool toggles. Browser control and debug tools share
+ * the tab's single debugger session, so their handlers coordinate exclusion.
+ * @returns {boolean} true when the action was handled
+ */
+export function handleToolToggleAction(context, request, sender, sendResponse) {
+    if (request.action === 'TOGGLE_BROWSER_CONTROL') {
+        handleToggleBrowserControl(context, request, sender, sendResponse);
+        return true;
+    }
+
+    if (request.action === 'TOGGLE_DEBUG_TOOLS') {
+        handleToggleDebugTools(context, request, sender, sendResponse);
+        return true;
+    }
+
+    return false;
+}
+
 export function handleToggleBrowserControl(context, request, sender, sendResponse) {
+    if (request.enabled && context.debugManager?.isActive?.()) {
+        // Debug tools hold the tab's single debugger session; release it first.
+        context.debugManager
+            .stop()
+            .catch(() => {})
+            .finally(() => runToggleBrowserControl(context, request, sender, sendResponse));
+        return;
+    }
+
+    runToggleBrowserControl(context, request, sender, sendResponse);
+}
+
+function runToggleBrowserControl(context, request, sender, sendResponse) {
     const createDisabledErrorResponse = () => ({
         status: 'error',
         error: context.controlManager?.lastControlError || 'Browser control could not be enabled.',

@@ -1,23 +1,20 @@
 import {
     appendAiMessage,
-    appendAiMessageIfDisplayable,
     invalidateSessionContextSummary,
     replaceSessionSnapshot,
 } from '../../managers/history_manager.js';
 import { PromptBuilder } from './prompt/builder.js';
 import { ToolExecutor } from './prompt/tool_executor.js';
 import {
-    buildNarrationNudgePrompt,
     buildToolContinuationPrompt,
-    createNarrationIntermediateAiResult,
     detectPromptLanguage,
     executePendingToolResult,
     getToolResultsFiles,
     injectBrowserControlSnapshot,
-    looksLikeUnexecutedBrowserActionPlan,
     persistToolOutputMessages,
     updateBrowserControlFunctionResponses,
 } from './prompt/tool_loop.js';
+import { detectNarrationNudgeKind, runNarrationNudge } from './prompt/narration_nudge.js';
 import { toControlTabSummary } from '../../control/tabs.js';
 import { classifyProviderError } from '../../managers/session/error_classifier.js';
 
@@ -68,11 +65,12 @@ function getBrowserControlTaskTitle(text) {
 }
 
 export class PromptHandler {
-    constructor(sessionManager, controlManager, mcpManager) {
+    constructor(sessionManager, controlManager, mcpManager, debugManager = null) {
         this.sessionManager = sessionManager;
         this.controlManager = controlManager;
+        this.debugManager = debugManager;
         this.builder = new PromptBuilder(controlManager, mcpManager);
-        this.toolExecutor = new ToolExecutor(controlManager, mcpManager);
+        this.toolExecutor = new ToolExecutor(controlManager, mcpManager, debugManager);
         this.activeRun = null;
     }
 
@@ -133,6 +131,7 @@ export class PromptHandler {
             sessionId: request?.sessionId || null,
             model: request?.model || null,
             enableBrowserControl: request?.enableBrowserControl === true,
+            enableDebugTools: request?.enableDebugTools === true,
             textLen: typeof request?.text === 'string' ? request.text.length : 0,
             referencedTabs: Array.isArray(request?.referencedTabs)
                 ? request.referencedTabs.length
@@ -227,18 +226,20 @@ export class PromptHandler {
 
                 let loopCount = 0;
                 let narrationNudges = 0;
-                // A model stuck in a tool-calling loop (repeatedly retrying a failing
-                // action, or oscillating between take_snapshot and click) would run
-                // forever, consuming API quota and holding the debugger attached.
-                // maxLoops == 0 historically meant "unlimited"; 30 is generous enough for
-                // well-behaved agentic tasks while still stopping runaways.
-                const MAX_LOOPS = 30;
+                // No tool-call step cap: a long investigation may legitimately
+                // need many calls. The run is still bounded by cancellation,
+                // the side-panel watchdog, and the provider's context limit.
 
                 let keepLooping = true;
 
-                while (keepLooping && loopCount < MAX_LOOPS) {
+                while (keepLooping) {
                     if (this.isRunCancelled(run)) break;
 
+                    console.info('[Gemini Nexus] Model turn start', {
+                        runId: run.id,
+                        loop: loopCount + 1,
+                    });
+                    const modelTurnStartedAt = Date.now();
                     const result = await this.sessionManager.handleSendPrompt(
                         {
                             ...request,
@@ -247,11 +248,19 @@ export class PromptHandler {
                             text: currentPromptText,
                             historyPromptText: currentHistoryText,
                             systemInstruction,
+                            tools: buildResult.tools,
                             files: currentFiles,
                         },
                         onUpdate,
                         'prompt'
                     );
+                    console.info('[Gemini Nexus] Model turn end', {
+                        runId: run.id,
+                        loop: loopCount + 1,
+                        status: result?.status || 'none',
+                        durationMs: Date.now() - modelTurnStartedAt,
+                        textLen: typeof result?.text === 'string' ? result.text.length : 0,
+                    });
 
                     if (this.isRunCancelled(run)) break;
 
@@ -273,10 +282,25 @@ export class PromptHandler {
                         toolExecutor: this.toolExecutor,
                         onUpdate,
                     });
+                    console.info('[Gemini Nexus] Tool parse', {
+                        runId: run.id,
+                        loop: loopCount + 1,
+                        hasToolResult: Boolean(toolResult),
+                        tool: toolResult?.toolName || null,
+                        textLen: typeof result?.text === 'string' ? result.text.length : 0,
+                    });
 
                     if (this.isRunCancelled(run)) break;
 
                     if (toolResult) {
+                        console.info('[Gemini Nexus] Tool loop', {
+                            runId: run.id,
+                            loop: loopCount + 1,
+                            tool: toolResult.toolName,
+                            source: toolResult.source,
+                            status: toolResult.status,
+                            durationMs: toolResult.durationMs,
+                        });
                         // Feed tool output back to the model and continue the loop.
                         loopCount++;
                         const allToolFiles = getToolResultsFiles(
@@ -342,65 +366,68 @@ export class PromptHandler {
                         await cancellableDelay(2000 + Math.random() * 2000, run, this);
 
                         if (this.isRunCancelled(run)) break;
-                    } else if (
-                        request.enableBrowserControl === true &&
-                        narrationNudges < MAX_NARRATION_NUDGES &&
-                        looksLikeUnexecutedBrowserActionPlan(result?.text)
-                    ) {
-                        // Model described the next browser action but emitted no
-                        // tool-call JSON. Nudge once instead of ending the loop.
-                        narrationNudges++;
-                        loopCount++;
-
-                        const intermediate = createNarrationIntermediateAiResult(result);
-                        if (request.sessionId) {
-                            await appendAiMessageIfDisplayable(request.sessionId, intermediate);
-                        }
-                        chrome.runtime
-                            .sendMessage({
-                                action: 'AGENT_INTERMEDIATE_MESSAGE',
-                                sessionId: request.sessionId || null,
-                                text: intermediate.text || '',
-                                thoughts: intermediate.thoughts || null,
-                                suppressCopy: true,
-                            })
-                            .catch(() => {});
-
-                        currentPromptText = buildNarrationNudgePrompt(continuationLanguage);
-                        currentHistoryText = intermediate.text || result?.text || '';
-                        currentFiles = [];
-                        mutableOfficialParts = null;
-                        mutableBatchId = null;
-
-                        await cancellableDelay(1500 + Math.random() * 1500, run, this);
-                        if (this.isRunCancelled(run)) break;
                     } else {
-                        // No tool execution, final answer reached.
-                        // Only final replies are persisted and sent as GEMINI_REPLY.
-                        // Intermediate tool-call JSON is consumed by the loop and should not
-                        // terminate the UI streaming state.
-                        let historySaved = true;
-                        if (request.sessionId) {
-                            historySaved =
-                                (await appendAiMessage(request.sessionId, result)) !== false;
+                        const nudgeKind =
+                            narrationNudges < MAX_NARRATION_NUDGES
+                                ? detectNarrationNudgeKind(request, result?.text)
+                                : null;
+
+                        if (nudgeKind) {
+                            // Model described the next browser/debug action but
+                            // emitted no tool call. Nudge once instead of ending
+                            // the loop on a narration-only reply.
+                            narrationNudges++;
+                            loopCount++;
+
+                            const nudge = await runNarrationNudge({
+                                kind: nudgeKind,
+                                runId: run.id,
+                                loop: loopCount,
+                                request,
+                                result,
+                                language: continuationLanguage,
+                                wait: () =>
+                                    cancellableDelay(1500 + Math.random() * 1500, run, this),
+                            });
+                            if (this.isRunCancelled(run)) break;
+
+                            currentPromptText = nudge.promptText;
+                            currentHistoryText = nudge.historyText;
+                            currentFiles = [];
+                            mutableOfficialParts = null;
+                            mutableBatchId = null;
+                        } else {
+                            // No tool execution, final answer reached.
+                            // Only final replies are persisted and sent as GEMINI_REPLY.
+                            // Intermediate tool-call JSON is consumed by the loop and should not
+                            // terminate the UI streaming state.
+                            console.info('[Gemini Nexus] Model final answer', {
+                                runId: run.id,
+                                loop: loopCount + 1,
+                                textLen: typeof result?.text === 'string' ? result.text.length : 0,
+                            });
+                            let historySaved = true;
+                            if (request.sessionId) {
+                                const persistStartedAt = Date.now();
+                                historySaved =
+                                    (await appendAiMessage(request.sessionId, result)) !== false;
+                                console.info('[Gemini Nexus] Final answer persisted', {
+                                    runId: run.id,
+                                    historySaved,
+                                    durationMs: Date.now() - persistStartedAt,
+                                });
+                            }
+
+                            // Carry the save outcome so the UI can tell the user the
+                            // reply is on screen only until the next reload.
+                            console.info('[Gemini Nexus] Broadcasting final reply', {
+                                runId: run.id,
+                                status: result?.status || 'success',
+                            });
+                            chrome.runtime.sendMessage({ ...result, historySaved }).catch(() => {});
+                            keepLooping = false;
                         }
-
-                        // Carry the save outcome so the UI can tell the user the
-                        // reply is on screen only until the next reload.
-                        chrome.runtime.sendMessage({ ...result, historySaved }).catch(() => {});
-                        keepLooping = false;
                     }
-                }
-
-                // If the loop exhausted the step cap without the model emitting a
-                // final (tool-free) answer, surface a clear error instead of
-                // silently finalizing with whatever the last intermediate state was.
-                if (keepLooping && loopCount >= MAX_LOOPS) {
-                    throw new Error(
-                        'Browser-control tool loop reached the maximum number of steps (' +
-                            MAX_LOOPS +
-                            ') without a final answer.'
-                    );
                 }
             } catch (error) {
                 console.error('Prompt loop error:', error);

@@ -14,6 +14,7 @@ import {
     setProviderThinkingLevel,
 } from '../../shared/models/thinking_levels.js';
 import { DEFAULT_PROVIDER } from '../../shared/config/constants.js';
+import { t } from '../core/i18n.js';
 
 export class UIController {
     constructor(elements) {
@@ -95,6 +96,22 @@ export class UIController {
 
     setPageContextAvailable(isAvailable) {
         document.body.classList.toggle('has-page-context', isAvailable === true);
+    }
+
+    setDebugToolsActive(isActive) {
+        const button = document.getElementById('debug-tools-btn');
+        if (!button) return;
+        button.classList.toggle('active', isActive === true);
+        button.setAttribute('aria-pressed', isActive === true ? 'true' : 'false');
+    }
+
+    setDebugToolsAvailable(isAvailable) {
+        const button = document.getElementById('debug-tools-btn');
+        if (!button) return;
+        const available = isAvailable === true;
+        button.disabled = !available;
+        button.dataset.i18nTitle = available ? 'debugToolsTooltip' : 'debugToolsUnavailable';
+        button.title = available ? t('debugToolsTooltip') : t('debugToolsUnavailable');
     }
 
     setTabMentionCallbacks(callbacks) {
@@ -239,6 +256,18 @@ export class UIController {
     updateStatus(text) {
         this.chat.updateStatus(text);
     }
+    beginTurn(options) {
+        return this.chat.beginTurn(options);
+    }
+    getTurnView() {
+        return this.chat.getTurnView();
+    }
+    setTurnView(view) {
+        this.chat.setTurnView(view);
+    }
+    getTurnContainer() {
+        return this.chat.getTurnContainer();
+    }
     clearChatHistory() {
         this.chat.clear();
     }
@@ -253,6 +282,9 @@ export class UIController {
     }
     followBottom(options) {
         this.chat.followBottom(options);
+    }
+    followStreamingContent() {
+        this.chat.followStreamingContent();
     }
     resetInput() {
         this.chat.resetInput();

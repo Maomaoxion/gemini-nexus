@@ -1261,4 +1261,120 @@ describe('UIMessageHandler browser control tab ownership', () => {
         );
         expect(sendResponse.mock.calls[0][0].tabs.map((tab) => tab.id)).toEqual([5]);
     });
+
+    it('starts debug capture for the requesting tab and releases browser control first', async () => {
+        const debugManager = {
+            start: vi.fn(async () => ({ status: 'started' })),
+            stop: vi.fn(async () => {}),
+            isActive: vi.fn(() => false),
+        };
+        const control = {
+            getTargetTabId: vi.fn(() => 9),
+            disableControl: vi.fn(async () => {}),
+        };
+        const debugHandler = new UIMessageHandler(
+            imageHandler,
+            control,
+            null,
+            null,
+            null,
+            debugManager
+        );
+        globalThis.chrome = {
+            tabs: {
+                get: vi.fn(() => Promise.resolve({ id: 5, windowId: 1, url: 'https://app.test/' })),
+            },
+        };
+        const sendResponse = vi.fn();
+
+        const handled = debugHandler.handle(
+            { action: 'TOGGLE_DEBUG_TOOLS', enabled: true, sidePanelTabId: 5 },
+            {},
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() =>
+            expect(sendResponse).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    action: 'DEBUG_TOOLS_RESULT',
+                    enabled: true,
+                    tabId: 5,
+                    status: 'started',
+                })
+            )
+        );
+        expect(control.disableControl).toHaveBeenCalled();
+        expect(debugManager.start).toHaveBeenCalledWith(5);
+    });
+
+    it('stops debug capture when toggled off', async () => {
+        const debugManager = {
+            start: vi.fn(async () => ({ status: 'started' })),
+            stop: vi.fn(async () => {}),
+            isActive: vi.fn(() => true),
+        };
+        const debugHandler = new UIMessageHandler(
+            imageHandler,
+            controlManager,
+            null,
+            null,
+            null,
+            debugManager
+        );
+        const sendResponse = vi.fn();
+
+        const handled = debugHandler.handle(
+            { action: 'TOGGLE_DEBUG_TOOLS', enabled: false },
+            {},
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() =>
+            expect(sendResponse).toHaveBeenCalledWith({
+                action: 'DEBUG_TOOLS_RESULT',
+                enabled: false,
+                tabId: null,
+                status: 'stopped',
+            })
+        );
+        expect(debugManager.stop).toHaveBeenCalled();
+    });
+
+    it('returns an error when debug capture cannot start', async () => {
+        const debugManager = {
+            start: vi.fn(async () => ({ status: 'error', error: 'This page cannot be debugged.' })),
+            stop: vi.fn(async () => {}),
+            isActive: vi.fn(() => false),
+        };
+        const debugHandler = new UIMessageHandler(
+            imageHandler,
+            controlManager,
+            null,
+            null,
+            null,
+            debugManager
+        );
+        globalThis.chrome = {
+            tabs: {
+                get: vi.fn(() => Promise.resolve({ id: 5, windowId: 1, url: 'https://app.test/' })),
+            },
+        };
+        const sendResponse = vi.fn();
+
+        const handled = debugHandler.handle(
+            { action: 'TOGGLE_DEBUG_TOOLS', enabled: true, sidePanelTabId: 5 },
+            {},
+            sendResponse
+        );
+
+        expect(handled).toBe(true);
+        await vi.waitFor(() =>
+            expect(sendResponse).toHaveBeenCalledWith({
+                status: 'error',
+                error: 'This page cannot be debugged.',
+            })
+        );
+    });
 });

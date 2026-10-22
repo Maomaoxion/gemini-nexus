@@ -59,6 +59,8 @@ describe('sendAnthropicMessage', () => {
             sources: [],
             images: [],
             context: null,
+            functionCalls: [],
+            anthropicContent: null,
         });
 
         const [url, init] = global.fetch.mock.calls[0];
@@ -248,5 +250,330 @@ describe('sendAnthropicMessage', () => {
                 vi.fn()
             )
         ).rejects.toThrow('API Error (401): invalid x-api-key');
+    });
+
+    it('parses streamed tool_use blocks into functionCalls', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeAnthropicSseStream([
+                {
+                    type: 'content_block_start',
+                    index: 0,
+                    content_block: {
+                        type: 'tool_use',
+                        id: 'toolu_1',
+                        name: 'get_page_errors',
+                        input: {},
+                    },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: { type: 'input_json_delta', partial_json: '{"a":1}' },
+                },
+                { type: 'content_block_stop', index: 0 },
+                { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+            ]),
+        });
+
+        const result = await sendAnthropicMessage(
+            'Check',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'key',
+                model: 'claude-test',
+                toolSchemas: [
+                    {
+                        name: 'get_page_errors',
+                        description: 'Read errors',
+                        parameters: { type: 'object', properties: {} },
+                    },
+                ],
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        expect(result.functionCalls).toEqual([
+            { id: 'toolu_1', name: 'get_page_errors', args: { a: 1 } },
+        ]);
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.tools).toEqual([
+            {
+                name: 'get_page_errors',
+                description: 'Read errors',
+                input_schema: { type: 'object', properties: {} },
+            },
+        ]);
+    });
+
+    it('pairs a tool result by order when its tool_call_id is missing', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            await sendAnthropicMessage(
+                '',
+                '',
+                [
+                    {
+                        role: 'ai',
+                        text: '',
+                        toolCalls: [{ id: 'toolu_1', name: 'get_page_errors', args: {} }],
+                    },
+                    {
+                        role: 'user',
+                        text: '[Tool Output: get_page_errors]\nno errors',
+                        kind: 'tool-output',
+                        toolName: 'get_page_errors',
+                        toolOutput: 'no errors',
+                    },
+                ],
+                {
+                    baseUrl: 'https://api.anthropic.com/v1',
+                    apiKey: 'key',
+                    model: 'claude-test',
+                },
+                [],
+                null,
+                vi.fn()
+            );
+        } finally {
+            warnSpy.mockRestore();
+        }
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toContainEqual({
+            role: 'user',
+            content: [
+                {
+                    type: 'tool_result',
+                    tool_use_id: 'toolu_1',
+                    content: 'no errors',
+                },
+            ],
+        });
+    });
+
+    it('captures thinking blocks with signatures and tool_use blocks for replay', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeAnthropicSseStream([
+                {
+                    type: 'content_block_start',
+                    index: 0,
+                    content_block: { type: 'thinking', thinking: '', signature: '' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: { type: 'thinking_delta', thinking: 'Check the ' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: { type: 'thinking_delta', thinking: 'console first.' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: { type: 'signature_delta', signature: 'sig-abc' },
+                },
+                { type: 'content_block_stop', index: 0 },
+                {
+                    type: 'content_block_start',
+                    index: 1,
+                    content_block: {
+                        type: 'tool_use',
+                        id: 'toolu_1',
+                        name: 'get_page_errors',
+                        input: {},
+                    },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 1,
+                    delta: { type: 'input_json_delta', partial_json: '{"limit":' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 1,
+                    delta: { type: 'input_json_delta', partial_json: '10}' },
+                },
+                { type: 'content_block_stop', index: 1 },
+                { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+            ]),
+        });
+
+        const result = await sendAnthropicMessage(
+            'Check',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'key',
+                model: 'claude-test',
+                thinkingLevel: 'low',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        expect(result.anthropicContent).toEqual([
+            {
+                type: 'thinking',
+                thinking: 'Check the console first.',
+                signature: 'sig-abc',
+            },
+            { type: 'tool_use', id: 'toolu_1', name: 'get_page_errors', input: { limit: 10 } },
+        ]);
+        expect(result.functionCalls).toEqual([
+            { id: 'toolu_1', name: 'get_page_errors', args: { limit: 10 } },
+        ]);
+    });
+
+    it('keeps redacted_thinking blocks and drops blocks that cannot be replayed', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeAnthropicSseStream([
+                {
+                    type: 'content_block_start',
+                    index: 0,
+                    content_block: { type: 'thinking', thinking: '', signature: '' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 0,
+                    delta: { type: 'thinking_delta', thinking: 'unsigned' },
+                },
+                { type: 'content_block_stop', index: 0 },
+                {
+                    type: 'content_block_start',
+                    index: 1,
+                    content_block: { type: 'redacted_thinking', data: 'opaque-data' },
+                },
+                { type: 'content_block_stop', index: 1 },
+                {
+                    type: 'content_block_start',
+                    index: 2,
+                    content_block: { type: 'text', text: '' },
+                },
+                {
+                    type: 'content_block_delta',
+                    index: 2,
+                    delta: { type: 'text_delta', text: 'done' },
+                },
+                { type: 'content_block_stop', index: 2 },
+            ]),
+        });
+
+        const result = await sendAnthropicMessage(
+            'Hello',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'key',
+                model: 'claude-test',
+                thinkingLevel: 'low',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        expect(result.thoughts).toBe('unsigned\n[redacted thinking]');
+        expect(result.anthropicContent).toEqual([
+            { type: 'redacted_thinking', data: 'opaque-data' },
+            { type: 'text', text: 'done' },
+        ]);
+    });
+
+    it('replays stored anthropicContent verbatim and pairs tool results by id', async () => {
+        const rawContent = [
+            { type: 'thinking', thinking: 'Check logs.', signature: 'sig-abc' },
+            { type: 'text', text: 'Checking.' },
+            { type: 'tool_use', id: 'toolu_1', name: 'get_page_errors', input: { limit: 5 } },
+        ];
+
+        await sendAnthropicMessage(
+            '',
+            '',
+            [
+                { role: 'user', text: 'Check the page' },
+                { role: 'ai', text: 'Checking.', anthropicContent: rawContent },
+                {
+                    role: 'user',
+                    text: '[Tool Output: get_page_errors]\nno errors',
+                    kind: 'tool-output',
+                    toolName: 'get_page_errors',
+                    toolOutput: 'no errors',
+                    toolCallId: 'toolu_1',
+                },
+            ],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'key',
+                model: 'claude-test',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toEqual([
+            { role: 'user', content: [{ type: 'text', text: 'Check the page' }] },
+            { role: 'assistant', content: rawContent },
+            {
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'no errors' }],
+            },
+        ]);
+    });
+
+    it('drops unreplayable thinking blocks and keeps raw turns unmerged', async () => {
+        await sendAnthropicMessage(
+            '',
+            '',
+            [
+                { role: 'user', text: 'Question' },
+                { role: 'ai', text: 'First answer' },
+                {
+                    role: 'ai',
+                    text: 'Second answer',
+                    anthropicContent: [
+                        { type: 'thinking', thinking: 'no signature' },
+                        { type: 'thinking', thinking: 'signed', signature: 'sig-1' },
+                    ],
+                },
+            ],
+            {
+                baseUrl: 'https://api.anthropic.com/v1',
+                apiKey: 'key',
+                model: 'claude-test',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toEqual([
+            { role: 'user', content: [{ type: 'text', text: 'Question' }] },
+            { role: 'assistant', content: [{ type: 'text', text: 'First answer' }] },
+            {
+                role: 'assistant',
+                content: [{ type: 'thinking', thinking: 'signed', signature: 'sig-1' }],
+            },
+        ]);
     });
 });

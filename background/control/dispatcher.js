@@ -3,6 +3,8 @@
  * Decouples logic from the main ControlManager.
  */
 import { formatInlinePageSnapshot } from './snapshot/marker.js';
+import { CONTROL_TOOL_SCHEMAS } from '../tools/tool_schemas.js';
+import { toolNameSet } from '../tools/tool_names.js';
 
 export class ToolDispatcher {
     static DEBUGGER_OPTIONAL_TOOL_NAMES = new Set([
@@ -16,40 +18,9 @@ export class ToolDispatcher {
         'wait_for_download',
     ]);
 
-    static LOCAL_TOOL_NAMES = new Set([
-        // Navigation
-        'navigate_page',
-        'new_page',
-        'close_page',
-        'list_pages',
-        'select_page',
-
-        // Interaction
-        'click',
-        'hover',
-        'fill',
-        'fill_form',
-        'press_key',
-        'type_text',
-        'attach_file',
-        'drag',
-        'scroll',
-
-        // Observation & Logic
-        'take_snapshot',
-        'wait_for',
-        'handle_dialog',
-        'evaluate_script',
-        'take_screenshot',
-        'wait_for_url',
-        'wait_for_load_state',
-        'wait_for_timeout',
-        'list_downloads',
-        'wait_for_download',
-
-        // Composite
-        'run_steps',
-    ]);
+    // Tool names come from the control schema list; TOOL_METHOD_MAP below still
+    // decides which action implements each one.
+    static LOCAL_TOOL_NAMES = toolNameSet(CONTROL_TOOL_SCHEMAS);
 
     static SNAPSHOT_OPTIONAL_TOOL_NAMES = new Set([
         'click',

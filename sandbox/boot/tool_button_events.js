@@ -116,6 +116,14 @@ export function bindToolButtonEvents(app, ui) {
         });
     }
 
+    const debugToolsBtn = document.getElementById('debug-tools-btn');
+    if (debugToolsBtn) {
+        debugToolsBtn.addEventListener('click', () => {
+            app.toggleDebugTools();
+            if (ui.inputFn) ui.inputFn.focus();
+        });
+    }
+
     const liveArtifactsBtn = document.getElementById('live-artifacts-btn');
     if (liveArtifactsBtn) {
         liveArtifactsBtn.addEventListener('click', () => {

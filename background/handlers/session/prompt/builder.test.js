@@ -25,6 +25,7 @@ describe('PromptBuilder referenced tabs', () => {
             systemInstruction: expect.stringContaining(
                 '[Live Artifacts Inline Protocol - zh]\nReturn HTML.'
             ),
+            tools: [],
         });
     });
 
@@ -108,5 +109,32 @@ describe('PromptBuilder referenced tabs', () => {
 
         expect(result.systemInstruction).toContain('Webpage Context (reference only');
         expect(result.systemInstruction).toContain('Referenced tabs (reference only');
+    });
+
+    it('injects the debug tools preamble when debug tools are enabled', async () => {
+        const builder = new PromptBuilder(null, null);
+
+        const result = await builder.build({
+            text: 'Why is the page broken?',
+            enableDebugTools: true,
+        });
+
+        expect(result.systemInstruction).toContain('[System: Browser Debug Tools Enabled]');
+        expect(result.systemInstruction).toContain('get_page_errors');
+        expect(result.systemInstruction).toContain('get_network_requests');
+    });
+
+    it('uses native tool mode without the text JSON preamble', async () => {
+        const builder = new PromptBuilder(null, null);
+
+        const result = await builder.build({
+            text: 'Check the page',
+            enableDebugTools: true,
+            nativeTools: true,
+        });
+
+        expect(result.systemInstruction).toContain('[System: Native Tool Mode]');
+        expect(result.systemInstruction).not.toContain('[System: Browser Debug Tools Enabled]');
+        expect(result.tools.map((schema) => schema.name)).toContain('get_page_errors');
     });
 });

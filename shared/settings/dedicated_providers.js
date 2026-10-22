@@ -48,7 +48,16 @@ function parseProviderRouting(provider, rawRouting) {
     return parsed;
 }
 
+function isAutoThinkingLevel(thinkingLevel) {
+    return (
+        String(thinkingLevel || '')
+            .trim()
+            .toLowerCase() === 'auto'
+    );
+}
+
 function getOpenRouterReasoningPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
+    if (isAutoThinkingLevel(thinkingLevel)) return {};
     const effort = String(thinkingLevel || DEFAULT_THINKING_LEVEL).trim() || DEFAULT_THINKING_LEVEL;
     return {
         reasoning: {
@@ -59,6 +68,13 @@ function getOpenRouterReasoningPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
 }
 
 function getDashScopeThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
+    if (isAutoThinkingLevel(thinkingLevel)) {
+        return {
+            stream_options: {
+                include_usage: true,
+            },
+        };
+    }
     return {
         enable_thinking: thinkingLevel !== 'off',
         stream_options: {
@@ -68,6 +84,7 @@ function getDashScopeThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
 }
 
 function getZhipuThinkingPayload(thinkingLevel = DEFAULT_THINKING_LEVEL) {
+    if (isAutoThinkingLevel(thinkingLevel)) return {};
     if (thinkingLevel === 'off') {
         return { thinking: { type: 'disabled' } };
     }
@@ -201,6 +218,7 @@ export function getDedicatedApiHeaders(provider) {
 }
 
 export function getDedicatedApiReasoningEffort(provider, thinkingLevel = DEFAULT_THINKING_LEVEL) {
+    if (isAutoThinkingLevel(thinkingLevel)) return null;
     const config = getProviderConfig(provider);
     if (!config) return thinkingLevel;
     if (config.transport === 'openai-responses') return thinkingLevel;

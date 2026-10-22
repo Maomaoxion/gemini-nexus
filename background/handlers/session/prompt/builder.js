@@ -1,6 +1,16 @@
 import { getActiveTabContent } from '../active_tab_content.js';
 import { debugLog } from '../../../../shared/logging/debug.js';
+import { DEBUG_TOOLS_PREAMBLE } from '../../../debug/debug_tools.js';
+import { buildToolSchemas } from '../../../tools/tool_schemas.js';
 import { BROWSER_CONTROL_PREAMBLE } from './preamble.js';
+
+const NATIVE_TOOL_PREAMBLE = `[System: Native Tool Mode]
+Tools are provided through the API's function-calling interface.
+- Call tools directly. Never print tool-call JSON, code blocks, or special tool tokens as a substitute.
+- Do not describe the next action without calling it. When the task is complete, answer in plain text.
+- Prefer one tool call per turn; use run_steps only for branch-free sequences.
+- For browser control, use UIDs from the latest accessibility tree only.
+`;
 
 export class PromptBuilder {
     constructor(controlManager, mcpManager) {
@@ -53,8 +63,14 @@ export class PromptBuilder {
             }
         }
 
+        if (request.enableDebugTools && request.nativeTools !== true) {
+            systemPreamble += DEBUG_TOOLS_PREAMBLE;
+        }
+
         if (request.enableBrowserControl) {
-            systemPreamble += BROWSER_CONTROL_PREAMBLE;
+            if (request.nativeTools !== true) {
+                systemPreamble += BROWSER_CONTROL_PREAMBLE;
+            }
 
             if (this.controlManager) {
                 try {
@@ -101,7 +117,7 @@ export class PromptBuilder {
             }
         }
 
-        if (request.enableMcpTools) {
+        if (request.enableMcpTools && request.nativeTools !== true) {
             // If browser control is NOT enabled, we still need to teach the model the tool-call format.
             if (!request.enableBrowserControl) {
                 systemPreamble += `[System: Tooling Enabled]\n`;
@@ -122,9 +138,19 @@ export class PromptBuilder {
             }
         }
 
+        const tools =
+            request.nativeTools === true
+                ? await buildToolSchemas({ request, mcpManager: this.mcpManager })
+                : [];
+
+        if (request.nativeTools === true && tools.length > 0) {
+            systemPreamble += NATIVE_TOOL_PREAMBLE;
+        }
+
         return {
             systemInstruction: systemPreamble,
             userPrompt: request.text,
+            tools,
         };
     }
 

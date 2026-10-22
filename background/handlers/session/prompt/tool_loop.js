@@ -9,9 +9,16 @@ import {
     createOfficialModelMessage,
     hasNativeFunctionCalls,
 } from '../official_function_response.js';
-import { parseToolCommand, splitToolCallFromText } from '../../../../shared/text/tool_call_text.js';
+import {
+    buildToolOutputText,
+    parseToolCommand,
+    splitToolCallFromText,
+    stripToolCallMarkup,
+} from '../../../../shared/text/tool_call_text.js';
 import { hasInlinePageSnapshot } from '../../../control/snapshot/marker.js';
 import { SnapshotManager } from '../../../control/snapshot/index.js';
+import { CONTROL_TOOL_SCHEMAS, DEBUG_TOOL_SCHEMAS } from '../../../tools/tool_schemas.js';
+import { buildToolNamePattern } from '../../../tools/tool_names.js';
 
 function createIntermediateAiResult(result) {
     const split = splitToolCallFromText(result?.text || '');
@@ -60,8 +67,7 @@ export function buildToolContinuationPrompt(toolName, output, language) {
 }
 
 // Tool names the agent is expected to emit as JSON when browser control is on.
-const BROWSER_TOOL_NAME_PATTERN =
-    /(?:navigate_page|new_page|close_page|list_pages|select_page|click|hover|fill_form|fill|press_key|type_text|attach_file|take_snapshot|take_screenshot|wait_for_url|wait_for_load_state|wait_for_timeout|wait_for_download|wait_for|list_downloads|handle_dialog|evaluate_script|drag|scroll|run_steps)/i;
+const BROWSER_TOOL_NAME_PATTERN = buildToolNamePattern(CONTROL_TOOL_SCHEMAS);
 
 // Future-tense / intent phrasing (zh + en) that often precedes a tool call.
 // Note: bare 「现在」 is NOT matched (avoids "页面现在显示了下载按钮" false positives);
@@ -140,6 +146,57 @@ export function buildNarrationNudgePrompt(language) {
     );
 }
 
+const DEBUG_TOOL_NAME_PATTERN = buildToolNamePattern(DEBUG_TOOL_SCHEMAS);
+
+// "Next I will inspect..." phrasing that often precedes a debug tool call.
+const DEBUG_NEXT_STEP_PATTERN =
+    /(?:接下来|下一步|现在(?:去|来|先|再)?(?:检查|查看|读取|确认|验证|分析|看看)|让我(?:先|再)?(?:检查|查看|读取|确认|验证|看看)|(?:Next|Then),?\s*I(?:'ll| will)|Let me (?:check|look|inspect|read|verify|examine))/i;
+
+// Explicit "use the X tool" phrasing, including backticked tool names.
+const DEBUG_TOOL_USAGE_PATTERN = new RegExp(
+    String.raw`(?:使用|调用|执行|用)\s*(?:[“"']?\s*)?(?:\x60)?(?:${DEBUG_TOOL_NAME_PATTERN.source})(?:\x60)?` +
+        String.raw`|(?:use|call|invoke|run)\s+(?:the\s+)?(?:\x60)?(?:${DEBUG_TOOL_NAME_PATTERN.source})(?:\x60)?` +
+        String.raw`|(?:\x60(?:${DEBUG_TOOL_NAME_PATTERN.source})\x60)`,
+    'i'
+);
+
+/**
+ * Debug-tool replies that announce the next inspection but do not emit a
+ * tool-call JSON block. Used once per run to nudge the model instead of ending
+ * the loop on a transitional sentence.
+ * @param {unknown} text
+ * @returns {boolean}
+ */
+export function looksLikeUnexecutedDebugPlan(text) {
+    const value = typeof text === 'string' ? text.trim() : '';
+    if (!value || value.length < 8) return false;
+    if (parseToolCommand(value)) return false;
+    if (TASK_COMPLETE_PATTERN.test(value)) return false;
+
+    // Naming a debug tool in a plain answer is not a plan; require either an
+    // explicit usage phrase or "next I'll inspect" intent.
+    if (DEBUG_TOOL_USAGE_PATTERN.test(value)) return true;
+    return DEBUG_NEXT_STEP_PATTERN.test(value);
+}
+
+export function buildDebugNarrationNudgePrompt(language) {
+    if (language === 'zh') {
+        return (
+            '系统提示：你上一条回复描述了下一步检查，但没有输出工具调用 JSON。' +
+            '请立即输出一个调试工具调用继续任务（格式：```json\\n{"tool":"...","args":{...}}\\n```），不要只写文字计划。' +
+            '若任务其实已完成，请用一句话确认完成，且不要再提将要检查的内容。\n\n' +
+            buildLanguageContinuationInstruction(language)
+        );
+    }
+
+    return (
+        'System: Your previous reply described the next inspection step but did not include a tool-call JSON block. ' +
+        'Immediately emit exactly one debug tool call to continue (format: ```json\\n{"tool":"...","args":{...}}\\n```). ' +
+        'Do not only narrate. If the task is already complete, confirm completion in one short sentence without mentioning a next check.\n\n' +
+        buildLanguageContinuationInstruction(language)
+    );
+}
+
 /** Intermediate AI row for a narration-only step (no tool JSON yet). */
 export function createNarrationIntermediateAiResult(result) {
     return createCopySuppressedIntermediateAiResult(result);
@@ -170,15 +227,21 @@ function buildTextToolResult(toolResult, outputForModel) {
     };
 }
 
-function buildNativeToolResult(toolResults, responseBatchId) {
+function buildNativeToolResult(toolResults, responseBatchId, includeOfficialParts = true) {
     const primary = getPrimaryToolResult(toolResults);
     if (!primary) return null;
 
     return {
         ...primary,
         outputForModel: getToolResultOutputForDisplay(primary),
-        officialResponseParts: createOfficialFunctionResponseParts(toolResults),
-        officialResponseBatchId: responseBatchId,
+        // functionResponse parts and their batch id only apply to Gemini
+        // official native function calls; tagging OpenAI/Anthropic results
+        // with them makes the next request strip the tool-output rows from
+        // history and the model receives placeholder results instead.
+        officialResponseParts: includeOfficialParts
+            ? createOfficialFunctionResponseParts(toolResults)
+            : null,
+        officialResponseBatchId: includeOfficialParts ? responseBatchId : null,
         results: toolResults,
     };
 }
@@ -204,7 +267,8 @@ export async function executePendingToolResult({
     toolExecutor,
     onUpdate,
 }) {
-    const toolsEnabled = request.enableBrowserControl || request.enableMcpTools;
+    const toolsEnabled =
+        request.enableBrowserControl || request.enableMcpTools || request.enableDebugTools;
     const pendingNativeCalls = toolsEnabled && hasNativeFunctionCalls(result);
     const pendingToolCommand =
         toolsEnabled && !pendingNativeCalls ? parseToolCommand(result.text || '') : null;
@@ -221,8 +285,9 @@ export async function executePendingToolResult({
     if (pendingNativeCalls) {
         const batchId = createFunctionResponseBatchId(request.sessionId, loopCount + 1);
         const toolResults = await toolExecutor.executeFunctionCalls(result.functionCalls, request);
+        const includeOfficialParts = Boolean(result?.officialContent);
         return {
-            toolResult: buildNativeToolResult(toolResults, batchId),
+            toolResult: buildNativeToolResult(toolResults, batchId, includeOfficialParts),
             pendingNativeCalls,
         };
     }
@@ -333,11 +398,7 @@ export async function persistToolOutputMessages({
         const entryFiles = Array.isArray(toolResultEntry.files) ? toolResultEntry.files : [];
         const historyImages = entryFiles.length ? entryFiles.map((file) => file.base64) : null;
         const entryToolCallText = pendingNativeCalls
-            ? JSON.stringify(
-                  { tool: toolResultEntry.toolName, args: toolResultEntry.args || {} },
-                  null,
-                  2
-              )
+            ? JSON.stringify(toolResultEntry.args || {}, null, 2)
             : textToolCallText;
         const step = loopCount;
         const callIndex = Number.isFinite(toolResultEntry.callIndex)
@@ -346,7 +407,8 @@ export async function persistToolOutputMessages({
         const callCount = Number.isFinite(toolResultEntry.callCount)
             ? toolResultEntry.callCount
             : toolResults.length;
-        const userMessageText = `[Tool Output: ${toolResultEntry.toolName}]\n${toolResultEntry.output}\n\n[Proceeding to step ${step}]`;
+        const toolCallId = pendingNativeCalls ? toolResultEntry.id || `call_${index + 1}` : null;
+        const userMessageText = `${buildToolOutputText(toolResultEntry.toolName, toolResultEntry.output)}\n\n[Proceeding to step ${step}]`;
 
         await sendRuntimeMessage({
             action: 'TOOL_OUTPUT_MESSAGE',
@@ -363,6 +425,7 @@ export async function persistToolOutputMessages({
             step,
             callIndex,
             callCount,
+            toolCallId,
         });
 
         toolOutputMessages.push({
@@ -380,8 +443,45 @@ export async function persistToolOutputMessages({
             toolStep: step,
             toolCallIndex: callIndex,
             toolCallCount: callCount,
+            toolCallId,
+            toolOutput: toolResultEntry.output || '',
             officialFunctionResponseBatchId: toolResult.officialResponseBatchId || null,
         });
+    }
+
+    const isOpenAINativeToolTurn =
+        request.nativeTools === true &&
+        !result?.officialContent &&
+        Array.isArray(result?.functionCalls) &&
+        result.functionCalls.length > 0;
+
+    if (isOpenAINativeToolTurn) {
+        // OpenAI-compatible tool calling needs the assistant tool_calls row and
+        // one tool row per call; the next request pairs them by tool_call_id.
+        const calls = result.functionCalls.map((call, index) => ({
+            id: call.id || `call_${index + 1}`,
+            name: call.name,
+            args: call.args || {},
+        }));
+        const assistantMessage = {
+            role: 'ai',
+            text: stripToolCallMarkup(result.text || ''),
+            thoughts: result.thoughts || null,
+            thoughtsDurationSeconds: result.thoughtsDurationSeconds,
+            toolCalls: calls,
+            suppressCopy: true,
+            // Anthropic thinking turns must be replayed with their original
+            // blocks (signature/data) or the next request is rejected.
+            ...(Array.isArray(result.anthropicContent) && result.anthropicContent.length > 0
+                ? { anthropicContent: result.anthropicContent }
+                : {}),
+        };
+        const toolMessages = toolOutputMessages.map((message, index) => ({
+            ...message,
+            toolCallId: message.toolCallId || calls[index]?.id || null,
+        }));
+        await appendRawMessages(request.sessionId, [assistantMessage, ...toolMessages]);
+        return '';
     }
 
     const hasOfficialFunctionResponses =

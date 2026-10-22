@@ -8,9 +8,10 @@ import {
 } from './thinking_levels.js';
 
 describe('provider thinking levels', () => {
-    it('offers provider-specific levels, including xhigh/max where supported', () => {
-        expect(getProviderThinkingLevels('official')).toEqual(['low', 'medium', 'high']);
+    it('offers provider-specific levels, including auto and xhigh/max where supported', () => {
+        expect(getProviderThinkingLevels('official')).toEqual(['auto', 'low', 'medium', 'high']);
         expect(getProviderThinkingLevels('openai')).toEqual([
+            'auto',
             'low',
             'medium',
             'high',
@@ -18,14 +19,21 @@ describe('provider thinking levels', () => {
             'max',
         ]);
         expect(getProviderThinkingLevels('anthropic')).toEqual([
+            'auto',
             'low',
             'medium',
             'high',
             'xhigh',
             'max',
         ]);
-        expect(getProviderThinkingLevels('dashscope')).toEqual(['off', 'on']);
-        expect(getProviderThinkingLevels('deepseek')).toEqual(['low', 'medium', 'high', 'max']);
+        expect(getProviderThinkingLevels('dashscope')).toEqual(['auto', 'off', 'on']);
+        expect(getProviderThinkingLevels('deepseek')).toEqual([
+            'auto',
+            'low',
+            'medium',
+            'high',
+            'max',
+        ]);
         expect(getProviderThinkingLevels('web', '56fdd199312815e2')).toEqual(['low', 'high']);
         expect(getProviderThinkingLevels('web', 'unknown-model')).toEqual([]);
     });
@@ -36,8 +44,12 @@ describe('provider thinking levels', () => {
         );
         expect(normalizeThinkingLevelForProvider('openai', 'gpt-6-astra', 'max')).toBe('max');
         expect(normalizeThinkingLevelForProvider('deepseek', 'deepseek-v4-pro', 'max')).toBe('max');
+        expect(normalizeThinkingLevelForProvider('deepseek', 'deepseek-v4-pro', 'auto')).toBe(
+            'auto'
+        );
         expect(normalizeThinkingLevelForProvider('dashscope', 'qwen3.8-max', 'high')).toBe('on');
         expect(normalizeThinkingLevelForProvider('dashscope', 'qwen3.8-max', 'off')).toBe('off');
+        expect(normalizeThinkingLevelForProvider('dashscope', 'qwen3.8-max', 'auto')).toBe('auto');
         expect(normalizeThinkingLevelForProvider('web', '56fdd199312815e2', 'low')).toBe('low');
         expect(normalizeThinkingLevelForProvider('web', '56fdd199312815e2', 'medium')).toBe('high');
     });

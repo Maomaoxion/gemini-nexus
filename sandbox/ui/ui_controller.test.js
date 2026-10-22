@@ -39,6 +39,26 @@ describe('UIController host context', () => {
         controller.setPageContextAvailable(false);
         expect(document.body.classList.contains('has-page-context')).toBe(false);
     });
+
+    it('marks the debug toggle state and availability', () => {
+        const controller = Object.create(UIController.prototype);
+        document.body.innerHTML = '<button id="debug-tools-btn" aria-pressed="false"></button>';
+        const button = document.getElementById('debug-tools-btn');
+
+        controller.setDebugToolsActive(true);
+        expect(button.classList.contains('active')).toBe(true);
+        expect(button.getAttribute('aria-pressed')).toBe('true');
+
+        controller.setDebugToolsActive(false);
+        expect(button.classList.contains('active')).toBe(false);
+        expect(button.getAttribute('aria-pressed')).toBe('false');
+
+        controller.setDebugToolsAvailable(false);
+        expect(button.disabled).toBe(true);
+
+        controller.setDebugToolsAvailable(true);
+        expect(button.disabled).toBe(false);
+    });
 });
 
 describe('UIController model and thinking controls', () => {

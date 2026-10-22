@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sendOpenAIMessage } from './openai_compatible.js';
+import { buildResponsesInput } from './openai_payloads.js';
 
 function makeChatSseStream(text = 'ok') {
     const encoder = new TextEncoder();
@@ -498,5 +499,687 @@ describe('sendOpenAIMessage', () => {
                 vi.fn()
             )
         ).rejects.toThrow(/blocked/);
+    });
+});
+
+function makeToolCallSseStream() {
+    const encoder = new TextEncoder();
+    const events = [
+        { choices: [{ delta: { content: 'Checking...' } }] },
+        {
+            choices: [
+                {
+                    delta: {
+                        tool_calls: [
+                            {
+                                index: 0,
+                                id: 'call_1',
+                                type: 'function',
+                                function: { name: 'get_page_errors', arguments: '{"a":' },
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+        {
+            choices: [
+                {
+                    delta: {
+                        tool_calls: [{ index: 0, function: { arguments: '1}' } }],
+                    },
+                    finish_reason: 'tool_calls',
+                },
+            ],
+        },
+    ];
+    const payload =
+        events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('') + 'data: [DONE]\n\n';
+
+    return {
+        getReader() {
+            return {
+                read: vi
+                    .fn()
+                    .mockResolvedValueOnce({ done: false, value: encoder.encode(payload) })
+                    .mockResolvedValueOnce({ done: true }),
+            };
+        },
+    };
+}
+
+describe('sendOpenAIMessage native tools', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('parses streamed tool_calls into functionCalls', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeToolCallSseStream(),
+        });
+
+        const result = await sendOpenAIMessage(
+            'Check errors',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'deepseek-chat',
+                tools: [
+                    {
+                        type: 'function',
+                        function: {
+                            name: 'get_page_errors',
+                            description: 'Read errors',
+                            parameters: { type: 'object', properties: {} },
+                        },
+                    },
+                ],
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        expect(result.functionCalls).toEqual([
+            { id: 'call_1', name: 'get_page_errors', args: { a: 1 } },
+        ]);
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.tools).toHaveLength(1);
+        expect(payload.tool_choice).toBe('auto');
+    });
+
+    it('replays assistant tool_calls and tool rows without an empty user turn', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            '',
+            '',
+            [
+                {
+                    role: 'ai',
+                    text: 'Checking...',
+                    toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+                },
+                {
+                    role: 'user',
+                    text: '[Tool Output: get_page_errors]',
+                    kind: 'tool-output',
+                    toolCallId: 'call_1',
+                    toolOutput: 'no errors',
+                },
+            ],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'deepseek-chat',
+                tools: [
+                    {
+                        type: 'function',
+                        function: {
+                            name: 'get_page_errors',
+                            parameters: { type: 'object', properties: {} },
+                        },
+                    },
+                ],
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toEqual([
+            {
+                role: 'assistant',
+                content: 'Checking...',
+                tool_calls: [
+                    {
+                        id: 'call_1',
+                        type: 'function',
+                        function: { name: 'get_page_errors', arguments: '{}' },
+                    },
+                ],
+            },
+            { role: 'tool', tool_call_id: 'call_1', content: 'no errors' },
+        ]);
+    });
+
+    it('replays reasoning_content for DeepSeek tool-call turns', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            '',
+            '',
+            [
+                {
+                    role: 'ai',
+                    text: '',
+                    thoughts: 'I should check the console first.',
+                    toolCalls: [{ id: 'call_1', name: 'get_console_logs', args: {} }],
+                },
+                {
+                    role: 'user',
+                    text: '[Tool Output: get_console_logs]',
+                    kind: 'tool-output',
+                    toolCallId: 'call_1',
+                    toolOutput: 'no logs',
+                },
+            ],
+            {
+                baseUrl: 'https://api.deepseek.com',
+                model: 'deepseek-flash',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages[0]).toEqual(
+            expect.objectContaining({
+                role: 'assistant',
+                reasoning_content: 'I should check the console first.',
+            })
+        );
+    });
+
+    it('replays reasoning_content for plain DeepSeek assistant turns', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            'Continue',
+            '',
+            [
+                { role: 'user', text: 'Hello' },
+                {
+                    role: 'ai',
+                    text: 'Hi there',
+                    thoughts: 'The user greeted me.',
+                },
+            ],
+            {
+                baseUrl: 'https://api.deepseek.com',
+                model: 'deepseek-flash',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages[1]).toEqual(
+            expect.objectContaining({
+                role: 'assistant',
+                reasoning_content: 'The user greeted me.',
+            })
+        );
+    });
+
+    it('does not send reasoning_content to non-DeepSeek chat providers', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            '',
+            '',
+            [
+                {
+                    role: 'ai',
+                    text: '',
+                    thoughts: 'Internal plan',
+                    toolCalls: [{ id: 'call_1', name: 'get_console_logs', args: {} }],
+                },
+                {
+                    role: 'user',
+                    text: '[Tool Output: get_console_logs]',
+                    kind: 'tool-output',
+                    toolCallId: 'call_1',
+                    toolOutput: 'no logs',
+                },
+            ],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'gpt-test',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages[0]).not.toHaveProperty('reasoning_content');
+    });
+
+    it('pairs a tool result by order when the session snapshot lost its id', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            await sendOpenAIMessage(
+                '',
+                '',
+                [
+                    {
+                        role: 'ai',
+                        text: '',
+                        toolCalls: [{ id: 'call_1', name: 'get_console_logs', args: {} }],
+                    },
+                    {
+                        role: 'user',
+                        text: '[Tool Output: get_console_logs]\nlog line\n\n[Proceeding to step 1]',
+                        kind: 'tool-output',
+                        toolName: 'get_console_logs',
+                        toolOutput: 'log line',
+                    },
+                ],
+                {
+                    baseUrl: 'https://api.deepseek.com',
+                    model: 'deepseek-flash',
+                },
+                [],
+                null,
+                vi.fn()
+            );
+        } finally {
+            warnSpy.mockRestore();
+        }
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toContainEqual({
+            role: 'tool',
+            tool_call_id: 'call_1',
+            content: 'log line',
+        });
+        expect(payload.messages).not.toContainEqual(
+            expect.objectContaining({ content: '[Tool result unavailable]' })
+        );
+    });
+
+    it('pairs a tool result by order when its stored id does not match', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            await sendOpenAIMessage(
+                '',
+                '',
+                [
+                    {
+                        role: 'ai',
+                        text: '',
+                        toolCalls: [{ id: 'call_1', name: 'get_console_logs', args: {} }],
+                    },
+                    {
+                        role: 'user',
+                        text: '[Tool Output: get_console_logs]\nlog line',
+                        kind: 'tool-output',
+                        toolName: 'get_console_logs',
+                        toolCallId: 'call_other',
+                        toolOutput: 'log line',
+                    },
+                ],
+                {
+                    baseUrl: 'https://api.deepseek.com',
+                    model: 'deepseek-flash',
+                },
+                [],
+                null,
+                vi.fn()
+            );
+        } finally {
+            warnSpy.mockRestore();
+        }
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toContainEqual({
+            role: 'tool',
+            tool_call_id: 'call_1',
+            content: 'log line',
+        });
+    });
+
+    it('drops orphan tool rows left by history trimming', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            'Continue',
+            '',
+            [
+                { role: 'user', text: 'Check errors' },
+                {
+                    role: 'user',
+                    text: '[Tool Output: get_page_errors]',
+                    kind: 'tool-output',
+                    toolCallId: 'missing',
+                    toolOutput: 'orphan',
+                },
+            ],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'deepseek-chat',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages.some((message) => message.role === 'tool')).toBe(false);
+    });
+
+    it('fills missing tool rows when history ends mid tool call', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            '',
+            '',
+            [
+                {
+                    role: 'ai',
+                    text: 'Checking...',
+                    toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+                },
+                { role: 'user', text: 'Continue' },
+            ],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'deepseek-chat',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.messages).toContainEqual({
+            role: 'tool',
+            tool_call_id: 'call_1',
+            content: '[Tool result unavailable]',
+        });
+    });
+
+    it('sends Responses tools and parses function_call items', async () => {
+        const encoder = new TextEncoder();
+        const events = [
+            {
+                type: 'response.output_item.done',
+                item: {
+                    type: 'function_call',
+                    call_id: 'call_1',
+                    name: 'get_page_errors',
+                    arguments: '{"a":1}',
+                },
+            },
+            { type: 'response.completed', response: { status: 'completed', output: [] } },
+        ];
+        const streamPayload =
+            events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('') +
+            'data: [DONE]\n\n';
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: {
+                getReader() {
+                    return {
+                        read: vi
+                            .fn()
+                            .mockResolvedValueOnce({
+                                done: false,
+                                value: encoder.encode(streamPayload),
+                            })
+                            .mockResolvedValueOnce({ done: true }),
+                    };
+                },
+            },
+        });
+
+        const result = await sendOpenAIMessage(
+            'Check errors',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'gpt-test',
+                useResponsesApi: true,
+                toolSchemas: [
+                    {
+                        name: 'get_page_errors',
+                        description: 'Read errors',
+                        parameters: { type: 'object', properties: {} },
+                    },
+                ],
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        expect(result.functionCalls).toEqual([
+            { id: 'call_1', name: 'get_page_errors', args: { a: 1 } },
+        ]);
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload.tools).toEqual([
+            {
+                type: 'function',
+                name: 'get_page_errors',
+                description: 'Read errors',
+                parameters: { type: 'object', properties: {} },
+            },
+        ]);
+    });
+
+    it('omits reasoning effort when the thinking level is auto', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeChatSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            'Hello',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.deepseek.com',
+                model: 'deepseek-flash',
+                reasoningEffort: 'auto',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload).not.toHaveProperty('reasoning_effort');
+        expect(payload).not.toHaveProperty('reasoning');
+    });
+
+    it('omits Responses reasoning when the thinking level is auto', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            body: makeResponsesSseStream('done'),
+        });
+
+        await sendOpenAIMessage(
+            'Hello',
+            '',
+            [],
+            {
+                baseUrl: 'https://api.example.test/v1',
+                model: 'gpt-test',
+                useResponsesApi: true,
+                reasoningEffort: 'auto',
+            },
+            [],
+            null,
+            vi.fn()
+        );
+
+        const [, init] = global.fetch.mock.calls[0];
+        const payload = JSON.parse(init.body);
+        expect(payload).not.toHaveProperty('reasoning');
+    });
+});
+
+describe('buildResponsesInput tool result replay', () => {
+    it('pairs a tool-output row without toolCallId by call order', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            const input = buildResponsesInput(
+                '',
+                [
+                    {
+                        role: 'ai',
+                        toolCalls: [{ id: 'call_1', name: 'get_console_logs', args: {} }],
+                    },
+                    {
+                        role: 'user',
+                        text: '[Tool Output: get_console_logs]\nlog line',
+                        toolName: 'get_console_logs',
+                        toolOutput: 'log line',
+                    },
+                ],
+                []
+            );
+
+            expect(input).toContainEqual({
+                type: 'function_call_output',
+                call_id: 'call_1',
+                output: 'log line',
+            });
+            expect(input.some((item) => item.output === '[Tool result unavailable]')).toBe(false);
+            expect(warnSpy).toHaveBeenCalledWith(
+                '[Gemini Nexus] Tool result id mismatch; pairing by order',
+                expect.objectContaining({
+                    storedToolCallId: '',
+                    pairedToolCallId: 'call_1',
+                    expectedToolName: 'get_console_logs',
+                })
+            );
+        } finally {
+            warnSpy.mockRestore();
+        }
+    });
+
+    it('pairs a tool result by order when its stored id does not match', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            const input = buildResponsesInput(
+                '',
+                [
+                    {
+                        role: 'ai',
+                        toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+                    },
+                    {
+                        role: 'user',
+                        kind: 'tool-output',
+                        toolCallId: 'call_other',
+                        toolOutput: 'no errors',
+                    },
+                ],
+                []
+            );
+
+            expect(input).toContainEqual({
+                type: 'function_call_output',
+                call_id: 'call_1',
+                output: 'no errors',
+            });
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+        } finally {
+            warnSpy.mockRestore();
+        }
+    });
+
+    it('drops orphan tool rows left by history trimming', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            const input = buildResponsesInput(
+                '',
+                [
+                    { role: 'user', text: 'Check errors' },
+                    {
+                        role: 'user',
+                        kind: 'tool-output',
+                        toolCallId: 'missing',
+                        toolOutput: 'orphan',
+                    },
+                ],
+                []
+            );
+
+            expect(input.some((item) => item.type === 'function_call_output')).toBe(false);
+            expect(warnSpy).not.toHaveBeenCalled();
+        } finally {
+            warnSpy.mockRestore();
+        }
+    });
+
+    it('fills a placeholder when history ends mid tool call', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        try {
+            const input = buildResponsesInput(
+                '',
+                [
+                    {
+                        role: 'ai',
+                        text: 'Checking...',
+                        toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+                    },
+                ],
+                []
+            );
+
+            expect(input).toContainEqual({
+                type: 'function_call_output',
+                call_id: 'call_1',
+                output: '[Tool result unavailable]',
+            });
+            expect(warnSpy).toHaveBeenCalledWith(
+                '[Gemini Nexus] Tool results missing at end of history',
+                expect.objectContaining({ toolCallIds: ['call_1'] })
+            );
+        } finally {
+            warnSpy.mockRestore();
+        }
     });
 });

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { appendRawMessages, appendUserMessage } from '../../../managers/history_manager.js';
 import {
     buildNarrationNudgePrompt,
+    executePendingToolResult,
     injectBrowserControlSnapshot,
     looksLikeUnexecutedBrowserActionPlan,
+    looksLikeUnexecutedDebugPlan,
     persistToolOutputMessages,
 } from './tool_loop.js';
 
@@ -12,6 +14,48 @@ vi.mock('../../../managers/history_manager.js', () => ({
     appendRawMessages: vi.fn(),
     appendUserMessage: vi.fn(),
 }));
+
+describe('looksLikeUnexecutedDebugPlan', () => {
+    it('detects a transitional debug step without tool JSON', () => {
+        expect(looksLikeUnexecutedDebugPlan('网络请求为空。接下来先检查控制台报错：')).toBe(true);
+        expect(looksLikeUnexecutedDebugPlan('Let me check the console logs next.')).toBe(true);
+    });
+
+    it('detects a named debug tool without a JSON block', () => {
+        expect(
+            looksLikeUnexecutedDebugPlan(
+                'I will use get_network_requests to inspect the failed calls.'
+            )
+        ).toBe(true);
+    });
+
+    it('ignores tool JSON, completion summaries, and plain answers', () => {
+        expect(
+            looksLikeUnexecutedDebugPlan(
+                'Next I will check.\n```json\n{"tool":"get_page_errors","args":{}}\n```'
+            )
+        ).toBe(false);
+        expect(looksLikeUnexecutedDebugPlan('调试检查已完成，没有发现异常。')).toBe(false);
+        expect(looksLikeUnexecutedDebugPlan('Hello there.')).toBe(false);
+    });
+
+    it('does not nudge when a final answer only names debug tools', () => {
+        expect(
+            looksLikeUnexecutedDebugPlan(
+                '可用的调试工具包括 get_page_errors、get_network_requests 和 get_storage。'
+            )
+        ).toBe(false);
+        expect(
+            looksLikeUnexecutedDebugPlan('get_console_logs 返回了 3 条日志，没有发现错误。')
+        ).toBe(false);
+    });
+
+    it('nudges when an inspection intent names a debug tool', () => {
+        expect(
+            looksLikeUnexecutedDebugPlan('接下来我会调用 get_network_requests 查看失败的请求。')
+        ).toBe(true);
+    });
+});
 
 describe('looksLikeUnexecutedBrowserActionPlan', () => {
     it('detects Chinese narration that plans a fill without tool JSON', () => {
@@ -184,11 +228,7 @@ describe('browser-control tool loop handling', () => {
                 sessionId: 'session-1',
                 toolName: 'take_snapshot',
                 text: 'Snapshot text',
-                toolCallText: JSON.stringify(
-                    { tool: 'take_snapshot', args: { uid: 'root' } },
-                    null,
-                    2
-                ),
+                toolCallText: JSON.stringify({ uid: 'root' }, null, 2),
                 status: 'completed',
                 step: 1,
             })
@@ -213,5 +253,186 @@ describe('browser-control tool loop handling', () => {
             }),
         ]);
         expect(appendUserMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('executePendingToolResult native calls', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('does not attach official response parts to OpenAI/Anthropic native results', async () => {
+        const toolExecutor = {
+            executeFunctionCalls: vi.fn(async () => [
+                {
+                    id: 'call_1',
+                    toolName: 'get_page_errors',
+                    args: {},
+                    output: 'no errors',
+                    status: 'completed',
+                },
+            ]),
+        };
+
+        const { toolResult, pendingNativeCalls } = await executePendingToolResult({
+            result: {
+                text: '',
+                functionCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+            },
+            request: { sessionId: 'session-1', enableDebugTools: true },
+            loopCount: 0,
+            toolExecutor,
+            onUpdate: vi.fn(),
+        });
+
+        expect(pendingNativeCalls).toBe(true);
+        expect(toolResult).not.toBeNull();
+        expect(toolResult.officialResponseParts).toBeNull();
+        expect(toolResult.officialResponseBatchId).toBeNull();
+        expect(toolResult.results).toHaveLength(1);
+    });
+
+    it('keeps official response parts for Gemini official native results', async () => {
+        const toolExecutor = {
+            executeFunctionCalls: vi.fn(async () => [
+                {
+                    id: 'call_1',
+                    toolName: 'take_snapshot',
+                    args: {},
+                    output: 'Snapshot text',
+                    status: 'completed',
+                },
+            ]),
+        };
+
+        const { toolResult } = await executePendingToolResult({
+            result: {
+                text: '',
+                officialContent: {
+                    role: 'model',
+                    parts: [{ functionCall: { id: 'call_1', name: 'take_snapshot', args: {} } }],
+                },
+                functionCalls: [{ id: 'call_1', name: 'take_snapshot', args: {} }],
+            },
+            request: { sessionId: 'session-1', enableBrowserControl: true },
+            loopCount: 0,
+            toolExecutor,
+            onUpdate: vi.fn(),
+        });
+
+        expect(toolResult).not.toBeNull();
+        expect(toolResult.officialResponseParts).toEqual([
+            {
+                functionResponse: {
+                    id: 'call_1',
+                    name: 'take_snapshot',
+                    response: { output: 'Snapshot text', status: 'completed' },
+                },
+            },
+        ]);
+        expect(toolResult.officialResponseBatchId).toBeTypeOf('string');
+    });
+});
+
+describe('persistToolOutputMessages native tools', () => {
+    it('persists assistant tool_calls and tool rows for OpenAI native calls', async () => {
+        const result = {
+            text: 'Checking...',
+            thoughts: null,
+            functionCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+        };
+        const toolResult = {
+            toolName: 'get_page_errors',
+            output: 'no errors',
+            outputForModel: 'no errors',
+            status: 'completed',
+            id: 'call_1',
+            results: [
+                {
+                    id: 'call_1',
+                    toolName: 'get_page_errors',
+                    output: 'no errors',
+                    status: 'completed',
+                },
+            ],
+            officialResponseParts: [{ functionResponse: {} }],
+            officialResponseBatchId: 'batch',
+        };
+
+        const sendRuntimeMessage = vi.fn();
+        const output = await persistToolOutputMessages({
+            request: { sessionId: 'session-1', nativeTools: true },
+            result,
+            toolResult,
+            loopCount: 1,
+            pendingNativeCalls: true,
+            sendRuntimeMessage,
+        });
+
+        expect(output).toBe('');
+        expect(sendRuntimeMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: 'TOOL_OUTPUT_MESSAGE',
+                toolName: 'get_page_errors',
+                toolCallId: 'call_1',
+            })
+        );
+        expect(appendRawMessages).toHaveBeenCalledWith('session-1', [
+            expect.objectContaining({
+                role: 'ai',
+                text: 'Checking...',
+                toolCalls: [{ id: 'call_1', name: 'get_page_errors', args: {} }],
+            }),
+            expect.objectContaining({
+                role: 'user',
+                kind: 'tool-output',
+                toolCallId: 'call_1',
+                toolOutput: 'no errors',
+            }),
+        ]);
+    });
+
+    it('persists raw Anthropic content on the native assistant row', async () => {
+        const anthropicContent = [
+            { type: 'thinking', thinking: 'check', signature: 'sig-1' },
+            { type: 'tool_use', id: 'toolu_1', name: 'get_page_errors', input: {} },
+        ];
+        const result = {
+            text: '',
+            thoughts: 'check',
+            functionCalls: [{ id: 'toolu_1', name: 'get_page_errors', args: {} }],
+            anthropicContent,
+        };
+        const toolResult = {
+            toolName: 'get_page_errors',
+            output: 'no errors',
+            status: 'completed',
+            id: 'toolu_1',
+            results: [{ id: 'toolu_1', toolName: 'get_page_errors', output: 'no errors' }],
+            officialResponseParts: null,
+            officialResponseBatchId: null,
+        };
+
+        await persistToolOutputMessages({
+            request: { sessionId: 'session-1', nativeTools: true },
+            result,
+            toolResult,
+            loopCount: 1,
+            pendingNativeCalls: true,
+            sendRuntimeMessage: vi.fn(),
+        });
+
+        expect(appendRawMessages).toHaveBeenCalledWith('session-1', [
+            expect.objectContaining({
+                role: 'ai',
+                toolCalls: [{ id: 'toolu_1', name: 'get_page_errors', args: {} }],
+                anthropicContent,
+            }),
+            expect.objectContaining({
+                role: 'user',
+                kind: 'tool-output',
+                toolCallId: 'toolu_1',
+            }),
+        ]);
     });
 });
