@@ -734,10 +734,6 @@ body.layout-wide .msg.ai .message-content-container {
     color: var(--text-primary);
 }
 
-.msg-content.msg-content-streaming {
-    white-space: pre-wrap;
-}
-
 /* A user turn renders as one AI message; the blocks inside stack tightly. */
 .turn-content {
     display: flex;

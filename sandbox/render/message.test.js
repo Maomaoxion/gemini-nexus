@@ -70,7 +70,7 @@ describe('appendMessage copy button', () => {
         );
     });
 
-    it('passes current streaming and final render state to message content', () => {
+    it('renders message content on streaming updates and finalize', () => {
         const container = document.createElement('div');
         const controller = appendMessage(container, '', 'ai', null, '', null, {
             isStreaming: true,
@@ -79,22 +79,25 @@ describe('appendMessage copy button', () => {
 
         controller.update('Partial mermaid block', undefined, { isStreaming: true });
         const contentDiv = controller.div.querySelector('.msg-content');
-        expect(contentDiv.textContent).toBe('Partial mermaid block');
-        expect(contentDiv.classList.contains('msg-content-streaming')).toBe(true);
-        // Streaming tokens use plain text; Markdown runs only at finalize.
-        // (The thoughts region renders independently of the message content.)
+        // The thoughts region renders independently of the message content.
         const contentCalls = () =>
             renderContent.mock.calls.filter(([element]) => element === contentDiv);
-        expect(contentCalls()).toHaveLength(0);
 
-        controller.finalize('Final mermaid block', undefined);
+        expect(contentDiv.textContent).toBe('Partial mermaid block');
         expect(contentCalls()).toHaveLength(1);
         expect(contentCalls()[0].slice(1)).toEqual([
+            'Partial mermaid block',
+            'ai',
+            expect.objectContaining({ isStreaming: true }),
+        ]);
+
+        controller.finalize('Final mermaid block', undefined);
+        expect(contentCalls()).toHaveLength(2);
+        expect(contentCalls()[1].slice(1)).toEqual([
             'Final mermaid block',
             'ai',
             expect.objectContaining({ isStreaming: false, isFinal: true }),
         ]);
-        expect(contentDiv.classList.contains('msg-content-streaming')).toBe(false);
     });
 
     it('uses AMC-style rows, action rails, and content containers for normal messages', () => {
