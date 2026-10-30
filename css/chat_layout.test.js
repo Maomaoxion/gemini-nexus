@@ -74,21 +74,7 @@ describe('empty state styling', () => {
 
         // The old ::before dot carried no meaning; icons live in markup now.
         expect(chatCss).not.toMatch(/\.chat-empty-tip::before/);
-        expect(chatCss).not.toMatch(/\.chat-empty-tip-star::before/);
         expect(chatCss).toMatch(/\.chat-empty-tip-icon\s*{[^}]*flex:\s*0 0 auto/s);
-        expect(chatCss).toMatch(
-            /\.chat-empty-tip-icon\.chat-empty-tip-icon-star\s*{[^}]*--accent-gold/s
-        );
-    });
-
-    it('keeps the star tip note inline so all four rows stay 44px', async () => {
-        const chatCss = await readCss('chat.css');
-
-        // The note flows after the main copy one size step down; a block-level
-        // note pushed the star row to 55px and broke the four-row rhythm.
-        const subRule = chatCss.match(/\.chat-empty-tip-sub\s*{([^}]*)}/s)?.[1] || '';
-        expect(subRule).toMatch(/display:\s*inline/);
-        expect(subRule).toMatch(/font-size:\s*12px/);
     });
 
     it('unifies focus rings with the two-layer app language', async () => {

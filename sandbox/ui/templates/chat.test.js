@@ -14,10 +14,8 @@ describe('chat template', () => {
         expect(empty.querySelector('[data-i18n="chatEmptyTitle"]')).toBeTruthy();
         expect(empty.querySelector('[data-i18n="chatEmptyHint"]')).toBeTruthy();
         expect(empty.querySelector('.chat-empty-logo')).toBeTruthy();
-        expect(empty.querySelectorAll('.chat-empty-tips li')).toHaveLength(4);
+        expect(empty.querySelectorAll('.chat-empty-tips li')).toHaveLength(3);
         expect(empty.querySelector('[data-i18n="chatEmptyTip1"]')).toBeTruthy();
-        expect(empty.querySelector('[data-empty-action="github-star"]')).toBeTruthy();
-        expect(empty.querySelector('[data-i18n="chatEmptyTipStar"]')).toBeTruthy();
     });
 
     it('exposes empty-state actions to assistive tech', () => {
@@ -33,19 +31,11 @@ describe('chat template', () => {
         document.body.innerHTML = ChatTemplate;
 
         const tips = [...document.querySelectorAll('.chat-empty-tip')];
-        expect(tips).toHaveLength(4);
+        expect(tips).toHaveLength(3);
         for (const tip of tips) {
             expect(tip.querySelector('.chat-empty-tip-icon')).toBeTruthy();
             expect(tip.querySelector('.chat-empty-tip-text')).toBeTruthy();
         }
-    });
-
-    it('splits the star tip into a short main line plus a note', () => {
-        document.body.innerHTML = ChatTemplate;
-
-        const star = document.querySelector('[data-empty-action="github-star"]');
-        expect(star?.querySelector('[data-i18n="chatEmptyTipStar"]')).toBeTruthy();
-        expect(star?.querySelector('[data-i18n="chatEmptyTipStarNote"]')).toBeTruthy();
     });
 
     it('renders the logo tile at its styled size', () => {

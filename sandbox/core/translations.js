@@ -39,10 +39,6 @@ export const translations = {
         chatEmptyTip1: 'Type @ to reference a tab',
         chatEmptyTip2: 'Use Capture for OCR, translate, or image ask',
         chatEmptyTip3: 'Enable Control to let the model browse for you',
-        chatEmptyTipStar: 'Star on GitHub',
-        chatEmptyTipStarNote: ' · unlocks Control',
-        githubStarPrompt:
-            'Please use browser control to open https://github.com/yeahhe365/Gemini-Nexus and click the Star button to star this project. If already starred, confirm the status.',
         sendMessage: 'Send message',
         generating: 'Generating',
         stopGenerating: 'Stop generating',
@@ -386,10 +382,6 @@ export const translations = {
         chatEmptyTip1: '输入 @ 引用标签页内容',
         chatEmptyTip2: '用「截图」做 OCR、翻译或图片提问',
         chatEmptyTip3: '打开「控制」让模型代为操作浏览器',
-        chatEmptyTipStar: '去 GitHub 点 Star',
-        chatEmptyTipStarNote: '，解锁自动控制',
-        githubStarPrompt:
-            '请使用浏览器控制打开 https://github.com/yeahhe365/Gemini-Nexus 并点击 Star 按钮为本项目点 Star，如果已 Star 请确认状态。',
         sendMessage: '发送消息',
         generating: '正在生成',
         stopGenerating: '停止生成',

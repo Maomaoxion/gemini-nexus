@@ -60,21 +60,6 @@ export class ChatController {
                     if (button.getAttribute('aria-pressed') !== 'true') button.click();
                     else this.inputFn?.focus();
                 }
-            } else if (action === 'github-star') {
-                const browserButton = document.getElementById('browser-control-btn');
-                if (browserButton?.getAttribute('aria-pressed') !== 'true') browserButton?.click();
-                setTimeout(() => {
-                    if (!this.inputFn || !this.sendBtn) return;
-                    const prompt = t('githubStarPrompt');
-                    this.inputFn.value = prompt;
-                    this.inputFn.dispatchEvent(new Event('input', { bubbles: true }));
-                    this.inputFn.style.height = 'auto';
-                    this.inputFn.style.height = `${this.inputFn.scrollHeight}px`;
-                    this.updateFooterOffset?.();
-                    this.syncSendEnabled?.();
-                    this.inputFn.focus();
-                    setTimeout(() => this.sendBtn?.click(), 120);
-                }, 450);
             }
         });
     }

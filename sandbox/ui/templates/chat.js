@@ -29,15 +29,6 @@ export const ChatTemplate = `
                         <span class="chat-empty-tip-text" data-i18n="chatEmptyTip3">Enable Control to let the model browse for you</span>
                     </button>
                 </li>
-                <li>
-                    <button type="button" class="chat-empty-tip chat-empty-tip-star" data-empty-action="github-star">
-                        <span class="chat-empty-tip-icon chat-empty-tip-icon-star" aria-hidden="true">${TemplateIcons.STAR}</span>
-                        <span class="chat-empty-tip-text">
-                            <!-- spans must stay adjacent: whitespace between them renders as a gap before the CJK comma -->
-                            <span data-i18n="chatEmptyTipStar">Star on GitHub</span><span class="chat-empty-tip-sub" data-i18n="chatEmptyTipStarNote"> · unlocks Control</span>
-                        </span>
-                    </button>
-                </li>
             </ul>
         </div>
     </div>

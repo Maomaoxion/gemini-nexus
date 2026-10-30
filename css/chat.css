@@ -138,7 +138,7 @@ body.layout-wide.sidebar-collapsed .chat-empty {
 }
 
 /* Browser control ships as a masked PNG span instead of an SVG; give it the
- * same slot so all four icons read at one size and track currentColor. */
+ * same slot so all three icons read at one size and track currentColor. */
 .chat-empty-tip-icon .tool-icon-browser-control {
     display: block;
     width: 100%;
@@ -159,28 +159,8 @@ body.layout-wide.sidebar-collapsed .chat-empty {
     color: var(--primary);
 }
 
-/* Gold is the star tip's identity; keep it through hover/focus instead of
- * flipping to --primary like the functional tips' icons. */
-.chat-empty-tip:hover .chat-empty-tip-icon-star,
-.chat-empty-tip:focus-visible .chat-empty-tip-icon-star {
-    color: var(--accent-gold);
-}
-
 .chat-empty-tip-text {
     min-width: 0;
-}
-
-/* Inline secondary note after the star tip's main copy (single-line row). */
-.chat-empty-tip-sub {
-    display: inline;
-    font-size: 12px;
-    line-height: inherit;
-    color: var(--text-tertiary);
-}
-
-.chat-empty-tip-icon.chat-empty-tip-icon-star {
-    /* SVG like its sibling icons; gold is the row's one accent. */
-    color: var(--accent-gold);
 }
 
 .chat-empty-tip:hover {
