@@ -154,15 +154,21 @@ export class TabMentionController {
     setCandidates(tabs, currentTabId = null) {
         this.requesting = false;
         this.clearRequestTimer();
-        this.candidates = Array.isArray(tabs) ? tabs : [];
         if (Number.isInteger(currentTabId) && currentTabId > 0) {
             this.currentTabId = currentTabId;
         }
+        this.candidates = this.withCurrentTabFirst(Array.isArray(tabs) ? tabs : []);
         if (this.menuOpen) {
             this.activeIndex = 0;
             this.renderMenu();
             this.positionMenu();
         }
+    }
+
+    withCurrentTabFirst(tabs) {
+        const index = tabs.findIndex((tab) => tab.id === this.currentTabId);
+        if (index <= 0) return tabs;
+        return [tabs[index], ...tabs.slice(0, index), ...tabs.slice(index + 1)];
     }
 
     setCurrentTabId(tabId) {

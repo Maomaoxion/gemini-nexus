@@ -73,6 +73,33 @@ describe('TabMentionController', () => {
         expect(items[1].querySelector('.tab-mention-current')).toBeNull();
     });
 
+    it('puts the current tab first in the candidate list', () => {
+        const { controller, inputFn, menu } = setup();
+
+        typeInto(inputFn, '@');
+        controller.setCandidates(
+            [candidate(2, 'Docs'), candidate(3, 'Mail'), candidate(1, 'GitHub')],
+            1
+        );
+
+        const ids = [...menu.querySelectorAll('.tab-mention-item')].map(
+            (item) => item.dataset.tabId
+        );
+        expect(ids).toEqual(['1', '2', '3']);
+        expect(menu.querySelector('.tab-mention-item').classList.contains('is-active')).toBe(true);
+    });
+
+    it('keeps the current tab first after filtering and selects it with Enter', () => {
+        const { controller, inputFn } = setup();
+
+        typeInto(inputFn, '@');
+        controller.setCandidates([candidate(2, 'Docs guide'), candidate(1, 'GitHub guide')], 1);
+        typeInto(inputFn, '@guide');
+        inputFn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(controller.getReferences().map((tab) => tab.id)).toEqual([1]);
+    });
+
     it('filters candidates by title and url', () => {
         const { controller, inputFn, menu } = setup();
 
