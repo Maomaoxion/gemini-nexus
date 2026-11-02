@@ -43,7 +43,7 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
     const content = document.createElement('div');
     content.id = regionId;
     content.className = 'thoughts-content';
-    renderContent(content, initialThoughts || '', 'ai');
+    renderContent(content, initialThoughts || '', 'ai', { enhanceArtifacts: false });
 
     toggle.appendChild(arrow);
     toggle.appendChild(status);
@@ -67,7 +67,7 @@ export function createThoughtsBlock(initialThoughts = '', options = {}, onStateC
         if (thoughts === renderedThoughts || content.hidden) return;
 
         renderedThoughts = thoughts;
-        renderContent(content, thoughts, 'ai');
+        renderContent(content, thoughts, 'ai', { enhanceArtifacts: false });
     };
 
     const getCompleteLabel = () => {

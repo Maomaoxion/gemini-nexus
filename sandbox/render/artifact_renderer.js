@@ -1,6 +1,7 @@
 import { createPrefixedId } from '../../shared/utils/index.js';
 import {
     LIVE_ARTIFACT_MESSAGE_CHANNEL,
+    LIVE_ARTIFACT_STREAM_EVENT,
     normalizeLiveArtifactFollowupPayload,
 } from '../core/live_artifacts.js';
 import { LIVE_ARTIFACT_FOLLOWUP_EVENT } from '../core/live_artifacts.js';
@@ -247,6 +248,7 @@ function renderGraphvizPreview(body, code, renderGraphviz = renderGraphvizToSvg,
 const PREVIEW_MIN_ZOOM = 0.5;
 const PREVIEW_MAX_ZOOM = 3;
 const PREVIEW_ZOOM_STEP = 0.1;
+const STREAM_ARTIFACT_THROTTLE_MS = 120;
 
 function attachPreviewZoom(body) {
     let zoom = 1;
@@ -403,6 +405,71 @@ function attachPreviewZoom(body) {
     body.addEventListener('pointercancel', endDrag);
 }
 
+function attachStreamingArtifactUpdater(preview, frame, initialCode) {
+    let latestCode = typeof initialCode === 'string' ? initialCode : '';
+    const initialSnapshot = latestCode;
+    let lastPostedCode = null;
+    let loaded = false;
+    let timer = null;
+
+    const postLatest = (force) => {
+        if (!loaded || !frame.contentWindow) return;
+        if (!force && latestCode === lastPostedCode) return;
+
+        try {
+            const html = sanitizeArtifactMarkup(latestCode, 'html');
+            frame.contentWindow.postMessage(
+                {
+                    channel: LIVE_ARTIFACT_MESSAGE_CHANNEL,
+                    event: LIVE_ARTIFACT_STREAM_EVENT,
+                    html,
+                },
+                '*'
+            );
+            lastPostedCode = latestCode;
+        } catch {
+            // A transient cross-document state keeps the last rendered frame.
+        }
+    };
+
+    const clearTimer = () => {
+        if (timer === null) return;
+        clearTimeout(timer);
+        timer = null;
+    };
+
+    const schedule = () => {
+        if (timer !== null) return;
+        timer = setTimeout(() => {
+            timer = null;
+            postLatest(false);
+        }, STREAM_ARTIFACT_THROTTLE_MS);
+    };
+
+    const handleLoad = () => {
+        loaded = true;
+        // The srcdoc already contains the initial markup; only reconcile when
+        // tokens arrived while the frame was loading.
+        if (latestCode !== initialSnapshot) postLatest(true);
+    };
+    frame.addEventListener('load', handleLoad);
+
+    preview.__updateArtifact = (nextCode, updateOptions = {}) => {
+        latestCode = typeof nextCode === 'string' ? nextCode : '';
+        if (updateOptions.final === true) {
+            clearTimer();
+            postLatest(true);
+            return;
+        }
+        schedule();
+    };
+
+    return () => {
+        clearTimer();
+        frame.removeEventListener('load', handleLoad);
+    };
+}
+
 export function createLiveArtifactPreview(kind, code, options = {}) {
     const preview = document.createElement('section');
     preview.className = 'live-artifact-preview';
@@ -444,16 +511,29 @@ export function createLiveArtifactPreview(kind, code, options = {}) {
         return preview;
     }
 
+    const streaming = kind === 'html' && options.streaming === true;
     const frame = document.createElement('iframe');
     frame.className = 'live-artifact-frame';
     frame.title = `${t('liveArtifactPreviewTitle')} (${kind.toUpperCase()})`;
     frame.setAttribute('sandbox', kind === 'html' ? 'allow-scripts allow-forms' : '');
     frame.referrerPolicy = 'no-referrer';
-    frame.loading = 'lazy';
-    frame.srcdoc = buildArtifactSrcDoc(kind, code);
+    frame.loading = streaming ? 'eager' : 'lazy';
+    const streamingCleanup = streaming
+        ? attachStreamingArtifactUpdater(preview, frame, code)
+        : null;
+    frame.srcdoc = buildArtifactSrcDoc(kind, code, {
+        streaming,
+        theme:
+            typeof document !== 'undefined' &&
+            document.documentElement.getAttribute('data-theme') === 'dark'
+                ? 'dark'
+                : 'light',
+    });
     body.appendChild(frame);
 
     if (kind === 'html') {
+        const cleanups = [];
+        if (streamingCleanup) cleanups.push(streamingCleanup);
         const handleMessage = (event) => {
             // Security: verify the message comes from the iframe we created.
             // `event.source === frame.contentWindow` is an identity check — each
@@ -488,8 +568,9 @@ export function createLiveArtifactPreview(kind, code, options = {}) {
             }
         };
         window.addEventListener('message', handleMessage);
+        cleanups.push(() => window.removeEventListener('message', handleMessage));
         preview.__liveArtifactCleanup = () => {
-            window.removeEventListener('message', handleMessage);
+            cleanups.forEach((cleanup) => cleanup());
         };
     }
 

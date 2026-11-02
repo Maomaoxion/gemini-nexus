@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderContent } from './content.js';
 import { transformMarkdown } from './pipeline.js';
-import { enhanceLiveArtifacts } from './artifacts.js';
+import { createLiveArtifactPreview, enhanceLiveArtifacts } from './artifacts.js';
 
 vi.mock('./pipeline.js', () => ({
     transformMarkdown: vi.fn((text) => `<pre>${text}</pre>`),
@@ -11,6 +11,13 @@ vi.mock('./pipeline.js', () => ({
 
 vi.mock('./artifacts.js', () => ({
     cleanupLiveArtifacts: vi.fn(),
+    createLiveArtifactPreview: vi.fn(() => {
+        const preview = document.createElement('section');
+        preview.className = 'live-artifact-preview';
+        preview.dataset.liveArtifactKind = 'html';
+        preview.__updateArtifact = vi.fn();
+        return preview;
+    }),
     enhanceLiveArtifacts: vi.fn(),
 }));
 
@@ -245,5 +252,44 @@ describe('renderContent post-pass guards', () => {
         renderContent(contentDiv, '```mermaid\ngraph TD', 'ai');
 
         expect(enhanceLiveArtifacts).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('renderContent streaming live artifacts', () => {
+    it('keeps one preview node while the artifact streams and finalizes', () => {
+        vi.mocked(createLiveArtifactPreview).mockClear();
+        const contentDiv = document.createElement('div');
+        const first = '<div style="display:block;width:100%;"><h2>One';
+
+        renderContent(contentDiv, first, 'ai', { isStreaming: true });
+
+        const preview = contentDiv.querySelector('.live-artifact-preview');
+        expect(preview).not.toBeNull();
+        expect(createLiveArtifactPreview).toHaveBeenCalledTimes(1);
+        expect(preview.__updateArtifact).toHaveBeenCalledWith(first, { final: false });
+
+        const finalText = '<div style="display:block;width:100%;"><h2>One</h2></div>';
+        renderContent(contentDiv, finalText, 'ai', { isStreaming: false, isFinal: true });
+
+        expect(contentDiv.querySelector('.live-artifact-preview')).toBe(preview);
+        expect(createLiveArtifactPreview).toHaveBeenCalledTimes(1);
+        expect(preview.__updateArtifact).toHaveBeenLastCalledWith(finalText, { final: true });
+    });
+
+    it('skips live artifact parsing when artifacts are disabled', () => {
+        vi.mocked(createLiveArtifactPreview).mockClear();
+        vi.mocked(enhanceLiveArtifacts).mockClear();
+        vi.mocked(transformMarkdown).mockImplementationOnce(
+            () => '<div class="code-block-wrapper"><pre><code>graph TD</code></pre></div>'
+        );
+        const contentDiv = document.createElement('div');
+
+        renderContent(contentDiv, '<div style="display:block;width:100%;"><h2>Draft</h2>', 'ai', {
+            isStreaming: true,
+            enhanceArtifacts: false,
+        });
+
+        expect(createLiveArtifactPreview).not.toHaveBeenCalled();
+        expect(enhanceLiveArtifacts).not.toHaveBeenCalled();
     });
 });

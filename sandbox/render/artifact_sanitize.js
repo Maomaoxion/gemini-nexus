@@ -8,6 +8,7 @@ import {
     BLOCKED_ATTRS,
     URI_ATTRS,
     ARTIFACT_BRIDGE_SCRIPT,
+    STREAMING_PATCH_SCRIPT,
 } from './artifact_constants.js';
 import { escapeHtml } from '../../shared/utils/escape.js';
 
@@ -191,20 +192,71 @@ export function sanitizeArtifactMarkup(markup, kind = 'html') {
     return svg ? svg.outerHTML : template.innerHTML.trim();
 }
 
-export function buildArtifactSrcDoc(kind, code) {
+// Live Artifacts markup uses this token layer for semantic colors, surfaces and
+// borders. Define it inside the preview document: an iframe does not inherit
+// custom properties from the host page, so without these every var() reference
+// in the model's markup resolves to nothing and the artifact renders colorless.
+const ARTIFACT_THEME_STYLE = `
+:root{
+    color-scheme:light;
+    --amc-live-artifact-font-size:16px;
+    --amc-live-artifact-text:#1f1f1f;
+    --amc-live-artifact-muted:#5e5e5e;
+    --amc-live-artifact-subtle:#80868b;
+    --amc-live-artifact-border:#e1e3e1;
+    --amc-live-artifact-surface:#f8fafd;
+    --amc-live-artifact-surface-muted:rgba(0,0,0,0.04);
+    --amc-live-artifact-accent:#0b57d0;
+    --amc-live-artifact-accent-surface:color-mix(in srgb,#0b57d0 22%,transparent);
+    --amc-live-artifact-success:#047857;
+    --amc-live-artifact-success-surface:color-mix(in srgb,#047857 22%,transparent);
+    --amc-live-artifact-warning:#b45309;
+    --amc-live-artifact-warning-surface:color-mix(in srgb,#b45309 22%,transparent);
+    --amc-live-artifact-danger:#c62828;
+    --amc-live-artifact-danger-surface:color-mix(in srgb,#c62828 22%,transparent);
+}
+:root[data-theme='dark']{
+    color-scheme:dark;
+    --amc-live-artifact-text:#e3e3e3;
+    --amc-live-artifact-muted:#c4c7c5;
+    --amc-live-artifact-subtle:#8e918f;
+    --amc-live-artifact-border:#3c4043;
+    --amc-live-artifact-surface:#1e1f20;
+    --amc-live-artifact-surface-muted:rgba(255,255,255,0.06);
+    --amc-live-artifact-accent:#6b9ef5;
+    --amc-live-artifact-accent-surface:color-mix(in srgb,#6b9ef5 22%,transparent);
+    --amc-live-artifact-success:#81c995;
+    --amc-live-artifact-success-surface:color-mix(in srgb,#81c995 22%,transparent);
+    --amc-live-artifact-warning:#fdd663;
+    --amc-live-artifact-warning-surface:color-mix(in srgb,#fdd663 22%,transparent);
+    --amc-live-artifact-danger:#f2b8b5;
+    --amc-live-artifact-danger-surface:color-mix(in srgb,#f2b8b5 22%,transparent);
+}
+`;
+
+export function buildArtifactSrcDoc(kind, code, options = {}) {
     const sanitizedMarkup = sanitizeArtifactMarkup(code, kind);
     const bodyClass = kind === 'svg' ? 'artifact-svg' : 'artifact-html';
+    const streaming = kind === 'html' && options.streaming === true;
     const bridgeScript = kind === 'html' ? ARTIFACT_BRIDGE_SCRIPT : '';
+    const streamScript = streaming ? STREAMING_PATCH_SCRIPT : '';
+    // Streaming updates patch children of a stable root; the initial document
+    // uses the same shape so the first postMessage can reconcile in place.
+    const bodyMarkup = streaming
+        ? `<div data-amc-artifact-root>${sanitizedMarkup}</div>`
+        : sanitizedMarkup;
+    const theme = options.theme === 'dark' ? 'dark' : 'light';
 
     return `<!doctype html>
-<html>
+<html data-theme="${theme}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob:; style-src 'unsafe-inline' https:; font-src https: data:; script-src 'unsafe-inline'; connect-src https: data: blob:; media-src https: data: blob:; form-action 'none'; base-uri 'none'">
 <style>
-html,body{min-height:100%;margin:0;background:transparent;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{box-sizing:border-box;overflow:hidden}
+${ARTIFACT_THEME_STYLE}
+html,body{min-height:100%;margin:0;background:transparent;color:var(--amc-live-artifact-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{box-sizing:border-box;overflow:hidden;font-size:var(--amc-live-artifact-font-size)}
 body.artifact-html{padding:0}
 body.artifact-svg{display:grid;place-items:center;padding:16px}
 *,*::before,*::after{box-sizing:border-box}
@@ -212,7 +264,7 @@ img,svg,canvas,video{max-width:100%}
 svg{height:auto}
 </style>
 </head>
-<body class="${bodyClass}">${sanitizedMarkup}${bridgeScript}</body>
+<body class="${bodyClass}">${bodyMarkup}${bridgeScript}${streamScript}</body>
 </html>`;
 }
 

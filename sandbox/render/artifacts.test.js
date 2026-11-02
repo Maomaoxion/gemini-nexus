@@ -109,6 +109,71 @@ describe('Live Artifact previews', () => {
         expect(srcdoc).not.toContain('body.artifact-html{padding:16px}');
     });
 
+    it('defines the AMC design tokens inside artifact previews', () => {
+        const srcdoc = buildArtifactSrcDoc(
+            'html',
+            '<div style="color:var(--amc-live-artifact-accent)">x</div>'
+        );
+
+        expect(srcdoc).toContain('<html data-theme="light">');
+        expect(srcdoc).toContain('--amc-live-artifact-accent:#0b57d0');
+        expect(srcdoc).toContain('--amc-live-artifact-surface-muted');
+        expect(srcdoc).toContain('--amc-live-artifact-border:#e1e3e1');
+        expect(srcdoc).toContain(":root[data-theme='dark']");
+        expect(srcdoc).toContain('color-scheme:dark');
+    });
+
+    it('follows the host theme when building artifact previews', () => {
+        document.documentElement.setAttribute('data-theme', 'dark');
+
+        const preview = createLiveArtifactPreview('html', '<section>Dark</section>');
+        const frame = preview.querySelector('iframe.live-artifact-frame');
+        const srcdoc = readFrameSrcDoc(frame);
+
+        expect(srcdoc).toContain('<html data-theme="dark">');
+        expect(srcdoc).toContain('--amc-live-artifact-accent:#6b9ef5');
+        expect(srcdoc).toContain('--amc-live-artifact-border:#3c4043');
+    });
+
+    it('builds a patchable document for streaming artifacts', () => {
+        const srcdoc = buildArtifactSrcDoc(
+            'html',
+            '<div style="display:block;width:100%;">Draft</div>',
+            { streaming: true }
+        );
+
+        expect(srcdoc).toContain('data-amc-artifact-root');
+        expect(srcdoc).toContain('stream-render');
+        expect(srcdoc).toContain('patchChildren');
+    });
+
+    it('posts final artifact markup into the streaming frame', () => {
+        const preview = createLiveArtifactPreview('html', '<div>Initial</div>', {
+            streaming: true,
+        });
+        document.body.appendChild(preview);
+
+        const frame = preview.querySelector('iframe.live-artifact-frame');
+        const postMessage = vi
+            .spyOn(frame.contentWindow, 'postMessage')
+            .mockImplementation(() => {});
+
+        frame.dispatchEvent(new Event('load'));
+        preview.__updateArtifact('<div>Updated</div>', { final: true });
+
+        expect(postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                channel: 'amc-live-artifact-preview',
+                event: 'stream-render',
+                html: expect.stringContaining('Updated'),
+            }),
+            '*'
+        );
+
+        postMessage.mockRestore();
+        preview.__liveArtifactCleanup?.();
+    });
+
     it('replaces Live Artifact HTML code chrome with the inline artifact frame', () => {
         const wrapper = createCodeBlock(
             'amc-live-artifact-html',

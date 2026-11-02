@@ -1,5 +1,10 @@
 import { transformMarkdown } from './pipeline.js';
-import { cleanupLiveArtifacts, enhanceLiveArtifacts } from './artifacts.js';
+import {
+    cleanupLiveArtifacts,
+    createLiveArtifactPreview,
+    enhanceLiveArtifacts,
+} from './artifacts.js';
+import { splitStreamingArtifact } from './stream_artifact.js';
 import { escapeHtml } from '../../shared/utils/escape.js';
 import { formatT, t } from '../core/i18n.js';
 import { TemplateIcons } from '../ui/templates/icons.js';
@@ -319,11 +324,84 @@ function createToolDisclosure(contentDiv, text, options = {}) {
     setExpanded(expanded);
 }
 
+// Streaming HTML artifacts reuse one iframe for the whole reply: the preview
+// node stays in the message while Markdown around it re-renders, and content
+// updates go through the iframe's patch bridge instead of rebuilding srcdoc.
+const LIVE_ARTIFACT_STREAM_KEY = '__liveArtifactStream';
+
+function cleanupStreamingArtifact(contentDiv) {
+    const state = contentDiv[LIVE_ARTIFACT_STREAM_KEY];
+    if (!state) return;
+
+    state.preview.__liveArtifactCleanup?.();
+    state.preview.remove();
+    delete contentDiv[LIVE_ARTIFACT_STREAM_KEY];
+}
+
+function renderStreamingArtifact(contentDiv, split, options) {
+    let state = contentDiv[LIVE_ARTIFACT_STREAM_KEY];
+    if (!state) {
+        cleanupLiveArtifacts(contentDiv);
+        const preview = createLiveArtifactPreview('html', split.artifactHtml, {
+            streaming: true,
+        });
+        preview.dataset.liveArtifactEnhanced = 'true';
+        state = { preview };
+        contentDiv[LIVE_ARTIFACT_STREAM_KEY] = state;
+    }
+
+    if (state.preview.parentNode !== contentDiv) {
+        contentDiv.appendChild(state.preview);
+    }
+
+    Array.from(contentDiv.childNodes).forEach((node) => {
+        if (node !== state.preview) node.remove();
+    });
+
+    if (split.prose.trim()) {
+        try {
+            const template = document.createElement('template');
+            template.innerHTML = transformMarkdown(split.prose);
+            contentDiv.insertBefore(template.content, state.preview);
+        } catch (error) {
+            console.error('[Gemini Nexus] Markdown render failed, falling back to text', error);
+            contentDiv.insertBefore(document.createTextNode(split.prose), state.preview);
+        }
+    }
+
+    if (split.suffix?.trim()) {
+        try {
+            const template = document.createElement('template');
+            template.innerHTML = transformMarkdown(split.suffix);
+            contentDiv.appendChild(template.content);
+        } catch (error) {
+            console.error('[Gemini Nexus] Markdown render failed, falling back to text', error);
+            contentDiv.appendChild(document.createTextNode(split.suffix));
+        }
+    }
+
+    state.preview.__updateArtifact?.(split.artifactHtml, {
+        final: options.isFinal === true,
+    });
+}
+
 // Helper: Render Markdown/Math/Text into an element
 export function renderContent(contentDiv, text, role, options = {}) {
+    // Reasoning blocks opt out of Live Artifacts: their scratch code should not
+    // turn into previews, and the per-token iframe churn caused visible flashing.
+    if (role === 'ai' && options.enhanceArtifacts !== false) {
+        const split = splitStreamingArtifact(text);
+        const hasStreamingArtifact = Boolean(contentDiv[LIVE_ARTIFACT_STREAM_KEY]);
+        if (split && (options.isStreaming === true || hasStreamingArtifact)) {
+            renderStreamingArtifact(contentDiv, split, options);
+            return;
+        }
+    }
+
     // Release message listeners / iframe resources from any prior Live Artifact
     // previews before we overwrite innerHTML (streaming updates, rerenders, etc).
     cleanupLiveArtifacts(contentDiv);
+    if (contentDiv[LIVE_ARTIFACT_STREAM_KEY]) cleanupStreamingArtifact(contentDiv);
 
     if (role === 'tool-output' || role === 'tool-status') {
         createToolDisclosure(contentDiv, text, {
@@ -373,9 +451,12 @@ export function renderContent(contentDiv, text, role, options = {}) {
 
         // enhanceLiveArtifacts only visits .code-block-wrapper nodes; a plain
         // prose message pays for a full subtree scan otherwise, every token.
+        // Reasoning blocks opt out: they are scratch content, not artifacts.
+        const artifactsEnabled = options.enhanceArtifacts !== false;
         const hasCodeBlocks =
-            contentDiv.matches?.('.code-block-wrapper') === true ||
-            contentDiv.querySelector?.('.code-block-wrapper') !== null;
+            artifactsEnabled &&
+            (contentDiv.matches?.('.code-block-wrapper') === true ||
+                contentDiv.querySelector?.('.code-block-wrapper') !== null);
         if (hasCodeBlocks) {
             try {
                 enhanceLiveArtifacts(contentDiv, {

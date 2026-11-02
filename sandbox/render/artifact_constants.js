@@ -1,6 +1,7 @@
 import {
     LIVE_ARTIFACT_HTML_LANGUAGE,
     LIVE_ARTIFACT_MESSAGE_CHANNEL,
+    LIVE_ARTIFACT_STREAM_EVENT,
 } from '../core/live_artifacts.js';
 
 const HTML_LANGUAGES = new Set([LIVE_ARTIFACT_HTML_LANGUAGE]);
@@ -196,6 +197,84 @@ const ARTIFACT_BRIDGE_SCRIPT = `<script>
 })();
 </script>`;
 
+// 嵌入到流式 artifact iframe 中的脚本,负责把增量 HTML 合并进已有 DOM。
+// 与整段 srcdoc 重建不同,这里按节点对比并 patch,保留已渲染节点、滚动位置
+// 和交互状态,避免流式过程中整帧闪烁。
+const STREAMING_PATCH_SCRIPT = `<script>
+(() => {
+  const channel = ${JSON.stringify(LIVE_ARTIFACT_MESSAGE_CHANNEL)};
+  const streamEvent = ${JSON.stringify(LIVE_ARTIFACT_STREAM_EVENT)};
+  const root = document.querySelector('[data-amc-artifact-root]');
+  if (!root) return;
+
+  const cloneNode = (node) => node.cloneNode(true);
+
+  const syncAttributes = (currentElement, nextElement) => {
+    Array.from(currentElement.attributes).forEach((attribute) => {
+      if (!nextElement.hasAttribute(attribute.name)) currentElement.removeAttribute(attribute.name);
+    });
+    Array.from(nextElement.attributes).forEach((attribute) => {
+      if (currentElement.getAttribute(attribute.name) !== attribute.value) {
+        currentElement.setAttribute(attribute.name, attribute.value);
+      }
+    });
+  };
+
+  const patchNode = (currentNode, nextNode) => {
+    if (currentNode.nodeType !== nextNode.nodeType) {
+      currentNode.replaceWith(cloneNode(nextNode));
+      return;
+    }
+    if (currentNode.nodeType === Node.TEXT_NODE) {
+      if (currentNode.nodeValue !== nextNode.nodeValue) currentNode.nodeValue = nextNode.nodeValue;
+      return;
+    }
+    if (currentNode.nodeType !== Node.ELEMENT_NODE) return;
+    if (currentNode.nodeName !== nextNode.nodeName) {
+      currentNode.replaceWith(cloneNode(nextNode));
+      return;
+    }
+    syncAttributes(currentNode, nextNode);
+    patchChildren(currentNode, nextNode);
+  };
+
+  const patchChildren = (currentParent, nextParent) => {
+    const currentChildren = Array.from(currentParent.childNodes);
+    const nextChildren = Array.from(nextParent.childNodes);
+    const maxLength = Math.max(currentChildren.length, nextChildren.length);
+    for (let index = 0; index < maxLength; index += 1) {
+      const currentChild = currentChildren[index];
+      const nextChild = nextChildren[index];
+      if (!nextChild) {
+        currentChild.remove();
+        continue;
+      }
+      if (!currentChild) {
+        currentParent.appendChild(cloneNode(nextChild));
+        continue;
+      }
+      patchNode(currentChild, nextChild);
+    }
+  };
+
+  const render = (html) => {
+    try {
+      const template = document.createElement('template');
+      template.innerHTML = html;
+      patchChildren(root, template.content);
+    } catch {
+      // A chunk that cannot be parsed keeps the previously rendered state.
+    }
+  };
+
+  window.addEventListener('message', (event) => {
+    const data = event.data || {};
+    if (data.channel !== channel || data.event !== streamEvent || typeof data.html !== 'string') return;
+    render(data.html);
+  });
+})();
+</script>`;
+
 export {
     HTML_LANGUAGES,
     SVG_LANGUAGES,
@@ -206,4 +285,5 @@ export {
     BLOCKED_ATTRS,
     URI_ATTRS,
     ARTIFACT_BRIDGE_SCRIPT,
+    STREAMING_PATCH_SCRIPT,
 };

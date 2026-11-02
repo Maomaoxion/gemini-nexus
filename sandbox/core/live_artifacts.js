@@ -1,6 +1,7 @@
 export const LIVE_ARTIFACT_HTML_LANGUAGE = 'amc-live-artifact-html';
 export const LIVE_ARTIFACT_MESSAGE_CHANNEL = 'amc-live-artifact-preview';
 export const LIVE_ARTIFACT_FOLLOWUP_EVENT = 'gemini-live-artifact-followup';
+export const LIVE_ARTIFACT_STREAM_EVENT = 'stream-render';
 
 const MAX_INSTRUCTION_LENGTH = 2000;
 const MAX_OPTIONAL_TEXT_LENGTH = 500;
