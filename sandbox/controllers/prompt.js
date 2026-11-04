@@ -304,7 +304,7 @@ export class PromptController {
      * Hard-reset generating UI/state. Safe to call multiple times.
      * Does not send CANCEL_PROMPT (caller may do that).
      */
-    forceClearGenerating({ status = '', keepStatusMs = 2500 } = {}) {
+    forceClearGenerating({ status = '', keepStatusMs = 2500, keepStream = false } = {}) {
         if (this._generationWatchdogTimer) {
             clearTimeout(this._generationWatchdogTimer);
             this._generationWatchdogTimer = null;
@@ -314,7 +314,9 @@ export class PromptController {
         this.generationStartedAt = 0;
         this.lastGenerationActivityAt = 0;
         this.ui.setLoading(false);
-        this.app.messageHandler?.clearActiveStream?.();
+        // A successful reply finalizes the existing bubble; only recovery paths
+        // drop the partial stream and its DOM.
+        if (!keepStream) this.app.messageHandler?.clearActiveStream?.();
         this.app.sessionFlow?.refreshHistoryUI?.();
         if (status) {
             this.ui.updateStatus(status);

@@ -295,6 +295,7 @@ describe('MessageHandler.handleGeminiReply', () => {
             thoughtsDurationSeconds: undefined,
         });
         expect(setRetryHandler).toHaveBeenCalledWith(expect.any(Function));
+        expect(app.prompt.forceClearGenerating).toHaveBeenCalledWith({ keepStream: true });
 
         // The handler regenerates by resending the user turn above the reply.
         const [retry] = setRetryHandler.mock.calls[0];

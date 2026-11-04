@@ -78,6 +78,18 @@ describe('PromptController generation recovery', () => {
         expect(ui.updateStatus).toHaveBeenCalledWith('cleared');
     });
 
+    it('keeps the active stream for a successful reply and drops it on recovery', () => {
+        const { app, controller } = createPromptHarness();
+        const clearActiveStream = vi.fn();
+        app.messageHandler = { clearActiveStream };
+
+        controller.forceClearGenerating({ keepStream: true });
+        expect(clearActiveStream).not.toHaveBeenCalled();
+
+        controller.forceClearGenerating();
+        expect(clearActiveStream).toHaveBeenCalledTimes(1);
+    });
+
     it('deletes a whole turn including tool output rows', async () => {
         const { controller, sessionManager } = createPromptHarness();
         const session = sessionManager.createSession();

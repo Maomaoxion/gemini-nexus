@@ -241,7 +241,9 @@ export class MessageHandler {
             return;
         }
 
-        this.app.prompt.forceClearGenerating();
+        // Keep the active stream so the reply finalizes the visible bubble in
+        // place; removing it would rebuild the message and reset the scroll.
+        this.app.prompt.forceClearGenerating({ keepStream: true });
         this.clearStreamState(this.getRequestSessionId(request));
 
         if (request.status === 'success' && request.historySaved === false) {
@@ -254,7 +256,7 @@ export class MessageHandler {
         }
 
         if (!this.isCurrentSessionMessage(request)) {
-            this.resetStream();
+            this.resetStream({ remove: true });
             return;
         }
 
