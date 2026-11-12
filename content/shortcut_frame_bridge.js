@@ -136,10 +136,8 @@
     class ShortcutFrameBridge {
         constructor() {
             this.appShortcuts = {};
-            this.chromeCommandShortcuts = {};
             this.handleStorageChange = this.handleStorageChange.bind(this);
             this.handleDocumentKeydown = (event) => this.handleKeydown(event);
-            this.boundRefreshChromeCommandShortcuts = this.refreshChromeCommandShortcuts.bind(this);
             this.init();
         }
 
@@ -152,51 +150,16 @@
                 }
 
                 this.appShortcuts = normalizeShortcutDefaults(result?.geminiShortcuts);
-                this.refreshChromeCommandShortcuts();
             });
 
             chrome.storage.onChanged.addListener(this.handleStorageChange);
-            window.addEventListener('focus', this.boundRefreshChromeCommandShortcuts);
             window.addEventListener('keydown', this.handleDocumentKeydown, true);
             document.addEventListener('keydown', this.handleDocumentKeydown, true);
-        }
-
-        async refreshChromeCommandShortcuts() {
-            try {
-                if (!chrome.commands?.getAll) return;
-                const commands = await chrome.commands.getAll();
-                const mapping = {
-                    quickAsk: null,
-                    openPanel: null,
-                    ocrCapture: null,
-                    browserControl: null,
-                };
-                for (const command of commands) {
-                    const shortcut = command.shortcut;
-                    if (!shortcut) continue;
-                    if (command.name === 'quick-ask') mapping.quickAsk = shortcut;
-                    else if (command.name === 'area-ocr') mapping.ocrCapture = shortcut;
-                    else if (command.name === '_execute_action') mapping.openPanel = shortcut;
-                    else if (command.name === 'browser-control') mapping.browserControl = shortcut;
-                }
-                this.chromeCommandShortcuts = mapping;
-            } catch {
-                // 静默降级
-            }
-        }
-
-        effectiveShortcut(action) {
-            const stored = this.appShortcuts?.[action];
-            if (typeof stored === 'string' && stored.trim() === '') return '';
-            const chromeManaged = this.chromeCommandShortcuts?.[action];
-            if (chromeManaged) return chromeManaged;
-            return stored;
         }
 
         destroy() {
             window.removeEventListener('keydown', this.handleDocumentKeydown, true);
             document.removeEventListener('keydown', this.handleDocumentKeydown, true);
-            window.removeEventListener('focus', this.boundRefreshChromeCommandShortcuts);
             chrome.storage?.onChanged?.removeListener?.(this.handleStorageChange);
         }
 
@@ -209,7 +172,7 @@
         handleKeydown(event) {
             if (isEditableShortcutTarget(event.target)) return;
 
-            if (matchShortcut(event, this.effectiveShortcut('quickAsk'))) {
+            if (matchShortcut(event, this.appShortcuts?.quickAsk)) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -217,7 +180,7 @@
                 return;
             }
 
-            if (matchShortcut(event, this.effectiveShortcut('ocrCapture'))) {
+            if (matchShortcut(event, this.appShortcuts?.ocrCapture)) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -229,7 +192,7 @@
                 return;
             }
 
-            if (matchShortcut(event, this.effectiveShortcut('snipCapture'))) {
+            if (matchShortcut(event, this.appShortcuts?.snipCapture)) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -241,7 +204,7 @@
                 return;
             }
 
-            if (matchShortcut(event, this.effectiveShortcut('openPanel'))) {
+            if (matchShortcut(event, this.appShortcuts?.openPanel)) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();
@@ -249,7 +212,7 @@
                 return;
             }
 
-            if (matchShortcut(event, this.effectiveShortcut('browserControl'))) {
+            if (matchShortcut(event, this.appShortcuts?.browserControl)) {
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation?.();

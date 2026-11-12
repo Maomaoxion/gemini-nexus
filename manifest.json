@@ -36,36 +36,6 @@
             "128": "assets/icons/icon-128.png"
         }
     },
-    "commands": {
-        "_execute_action": {
-            "suggested_key": {
-                "default": "Alt+G",
-                "mac": "Alt+G"
-            },
-            "description": "Open Gemini Nexus Sidebar"
-        },
-        "quick-ask": {
-            "suggested_key": {
-                "default": "Alt+Q",
-                "mac": "Alt+Q"
-            },
-            "description": "Open Gemini Nexus Quick Ask"
-        },
-        "area-ocr": {
-            "suggested_key": {
-                "default": "Alt+O",
-                "mac": "Alt+O"
-            },
-            "description": "Start Gemini Nexus Area OCR"
-        },
-        "browser-control": {
-            "suggested_key": {
-                "default": "Alt+Shift+B",
-                "mac": "Alt+Shift+B"
-            },
-            "description": "Toggle Gemini Nexus Browser Control"
-        }
-    },
     "side_panel": {
         "default_path": "sidepanel/index.html"
     },

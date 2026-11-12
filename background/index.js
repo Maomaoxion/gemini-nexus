@@ -166,28 +166,6 @@ async function toggleBrowserControlForTab(tab) {
     await toggleSidePanelControl(context, { action: 'TOGGLE_SIDE_PANEL_CONTROL' }, { tab });
 }
 
-chrome.commands?.onCommand?.addListener((command, tab) => {
-    if (command === 'quick-ask') {
-        showQuickAskForTab(tab).catch((error) => {
-            console.error('Could not open quick ask from command:', error);
-        });
-        return;
-    }
-
-    if (command === 'area-ocr') {
-        startAreaOcrForTab(tab).catch((error) => {
-            console.error('Could not start area OCR from command:', error);
-        });
-        return;
-    }
-
-    if (command === 'browser-control') {
-        toggleBrowserControlForTab(tab).catch((error) => {
-            console.error('Could not toggle browser control from command:', error);
-        });
-    }
-});
-
 setupPageShortcutCommands({
     showQuickAskForTab,
     startAreaOcrForTab,
