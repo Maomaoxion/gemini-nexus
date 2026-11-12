@@ -48,6 +48,61 @@ describe('ShortcutsSection', () => {
         expect(input.value).toBe('Alt+Q');
     });
 
+    it('clears a shortcut with Backspace or Delete', () => {
+        const section = new ShortcutsSection();
+        section.setData({
+            quickAsk: 'Alt+Q',
+            openPanel: 'Alt+G',
+            browserControl: 'Alt+Shift+B',
+            ocrCapture: 'Alt+O',
+            snipCapture: 'Alt+S',
+        });
+
+        const quickAsk = document.getElementById('shortcut-quick-ask');
+        quickAsk.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Backspace',
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+        expect(quickAsk.value).toBe('');
+        expect(section.getData().quickAsk).toBe('');
+
+        const openPanel = document.getElementById('shortcut-open-panel');
+        openPanel.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Delete',
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+        expect(openPanel.value).toBe('');
+    });
+
+    it('keeps cleared shortcuts empty instead of restoring defaults', () => {
+        const section = new ShortcutsSection();
+
+        section.setData({
+            quickAsk: '',
+            openPanel: '',
+            browserControl: '',
+            ocrCapture: '',
+            snipCapture: '',
+        });
+
+        expect(document.getElementById('shortcut-browser-control').value).toBe('');
+        expect(document.getElementById('shortcut-ocr-capture').value).toBe('');
+        expect(document.getElementById('shortcut-snip-capture').value).toBe('');
+        expect(section.getData()).toEqual({
+            quickAsk: '',
+            openPanel: '',
+            browserControl: '',
+            ocrCapture: '',
+            snipCapture: '',
+        });
+    });
+
     it('renders informative static rows for built-in application hotkeys', () => {
         const staticRows = document.querySelectorAll('.setting-shortcut-static-row');
         const shortcuts = Array.from(staticRows).map((row) => ({

@@ -90,6 +90,26 @@ describe('ShortcutManager', () => {
         expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'TOGGLE_SIDE_PANEL' });
     });
 
+    it('keeps cleared shortcuts disabled after a storage update', () => {
+        storageChangeListener(
+            {
+                geminiShortcuts: {
+                    newValue: {
+                        quickAsk: '',
+                        openPanel: 'Alt+G',
+                    },
+                },
+            },
+            'local'
+        );
+
+        document.dispatchEvent(createKeyboardEvent('Q', { altKey: true }));
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+
+        document.dispatchEvent(createKeyboardEvent('G', { altKey: true }));
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'TOGGLE_SIDE_PANEL' });
+    });
+
     it('restores default shortcuts when the stored shortcut config is removed', () => {
         storageChangeListener(
             {

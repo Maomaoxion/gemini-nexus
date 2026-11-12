@@ -43,6 +43,10 @@ export class ShortcutsSection {
         inputEl.addEventListener('keydown', (event) => {
             event.preventDefault();
             event.stopPropagation();
+            if (event.key === 'Backspace' || event.key === 'Delete') {
+                inputEl.value = '';
+                return;
+            }
             if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return;
 
             const keys = [];
@@ -61,13 +65,13 @@ export class ShortcutsSection {
         if (this.elements.inputQuickAsk) this.elements.inputQuickAsk.value = shortcuts.quickAsk;
         if (this.elements.inputOpenPanel) this.elements.inputOpenPanel.value = shortcuts.openPanel;
         if (this.elements.inputBrowserControl) {
-            this.elements.inputBrowserControl.value = shortcuts.browserControl || 'Alt+Shift+B';
+            this.elements.inputBrowserControl.value = shortcuts.browserControl;
         }
         if (this.elements.inputOcrCapture) {
-            this.elements.inputOcrCapture.value = shortcuts.ocrCapture || 'Alt+O';
+            this.elements.inputOcrCapture.value = shortcuts.ocrCapture;
         }
         if (this.elements.inputSnipCapture) {
-            this.elements.inputSnipCapture.value = shortcuts.snipCapture || 'Alt+S';
+            this.elements.inputSnipCapture.value = shortcuts.snipCapture;
         }
     }
 
@@ -80,11 +84,11 @@ export class ShortcutsSection {
             inputSnipCapture,
         } = this.elements;
         return {
-            quickAsk: inputQuickAsk ? inputQuickAsk.value : null,
-            openPanel: inputOpenPanel ? inputOpenPanel.value : null,
-            browserControl: inputBrowserControl ? inputBrowserControl.value : 'Alt+Shift+B',
-            ocrCapture: inputOcrCapture ? inputOcrCapture.value : 'Alt+O',
-            snipCapture: inputSnipCapture ? inputSnipCapture.value : 'Alt+S',
+            quickAsk: inputQuickAsk ? inputQuickAsk.value : '',
+            openPanel: inputOpenPanel ? inputOpenPanel.value : '',
+            browserControl: inputBrowserControl ? inputBrowserControl.value : '',
+            ocrCapture: inputOcrCapture ? inputOcrCapture.value : '',
+            snipCapture: inputSnipCapture ? inputSnipCapture.value : '',
         };
     }
 }

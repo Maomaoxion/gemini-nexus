@@ -186,9 +186,11 @@
         }
 
         effectiveShortcut(action) {
+            const stored = this.appShortcuts?.[action];
+            if (typeof stored === 'string' && stored.trim() === '') return '';
             const chromeManaged = this.chromeCommandShortcuts?.[action];
             if (chromeManaged) return chromeManaged;
-            return this.appShortcuts[action];
+            return stored;
         }
 
         destroy() {

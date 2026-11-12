@@ -181,10 +181,13 @@
         // Resolve the effective shortcut string for a given action. A Chrome-
         // managed remap (chrome://extensions/shortcuts) wins over our stored
         // default so the user's browser-level choice is honored in-page too.
+        // An explicitly cleared shortcut stays disabled.
         effectiveShortcut(action) {
+            const stored = this.appShortcuts?.[action];
+            if (typeof stored === 'string' && stored.trim() === '') return '';
             const chromeManaged = this.chromeCommandShortcuts?.[action];
             if (chromeManaged) return chromeManaged;
-            return this.appShortcuts[action];
+            return stored;
         }
 
         handleStorageChange(changes, area) {
