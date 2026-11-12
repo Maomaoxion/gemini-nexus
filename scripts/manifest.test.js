@@ -41,42 +41,10 @@ describe('manifest content scripts', () => {
         expect(manifest.permissions).toContain('tabGroups');
     });
 
-    it('declares an Alt shortcut for quick ask', async () => {
+    it('does not register browser-level shortcuts at install time', async () => {
         const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
 
-        expect(manifest.commands['quick-ask'].suggested_key).toEqual({
-            default: 'Alt+Q',
-            mac: 'Alt+Q',
-        });
-    });
-
-    it('declares a browser-level shortcut for area OCR', async () => {
-        const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
-
-        expect(manifest.commands['area-ocr'].suggested_key).toEqual({
-            default: 'Alt+O',
-            mac: 'Alt+O',
-        });
-    });
-
-    it('declares a browser-level shortcut for browser control', async () => {
-        const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
-
-        expect(manifest.commands['browser-control'].suggested_key).toEqual({
-            default: 'Alt+Shift+B',
-            mac: 'Alt+Shift+B',
-        });
-    });
-
-    it('uses Chromium-compatible macOS command modifiers', async () => {
-        const manifest = JSON.parse(await readFile('manifest.json', 'utf8'));
-        const macShortcuts = Object.values(manifest.commands).flatMap((command) =>
-            command.suggested_key?.mac ? [command.suggested_key.mac] : []
-        );
-
-        expect(macShortcuts).not.toContain('Option+Q');
-        expect(macShortcuts).not.toContain('Option+O');
-        expect(macShortcuts).not.toContain('Option+B');
+        expect(manifest.commands).toBeUndefined();
     });
 
     it('uses explicit icon assets for each manifest icon size', async () => {
